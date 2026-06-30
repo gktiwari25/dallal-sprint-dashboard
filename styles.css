@@ -74,7 +74,7 @@ table.risks tr:last-child td{border-bottom:none}
 .loginbox{position:relative;z-index:1;background:#fff;border-radius:18px;padding:34px 30px 24px;width:100%;max-width:380px;text-align:center;
   box-shadow:0 30px 80px rgba(0,0,0,.45);animation:rise .4s ease}
 @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-.loginbox .logo{width:64px;height:64px;border-radius:16px;margin-bottom:14px;box-shadow:0 10px 24px rgba(15,139,141,.5)}
+.loginbox .logo{width:72px;height:72px;object-fit:contain;margin-bottom:12px;image-rendering:-webkit-optimize-contrast}
 .loginbox h2{margin:0 0 4px;font-size:21px;color:var(--navy);letter-spacing:.2px}
 .loginbox .tag{color:var(--muted);font-size:13px;margin:0 0 22px}
 .loginbox label{display:block;text-align:left;font-size:12px}
