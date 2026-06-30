@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Dallal Sprint Dashboard</title>
+<link rel="stylesheet" href="styles.css?v=8" />
+</head>
+<body>
+
+<header class="topbar">
+  <div>
+    <div class="title">Dallal Sprint Dashboard</div>
+    <div class="sub">Source: Asana &middot; Dallal Product Development &middot; live via Supabase</div>
+  </div>
+  <nav class="tabs">
+    <button id="tabDelivery" class="tab active">Delivery</button>
+    <button id="tabEng" class="tab">Engineering</button>
+  </nav>
+  <div class="spacer"></div>
+  <label class="sub" for="sprintSel" id="sprintLbl">Sprint</label>
+  <select id="sprintSel"></select>
+  <button id="refreshBtn" title="Reload data">&#x21bb; Refresh</button>
+  <button id="signOut" class="hidden" title="Sign out">Sign out</button>
+  <div id="updated"></div>
+</header>
+
+<!-- Login (shown when auth is required and no active session) -->
+<div id="login" class="hidden">
+  <h2><span class="brand">Dallal</span> Sprint Dashboard</h2>
+  <p class="muted">Sign in to view analytics.</p>
+
+  <button id="googleBtn" class="oauth">
+    <span class="g">G</span> Sign in with Google
+  </button>
+
+  <div class="divider"><span>or</span></div>
+
+  <label class="muted">Work email</label>
+  <input id="loginEmail" type="email" autocomplete="username" placeholder="you@dallal.com.kw" />
+  <button id="magicBtn">Email me a magic link</button>
+
+  <div id="loginInfo" class="info hidden"></div>
+  <div id="loginErr" class="err hidden" style="margin:12px 0 0"></div>
+
+  <a id="pwToggle" class="muted pwtoggle" href="#">Use a password instead</a>
+  <div id="pwBlock" class="hidden">
+    <label class="muted">Password</label>
+    <input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••" />
+    <button id="loginBtn">Sign in</button>
+  </div>
+</div>
+
+<!-- Config prompt (shown only if config.js isn't filled in) -->
+<div id="cfg" class="hidden">
+  <h2 style="margin-top:0">Connect to Supabase</h2>
+  <p class="muted">Enter your Supabase project URL and the public <b>anon</b> key
+  (Project Settings &rarr; API). Stored in this browser only.</p>
+  <label class="muted">Project URL</label>
+  <input id="cfgUrl" placeholder="https://xxxx.supabase.co" />
+  <label class="muted">Anon key</label>
+  <input id="cfgKey" placeholder="eyJ..." />
+  <button id="cfgSave">Save &amp; load</button>
+</div>
+
+<div class="wrap" id="app" >
+  <div id="error" class="err hidden"></div>
+  <div id="sampleFlag" class="sample-flag hidden"></div>
+
+  <div id="sprintView">
+  <!-- SPRINT HEALTH -->
+  <div class="section"><h2>Sprint Health</h2><div class="body">
+    <div class="grid" id="healthGrid"></div>
+    <div class="muted" id="healthNote" style="margin-top:8px"></div>
+    <div class="chartcard" style="margin-top:14px"><h3>Burndown — remaining story points</h3><canvas id="burnChart" height="110"></canvas></div>
+  </div></div>
+
+  <!-- DELIVERY -->
+  <div class="section"><h2>Delivery</h2><div class="body">
+    <div class="grid" id="deliveryGrid"></div>
+  </div></div>
+
+  <!-- QUALITY -->
+  <div class="section"><h2>Quality</h2><div class="body">
+    <div class="grid" id="qualityGrid"></div>
+  </div></div>
+
+  <!-- FLOW -->
+  <div class="section"><h2>Flow</h2><div class="body">
+    <div class="grid" id="flowGrid"></div>
+  </div></div>
+
+  <!-- RISKS -->
+  <div class="section"><h2>Risks</h2><div class="body">
+    <div class="grid" id="riskCards" style="margin-bottom:12px"></div>
+    <div id="riskList"></div>
+  </div></div>
+
+  <!-- CHARTS -->
+  <div class="section"><h2>Velocity Trend &amp; Mix</h2><div class="body">
+    <div class="charts">
+      <div class="chartcard"><h3>Delivered Story Points by Sprint</h3><canvas id="velChart" height="150"></canvas></div>
+      <div class="chartcard"><h3>Status mix (selected sprint)</h3><canvas id="statusChart" height="150"></canvas></div>
+    </div>
+  </div></div>
+  </div><!-- /sprintView -->
+
+  <!-- ENGINEERING VIEW -->
+  <div id="engView" class="hidden">
+    <div class="section"><h2>Engineering Health — Repositories</h2><div class="body">
+      <div class="grid" id="repoCards"></div>
+    </div></div>
+
+    <div class="section"><h2>Security &amp; Vulnerabilities</h2><div class="body">
+      <div class="charts">
+        <div class="chartcard"><h3>Open vulnerabilities by repo (Critical / High / Medium)</h3><canvas id="vulnChart" height="150"></canvas></div>
+        <div class="chartcard"><h3>Posture</h3><div class="grid" id="postureCards"></div></div>
+      </div>
+      <table class="risks" id="vulnTable" style="margin-top:14px"><thead><tr>
+        <th>Sev</th><th>Repo</th><th>Package</th><th>Version</th><th>Advisory</th><th>Fixed in</th><th>Detail</th>
+      </tr></thead><tbody></tbody></table>
+    </div></div>
+
+    <div class="section"><h2>Delivery Governance</h2><div class="body">
+      <div class="grid" id="govCards"></div>
+    </div></div>
+  </div><!-- /engView -->
+
+  <p class="muted">Read-only view &middot; data refreshes every 6h via the Asana&rarr;Supabase sync.</p>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js?v=8"></script>
+<script src="sample-data.js?v=8"></script>
+<script src="app.js?v=8"></script>
+</body>
+</html>
