@@ -75,12 +75,37 @@ table.risks tr:last-child td{border-bottom:none}
 #cfg input{width:100%;padding:10px 11px;margin:6px 0 14px;border:1px solid var(--line);border-radius:8px;font-size:14px}
 #cfg button{background:var(--accent);color:#fff;border:none;padding:11px 16px;border-radius:8px;cursor:pointer;font-size:14px;width:100%}
 
-/* Branded login hero */
-#login{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;padding:20px;
+/* Branded landing hero */
+#login{position:fixed;inset:0;z-index:100;overflow:auto;
   background:radial-gradient(900px 480px at 78% -12%, rgba(15,139,141,.55), transparent 60%),
              radial-gradient(700px 500px at 0% 110%, rgba(31,111,235,.30), transparent 55%),
              linear-gradient(135deg,#0a2034 0%,#163a5f 55%,#0f6f74 100%)}
-.loginbg{position:absolute;inset:0;width:100%;height:100%;opacity:.18;z-index:0;pointer-events:none}
+.landing{position:relative;z-index:1;max-width:1040px;margin:0 auto;padding:26px 24px 56px;color:#fff;text-align:center}
+.lnav{display:flex;align-items:center;justify-content:space-between;margin-bottom:30px}
+.lnav .lbrand{background:#fff;border-radius:11px;padding:8px 13px;display:inline-flex;box-shadow:0 8px 22px rgba(0,0,0,.22)}
+.lnav .lbrand img{height:24px;display:block}
+.live{display:inline-flex;align-items:center;gap:7px;color:#fff;font-size:13px;font-weight:600;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);padding:6px 13px;border-radius:999px}
+.live .dot{width:8px;height:8px;border-radius:50%;background:#3ddc84;box-shadow:0 0 0 4px rgba(61,220,132,.25);animation:livepulse 1.6s infinite}
+@keyframes livepulse{0%,100%{opacity:1}50%{opacity:.35}}
+.hero{padding:42px 10px 16px;animation:rise .5s ease}
+.hero h1{font-size:40px;line-height:1.14;margin:0 0 16px;font-weight:800;letter-spacing:-.6px;text-shadow:0 2px 20px rgba(0,0,0,.25)}
+.hero .lead{font-size:16px;color:rgba(255,255,255,.82);max-width:640px;margin:0 auto 26px;line-height:1.55}
+.hero .cta{background:#fff;color:var(--navy);border:none;padding:14px 28px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 16px 36px rgba(0,0,0,.3);transition:transform .12s,box-shadow .12s}
+.hero .cta:hover{transform:translateY(-2px);box-shadow:0 22px 46px rgba(0,0,0,.36)}
+.hero .ctasub{margin-top:14px;font-size:12px;color:rgba(255,255,255,.72)}
+.features{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:46px}
+.feature{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:24px 22px;text-align:left;backdrop-filter:blur(6px);transition:transform .15s,background .15s}
+.feature:hover{transform:translateY(-3px);background:rgba(255,255,255,.13)}
+.feature .ficon{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:13px;background:rgba(255,255,255,.16)}
+.feature h3{margin:0 0 6px;font-size:16px;color:#fff}
+.feature p{margin:0;font-size:13px;color:rgba(255,255,255,.78);line-height:1.45}
+@media(max-width:760px){.features{grid-template-columns:1fr}.hero h1{font-size:29px}.lnav{margin-bottom:16px}}
+/* Sign-in modal */
+#loginModal{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(8,20,34,.62);backdrop-filter:blur(4px)}
+#loginModal.hidden{display:none}
+.loginbox .lclose{position:absolute;top:8px;right:10px;width:auto;background:none;border:none;color:var(--muted);font-size:24px;line-height:1;padding:4px 8px;cursor:pointer;box-shadow:none}
+.loginbox .lclose:hover{color:var(--ink);filter:none}
+.loginbg{position:fixed;inset:0;width:100%;height:100%;opacity:.18;z-index:0;pointer-events:none}
 .loginbox{position:relative;z-index:1;background:#fff;border-radius:18px;padding:34px 30px 24px;width:100%;max-width:380px;text-align:center;
   box-shadow:0 30px 80px rgba(0,0,0,.45);animation:rise .4s ease}
 @keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}

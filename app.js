@@ -452,6 +452,11 @@
     el("loginPass").addEventListener("keydown", function (e) { if (e.key === "Enter") doLogin(); });
     el("pwToggle").addEventListener("click", function (e) { e.preventDefault(); el("pwBlock").classList.toggle("hidden"); });
     el("signOut").addEventListener("click", function () { if (sbc) sbc.auth.signOut(); });
+    // Landing -> sign-in modal
+    el("ctaLogin").addEventListener("click", function () { show("loginModal"); var e = el("loginEmail"); if (e) e.focus(); });
+    el("loginClose").addEventListener("click", function () { hide("loginModal"); });
+    el("loginModal").addEventListener("click", function (ev) { if (ev.target === el("loginModal")) hide("loginModal"); });
+    document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") hide("loginModal"); });
 
     // Not configured -> offline sample preview (nothing sensitive to protect).
     if (!isConfigured()) {

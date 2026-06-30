@@ -4,9 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Dallal Sprint Dashboard</title>
-<link rel="icon" type="image/png" href="dallal-favicon.png?v=13" />
+<link rel="icon" type="image/png" href="dallal-favicon.png?v=14" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
-<link rel="stylesheet" href="styles.css?v=13" />
+<link rel="stylesheet" href="styles.css?v=14" />
 </head>
 <body>
 
@@ -48,32 +48,56 @@
     <circle cx="1010" cy="130" r="80" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="22"/>
     <circle cx="1010" cy="130" r="80" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="22" stroke-dasharray="190 500" stroke-linecap="round"/>
   </svg>
-  <div class="loginbox">
-    <img class="logo" src="Dallal-logo.png" alt="Dallal" />
-    <h2>Sprint Dashboard</h2>
-    <p class="tag">Live delivery, quality &amp; engineering analytics</p>
+  <div class="landing">
+    <header class="lnav">
+      <span class="lbrand"><img src="Dallal-logo.png" alt="Dallal" /></span>
+      <span class="live"><span class="dot"></span> Live</span>
+    </header>
 
-    <button id="googleBtn" class="oauth">
-      <span class="g">G</span> Sign in with Google
-    </button>
+    <section class="hero">
+      <h1>Real-time visibility.<br/>Better delivery. Stronger quality.</h1>
+      <p class="lead">Track sprint progress, ensure quality, and empower engineering teams with live analytics.</p>
+      <button id="ctaLogin" class="cta">Login to Dashboard &rarr;</button>
+      <div class="ctasub">&#128274; Secure &middot; Private &middot; Role-based access</div>
+    </section>
 
-    <div class="divider"><span>or</span></div>
+    <section class="features">
+      <div class="feature"><div class="ficon fi1">&#128202;</div><h3>Live Delivery</h3><p>Real-time sprint progress &amp; status</p></div>
+      <div class="feature"><div class="ficon fi2">&#128737;</div><h3>Quality First</h3><p>Track bugs, test coverage &amp; quality</p></div>
+      <div class="feature"><div class="ficon fi3">&#9881;</div><h3>Engineering Analytics</h3><p>DORA metrics, velocity &amp; team insights</p></div>
+    </section>
+  </div>
 
-    <label class="muted">Work email</label>
-    <input id="loginEmail" type="email" autocomplete="username" placeholder="you@dallal.com.kw" />
-    <button id="magicBtn">Email me a magic link</button>
+  <!-- Sign-in modal (opens from the Login button) -->
+  <div id="loginModal" class="hidden">
+    <div class="loginbox">
+      <button id="loginClose" class="lclose" aria-label="Close">&times;</button>
+      <img class="logo" src="Dallal-logo.png" alt="Dallal" />
+      <h2>Sign in</h2>
+      <p class="tag">Access your live analytics</p>
 
-    <div id="loginInfo" class="info hidden"></div>
-    <div id="loginErr" class="err hidden" style="margin:12px 0 0"></div>
+      <button id="googleBtn" class="oauth">
+        <span class="g">G</span> Sign in with Google
+      </button>
 
-    <a id="pwToggle" class="pwtoggle" href="#">Use a password instead</a>
-    <div id="pwBlock" class="hidden">
-      <label class="muted">Password</label>
-      <input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••" />
-      <button id="loginBtn">Sign in</button>
+      <div class="divider"><span>or</span></div>
+
+      <label class="muted">Work email</label>
+      <input id="loginEmail" type="email" autocomplete="username" placeholder="you@dallal.com.kw" />
+      <button id="magicBtn">Email me a magic link</button>
+
+      <div id="loginInfo" class="info hidden"></div>
+      <div id="loginErr" class="err hidden" style="margin:12px 0 0"></div>
+
+      <a id="pwToggle" class="pwtoggle" href="#">Use a password instead</a>
+      <div id="pwBlock" class="hidden">
+        <label class="muted">Password</label>
+        <input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••" />
+        <button id="loginBtn">Sign in</button>
+      </div>
+
+      <div class="loginfoot">Secure access &middot; @dallal.com.kw</div>
     </div>
-
-    <div class="loginfoot">Secure access &middot; @dallal.com.kw</div>
   </div>
 </div>
 
@@ -159,8 +183,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=13"></script>
-<script src="sample-data.js?v=13"></script>
-<script src="app.js?v=13"></script>
+<script src="config.js?v=14"></script>
+<script src="sample-data.js?v=14"></script>
+<script src="app.js?v=14"></script>
 </body>
 </html>
