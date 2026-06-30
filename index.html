@@ -4,9 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Dallal Sprint Dashboard</title>
-<link rel="icon" type="image/png" href="dallal-favicon.png?v=14" />
+<link rel="icon" type="image/png" href="dallal-favicon.png?v=15" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
-<link rel="stylesheet" href="styles.css?v=14" />
+<link rel="stylesheet" href="styles.css?v=15" />
 </head>
 <body>
 
@@ -122,7 +122,7 @@
   <div class="section"><h2>Sprint Health</h2><div class="body">
     <div class="grid" id="healthGrid"></div>
     <div class="muted" id="healthNote" style="margin-top:8px"></div>
-    <div class="chartcard" style="margin-top:14px"><h3>Burndown — remaining story points</h3><canvas id="burnChart" height="110"></canvas></div>
+    <div class="chartcard" style="margin-top:14px"><h3>Burndown — remaining story points</h3><div class="chartbox"><canvas id="burnChart"></canvas></div></div>
   </div></div>
 
   <!-- DELIVERY -->
@@ -133,13 +133,13 @@
   <!-- QUALITY -->
   <div class="section"><h2>Quality</h2><div class="body">
     <div class="grid" id="qualityGrid"></div>
-    <div class="chartcard" style="margin-top:14px"><h3>Bugs by priority</h3><canvas id="qualityChart" height="120"></canvas></div>
+    <div class="chartcard" style="margin-top:14px"><h3>Bugs by priority</h3><div class="chartbox"><canvas id="qualityChart"></canvas></div></div>
   </div></div>
 
   <!-- FLOW -->
   <div class="section"><h2>Flow</h2><div class="body">
     <div class="grid" id="flowGrid"></div>
-    <div class="chartcard" style="margin-top:14px"><h3>Stage time (days)</h3><canvas id="flowChart" height="120"></canvas></div>
+    <div class="chartcard" style="margin-top:14px"><h3>Stage time (days)</h3><div class="chartbox"><canvas id="flowChart"></canvas></div></div>
   </div></div>
 
   <!-- RISKS -->
@@ -151,8 +151,8 @@
   <!-- CHARTS -->
   <div class="section"><h2>Velocity Trend &amp; Mix</h2><div class="body">
     <div class="charts">
-      <div class="chartcard"><h3>Delivered Story Points by Sprint</h3><canvas id="velChart" height="150"></canvas></div>
-      <div class="chartcard"><h3>Status mix (selected sprint)</h3><canvas id="statusChart" height="150"></canvas></div>
+      <div class="chartcard"><h3>Delivered Story Points by Sprint</h3><div class="chartbox"><canvas id="velChart"></canvas></div></div>
+      <div class="chartcard"><h3>Status mix (selected sprint)</h3><div class="chartbox"><canvas id="statusChart"></canvas></div></div>
     </div>
   </div></div>
   </div><!-- /sprintView -->
@@ -165,7 +165,7 @@
 
     <div class="section"><h2>Security &amp; Vulnerabilities</h2><div class="body">
       <div class="charts">
-        <div class="chartcard"><h3>Open vulnerabilities by repo (Critical / High / Medium)</h3><canvas id="vulnChart" height="150"></canvas></div>
+        <div class="chartcard"><h3>Open vulnerabilities by repo (Critical / High / Medium)</h3><div class="chartbox"><canvas id="vulnChart"></canvas></div></div>
         <div class="chartcard"><h3>Posture</h3><div class="grid" id="postureCards"></div></div>
       </div>
       <table class="risks" id="vulnTable" style="margin-top:14px"><thead><tr>
@@ -183,8 +183,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=14"></script>
-<script src="sample-data.js?v=14"></script>
-<script src="app.js?v=14"></script>
+<script src="config.js?v=15"></script>
+<script src="sample-data.js?v=15"></script>
+<script src="app.js?v=15"></script>
 </body>
 </html>

@@ -41,7 +41,7 @@
   // ---------- graphical helpers (gauges / mini charts) ----------
   var _charts = {};
   function mkChart(id, cfg) { if (_charts[id]) _charts[id].destroy(); _charts[id] = new Chart(el(id), cfg); }
-  function gaugeColor(p) { p = p || 0; return p >= 0.9 ? "#2e7d32" : p >= 0.7 ? "#f29f05" : "#c62828"; }
+  function gaugeColor(p) { p = p || 0; return p >= 0.85 ? "#2e7d32" : p >= 0.6 ? "#f29f05" : "#c62828"; }
   function gaugeTile(id, label, percent, color) {
     var txt = (percent == null || isNaN(percent)) ? "--" : Math.round(percent * 100) + "%";
     return '<div class="gauge"><div class="gwrap"><canvas id="' + id + '"></canvas>' +
@@ -55,7 +55,7 @@
       options: { cutout: "76%", responsive: true, maintainAspectRatio: true,
         plugins: { legend: { display: false }, tooltip: { enabled: false } }, animation: { duration: 600 } } });
   }
-  function ragFor(p) { if (p >= 0.9) return ["green", "On Track"]; if (p >= 0.7) return ["amber", "At Risk"]; return ["red", "Off Track"]; }
+  function ragFor(p) { if (p >= 0.85) return ["green", "On Track"]; if (p >= 0.6) return ["amber", "At Risk"]; return ["red", "Off Track"]; }
   function esc(s) { return (s == null ? "" : String(s)).replace(/[&<>]/g, function (c) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]; }); }
   function escAttr(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
   // A ticket is a bug if its title contains "BUG" (team convention) or Type=Bug.
@@ -441,6 +441,7 @@
   }
 
   function init() {
+    if (window.Chart) { Chart.defaults.maintainAspectRatio = false; Chart.defaults.responsive = true; }
     el("sprintSel").addEventListener("change", function () { render(this.value); });
     el("tabDelivery").addEventListener("click", function () { showTab("delivery"); });
     el("tabEng").addEventListener("click", function () { showTab("eng"); });

@@ -42,7 +42,7 @@ header button:hover{background:rgba(255,255,255,.22)}
 .section h2::before{content:"";width:9px;height:9px;border-radius:2px;background:var(--teal);box-shadow:0 0 0 3px rgba(15,139,141,.25)}
 .section .body{background:transparent;padding:14px 0 0}
 .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
-.card{position:relative;overflow:hidden;background:linear-gradient(180deg,#ffffff,#fbfcfe);border:1px solid var(--line);border-radius:14px;padding:15px 16px;box-shadow:0 1px 2px rgba(16,42,71,.04);transition:transform .12s,box-shadow .12s}
+.card{position:relative;background:linear-gradient(180deg,#ffffff,#fbfcfe);border:1px solid var(--line);border-radius:14px;padding:15px 16px;box-shadow:0 1px 2px rgba(16,42,71,.04);transition:transform .12s,box-shadow .12s}
 .card:hover{transform:translateY(-2px);box-shadow:0 10px 24px rgba(16,42,71,.10)}
 .card .icon{position:absolute;top:11px;right:12px;font-size:16px;opacity:.9;line-height:1}
 .card .value{font-variant-numeric:tabular-nums}
@@ -65,6 +65,8 @@ header button:hover{background:rgba(255,255,255,.22)}
 @media(max-width:820px){.charts{grid-template-columns:1fr}}
 .chartcard{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
 .chartcard h3{margin:0 0 10px;font-size:13px;color:var(--muted);font-weight:600}
+.chartbox{position:relative;width:100%;height:230px}
+.chartbox canvas{position:absolute;inset:0;width:100%!important;height:100%!important}
 table.risks{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:12px;overflow:hidden}
 table.risks th,table.risks td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px}
 table.risks th{background:#f7f9fc;color:var(--muted);text-transform:uppercase;font-size:11px;letter-spacing:.5px}
