@@ -113,6 +113,7 @@
       predictability: hCommitment ? hDeliver / hCommitment : null,
       carryFwd: hCommit ? (hCommit - hDeliver) / hCommit : null,
       planned: planned, completed: completed,
+      inDev: its.filter(function (i) { return (i.status || "").indexOf("In Development") !== -1; }).length,
       inQA: statusIn(IN_QA_STATUSES),
       blocked: its.filter(function (i) { return i.section === "Blocked"; }).length,
       ready: statusIn(READY_STATUSES),
@@ -152,8 +153,9 @@
 
     el("deliveryGrid").innerHTML =
       card("Stories Planned", m.planned, { icon: "📋", accent: "#163a5f" }) +
+      card("In Development", m.inDev, { icon: "🛠️", accent: "#7b61ff", tip: "Stories whose Status is 'In Development' right now." }) +
+      card("In QA", m.inQA, { icon: "🧪", accent: "#1f6feb", tip: "Stories in a testing stage (QA on Dev / Ready for UAT / In UAT)." }) +
       card("Completed", m.completed, { icon: "✅", accent: "#2e7d32" }) +
-      card("In QA", m.inQA, { icon: "🧪", accent: "#1f6feb" }) +
       card("Blocked", m.blocked, { icon: "⛔", accent: "#c62828" }) +
       card("Ready for Release", m.ready, { icon: "🚀", accent: "#0f8b8d" });
     var openItems = m.its.filter(function (i) { return String(i.is_delivered) !== "1"; });
