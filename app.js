@@ -341,8 +341,8 @@
   }
 
   // ---------- auth ----------
-  function showAppUI() { hide("login"); show("app"); show("signOut"); }
-  function showLoginUI() { show("login"); hide("app"); hide("signOut"); }
+  function showAppUI() { hide("login"); show("app"); show("signOut"); show("topbar"); }
+  function showLoginUI() { show("login"); hide("app"); hide("signOut"); hide("topbar"); }
 
   function onAuth(session) {
     if (session) {
@@ -414,7 +414,7 @@
     sbc = window.supabase.createClient(URL_, KEY_);
 
     if (!REQUIRE_AUTH) { showAppUI(); loadAll(); return; }   // intentional public mode
-    hide("app");   // avoid flashing the dashboard before the session check resolves
+    hide("app"); hide("topbar");   // avoid flashing the dashboard/header before the session check resolves
     sbc.auth.onAuthStateChange(function (_e, session) { onAuth(session); });
     sbc.auth.getSession().then(function (r) { onAuth(r.data.session); });
   }
