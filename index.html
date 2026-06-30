@@ -4,9 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Dallal Sprint Dashboard</title>
-<link rel="icon" type="image/png" href="dallal-favicon.png?v=15" />
+<link rel="icon" type="image/png" href="dallal-favicon.png?v=16" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
-<link rel="stylesheet" href="styles.css?v=15" />
+<link rel="stylesheet" href="styles.css?v=16" />
 </head>
 <body>
 
@@ -128,12 +128,14 @@
   <!-- DELIVERY -->
   <div class="section"><h2>Delivery</h2><div class="body">
     <div class="grid" id="deliveryGrid"></div>
+    <div id="openList" class="listblock"></div>
   </div></div>
 
   <!-- QUALITY -->
   <div class="section"><h2>Quality</h2><div class="body">
     <div class="grid" id="qualityGrid"></div>
     <div class="chartcard" style="margin-top:14px"><h3>Bugs by priority</h3><div class="chartbox"><canvas id="qualityChart"></canvas></div></div>
+    <div id="bugList" class="listblock"></div>
   </div></div>
 
   <!-- FLOW -->
@@ -176,6 +178,10 @@
     <div class="section"><h2>Delivery Governance</h2><div class="body">
       <div class="grid" id="govCards"></div>
     </div></div>
+
+    <div class="section"><h2>Engineering Risks &amp; Security</h2><div class="body">
+      <div id="engRiskList"></div>
+    </div></div>
   </div><!-- /engView -->
 
   <p class="muted">Read-only view &middot; data refreshes every 6h via the Asana&rarr;Supabase sync.</p>
@@ -183,8 +189,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=15"></script>
-<script src="sample-data.js?v=15"></script>
-<script src="app.js?v=15"></script>
+<script src="config.js?v=16"></script>
+<script src="sample-data.js?v=16"></script>
+<script src="app.js?v=16"></script>
 </body>
 </html>

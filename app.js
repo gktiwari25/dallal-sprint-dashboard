@@ -60,6 +60,26 @@
   function escAttr(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
   // A ticket is a bug if its title contains "BUG" (team convention) or Type=Bug.
   function isBug(i) { return String(i.is_bug) === "1" || /\bbug/i.test(i.name || ""); }
+  // Risks tied to repos/security live on the Engineering tab, not the delivery Risks list.
+  function isEngRisk(r) { return (r.category || "") === "Security"; }
+  var ASANA_TASK = "https://app.asana.com/0/1214388950902741/";
+  function shortPri(p) { return p ? String(p).split(" ")[0] : "—"; }
+  function priClass(p) { p = p || ""; return p.indexOf("P1") === 0 ? "red" : p.indexOf("P2") === 0 ? "amber" : p.indexOf("P3") === 0 ? "blue" : "grey"; }
+  function taskRow(it) {
+    return '<div class="taskrow">' +
+      '<span class="trbadge ' + priClass(it.priority) + '">' + shortPri(it.priority) + "</span>" +
+      '<span class="trname" title="' + escAttr(it.name) + '">' + esc(it.name) + "</span>" +
+      '<span class="trstatus">' + esc(it.status || "") + "</span>" +
+      '<a class="tasklink" href="' + ASANA_TASK + it.task_gid + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
+  }
+  function riskCardHtml(r) {
+    var k = (r.rag || "").toLowerCase();
+    return '<div class="riskcard ' + k + '"><div class="rt"><span class="rag ' + k + '">' + esc(r.rag || "?") + "</span>" +
+      '<span class="name">' + esc(r.risk_name) + "</span>" +
+      '<span class="meta">' + esc(r.category || "") + " &middot; " + esc(r.owner || "") + " &middot; " + esc(r.status || "") + "</span></div>" +
+      (r.impact ? '<div class="kvline"><b>Impact:</b> ' + linkify(r.impact) + "</div>" : "") +
+      (r.mitigation ? '<div class="kvline"><b>Mitigation / action:</b> ' + linkify(r.mitigation) + "</div>" : "") + "</div>";
+  }
 
   // ---------- metric computation ----------
   function compute(sprint) {
@@ -136,6 +156,9 @@
       card("In QA", m.inQA, { icon: "🧪", accent: "#1f6feb" }) +
       card("Blocked", m.blocked, { icon: "⛔", accent: "#c62828" }) +
       card("Ready for Release", m.ready, { icon: "🚀", accent: "#0f8b8d" });
+    var openItems = m.its.filter(function (i) { return String(i.is_delivered) !== "1"; });
+    el("openList").innerHTML = '<div class="listhdr">Not yet completed &middot; ' + openItems.length + " of " + m.planned + " stories</div>" +
+      (openItems.length ? openItems.map(taskRow).join("") : '<div class="muted">All committed stories completed. 🎉</div>');
 
     el("qualityGrid").innerHTML =
       card("Total Bugs", m.bugs, { icon: "🐞", accent: "#6b7a8d", tip: "Tickets in this sprint whose title contains \"BUG\" (or Type = Bug)." }) +
@@ -148,6 +171,9 @@
         datasets: [{ data: [m.pCritical, m.pHigh, m.pMedium, Math.max(0, m.bugs - m.pCritical - m.pHigh - m.pMedium)],
           backgroundColor: ["#c62828", "#f29f05", "#1f6feb", "#9aa7b4"], borderWidth: 0 }] },
       options: { cutout: "60%", responsive: true, plugins: { legend: { position: "right", labels: { boxWidth: 12, font: { size: 11 } } } } } });
+    var bugItems = m.its.filter(isBug);
+    el("bugList").innerHTML = '<div class="listhdr">Bug tickets &middot; ' + bugItems.length + "</div>" +
+      (bugItems.length ? bugItems.map(taskRow).join("") : '<div class="muted">No bug tickets this sprint.</div>');
 
     if (m.hasFlow) {
       el("flowGrid").innerHTML =
@@ -198,23 +224,18 @@
   }
 
   function renderRisks(sprint) {
-    var rs = data.risks.filter(function (r) { return !r.sprint || String(r.sprint) === String(sprint); });
+    // Delivery Risks: Asana/delivery risks only (repo/security ones live on Engineering).
+    var rs = data.risks.filter(function (r) {
+      return (!r.sprint || String(r.sprint) === String(sprint)) && !isEngRisk(r);
+    });
     var counts = { red: 0, amber: 0, green: 0 };
     rs.forEach(function (r) { var k = (r.rag || "").toLowerCase(); if (counts[k] != null) counts[k]++; });
     el("riskCards").innerHTML =
       card("Red", '<span class="dot red"></span> ' + counts.red) +
       card("Amber", '<span class="dot amber"></span> ' + counts.amber) +
       card("Green", '<span class="dot green"></span> ' + counts.green);
-    el("riskList").innerHTML = rs.map(function (r) {
-      var k = (r.rag || "").toLowerCase();
-      return '<div class="riskcard ' + k + '">' +
-        '<div class="rt"><span class="rag ' + k + '">' + esc(r.rag || "?") + "</span>" +
-        '<span class="name">' + esc(r.risk_name) + "</span>" +
-        '<span class="meta">' + esc(r.category || "") + " &middot; " + esc(r.owner || "") + " &middot; " + esc(r.status || "") + "</span></div>" +
-        (r.impact ? '<div class="kvline"><b>Impact:</b> ' + linkify(r.impact) + "</div>" : "") +
-        (r.mitigation ? '<div class="kvline"><b>Mitigation / action:</b> ' + linkify(r.mitigation) + "</div>" : "") +
-        "</div>";
-    }).join("") || '<div class="muted">No risks recorded for this sprint.</div>';
+    el("riskList").innerHTML = rs.map(riskCardHtml).join("") ||
+      '<div class="muted">No delivery risks recorded for this sprint.</div>';
   }
 
   // Escape text, then turn any URL into a clickable link (e.g. Asana story links).
@@ -305,6 +326,11 @@
     }).join("");
     el("vulnTable").querySelector("tbody").innerHTML = body ||
       "<tr><td colspan='7' class='muted'>No vulnerability data.</td></tr>";
+
+    // Engineering / security risks (moved here from the delivery Risks section)
+    var engRisks = data.risks.filter(isEngRisk);
+    el("engRiskList").innerHTML = engRisks.map(riskCardHtml).join("") ||
+      '<div class="muted">No engineering risks.</div>';
   }
 
   function showTab(which) {
