@@ -33,7 +33,27 @@
       : "";
     var valHtml = opts.rag ? ragHtml : ('<div class="value">' + value + "</div>");
     var tipIcon = opts.tip ? ' <span class="tip" data-tip="' + escAttr(opts.tip) + '">i</span>' : "";
-    return '<div class="card"><div class="label">' + label + tipIcon + "</div>" + valHtml + barHtml + "</div>";
+    var iconHtml = opts.icon ? '<span class="icon">' + opts.icon + "</span>" : "";
+    var accent = opts.accent ? ' style="border-top:3px solid ' + opts.accent + '"' : "";
+    return '<div class="card"' + accent + ">" + iconHtml + '<div class="label">' + label + tipIcon + "</div>" + valHtml + barHtml + "</div>";
+  }
+
+  // ---------- graphical helpers (gauges / mini charts) ----------
+  var _charts = {};
+  function mkChart(id, cfg) { if (_charts[id]) _charts[id].destroy(); _charts[id] = new Chart(el(id), cfg); }
+  function gaugeColor(p) { p = p || 0; return p >= 0.9 ? "#2e7d32" : p >= 0.7 ? "#f29f05" : "#c62828"; }
+  function gaugeTile(id, label, percent, color) {
+    var txt = (percent == null || isNaN(percent)) ? "--" : Math.round(percent * 100) + "%";
+    return '<div class="gauge"><div class="gwrap"><canvas id="' + id + '"></canvas>' +
+      '<div class="gctr" style="color:' + color + '">' + txt + "</div></div>" +
+      '<div class="glabel">' + label + "</div></div>";
+  }
+  function drawGauge(id, percent, color) {
+    var v = Math.max(0, Math.min(100, (percent || 0) * 100));
+    mkChart(id, { type: "doughnut",
+      data: { datasets: [{ data: [v, 100 - v], backgroundColor: [color, "#eef1f5"], borderWidth: 0 }] },
+      options: { cutout: "76%", responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { display: false }, tooltip: { enabled: false } }, animation: { duration: 600 } } });
   }
   function ragFor(p) { if (p >= 0.9) return ["green", "On Track"]; if (p >= 0.7) return ["amber", "At Risk"]; return ["red", "Off Track"]; }
   function esc(s) { return (s == null ? "" : String(s)).replace(/[&<>]/g, function (c) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]; }); }
@@ -79,6 +99,7 @@
       bugs: bugs.length,
       pCritical: bugs.filter(function (i) { return (i.priority || "").indexOf("P1") === 0; }).length,
       pHigh: bugs.filter(function (i) { return (i.priority || "").indexOf("P2") === 0; }).length,
+      pMedium: bugs.filter(function (i) { return (i.priority || "").indexOf("P3") === 0; }).length,
       regression: bugs.filter(function (i) { return num(i.reopened_count) > 0; }).length,
       reopenedPct: completed ? reopened / completed : null,
       defectEscape: bugs.length ? bugs.filter(function (i) { return i.found_in === "UAT" || i.found_in === "Prod"; }).length / bugs.length : null,
@@ -92,35 +113,62 @@
   function render(sprint) {
     var m = compute(sprint), rag = ragFor(m.progress || 0);
     el("healthGrid").innerHTML =
-      card("Sprint Progress", pct(m.progress), { bar: (m.progress || 0) * 100, barColor: "var(--teal)" }) +
-      card("Sprint Goal", "", { rag: rag[0], ragText: rag[1] }) +
-      card("Velocity", m.velocity + ' <small>' + m.velocityUnit + "</small>") +
-      card("Predictability", pct(m.predictability)) +
-      card("Carry Forward", pct(m.carryFwd), { bar: (m.carryFwd || 0) * 100, barColor: "var(--amber)" });
+      '<div class="gauges">' +
+        gaugeTile("gProgress", "Sprint Progress", m.progress, gaugeColor(m.progress)) +
+        gaugeTile("gPredict", "Predictability", m.predictability, "#1f6feb") +
+        gaugeTile("gCarry", "Carry Forward", m.carryFwd, "#f29f05") +
+      "</div>" +
+      '<div class="grid">' +
+        card("Velocity", m.velocity + ' <small>' + m.velocityUnit + "</small>", { icon: "⚡", accent: "#0f8b8d" }) +
+        card("Sprint Goal", "", { rag: rag[0], ragText: rag[1], icon: "🎯" }) +
+        card("Committed", (m.usePts ? Math.round(m.committedSP) + " SP" : m.planned + " items"), { icon: "📌", accent: "#163a5f" }) +
+        card("Delivered", (m.usePts ? Math.round(m.deliveredSP) + " SP" : m.completed + " items"), { icon: "✅", accent: "#2e7d32" }) +
+      "</div>";
+    drawGauge("gProgress", m.progress, gaugeColor(m.progress));
+    drawGauge("gPredict", m.predictability, "#1f6feb");
+    drawGauge("gCarry", m.carryFwd, "#f29f05");
     el("healthNote").textContent = m.usePts ? "" :
       "Story Points not set in Asana for this sprint — Sprint Health is showing item counts. It switches to SP automatically once tasks are estimated.";
+
     el("deliveryGrid").innerHTML =
-      card("Stories Planned", m.planned) + card("Completed", m.completed) +
-      card("In QA", m.inQA) + card("Blocked", m.blocked) + card("Ready for Release", m.ready);
+      card("Stories Planned", m.planned, { icon: "📋", accent: "#163a5f" }) +
+      card("Completed", m.completed, { icon: "✅", accent: "#2e7d32" }) +
+      card("In QA", m.inQA, { icon: "🧪", accent: "#1f6feb" }) +
+      card("Blocked", m.blocked, { icon: "⛔", accent: "#c62828" }) +
+      card("Ready for Release", m.ready, { icon: "🚀", accent: "#0f8b8d" });
+
     el("qualityGrid").innerHTML =
-      card("Total Bugs", m.bugs, { tip: "Tickets in this sprint whose title contains \"BUG\" (or Type = Bug)." }) +
-      card("Critical (P1)", m.pCritical, { tip: "Bug tickets with task Priority = P1 Critical." }) +
-      card("High (P2)", m.pHigh, { tip: "Bug tickets with task Priority = P2 High." }) +
-      card("Reopened", pct(m.reopenedPct), { tip: "Share of completed items with Reopened Count > 0. Needs the 'Reopened Count' field filled in Asana." }) +
-      card("Defect Escape", pct(m.defectEscape), { tip: "Share of bugs found in UAT or Prod (vs Dev). Needs the 'Found In' field filled in Asana." });
+      card("Total Bugs", m.bugs, { icon: "🐞", accent: "#6b7a8d", tip: "Tickets in this sprint whose title contains \"BUG\" (or Type = Bug)." }) +
+      card("Critical (P1)", m.pCritical, { icon: "🔴", accent: "#c62828", tip: "Bug tickets with task Priority = P1 Critical." }) +
+      card("High (P2)", m.pHigh, { icon: "🟠", accent: "#f29f05", tip: "Bug tickets with task Priority = P2 High." }) +
+      card("Reopened", pct(m.reopenedPct), { icon: "🔁", tip: "Share of completed items with Reopened Count > 0. Needs the 'Reopened Count' field filled in Asana." }) +
+      card("Defect Escape", pct(m.defectEscape), { icon: "🪲", tip: "Share of bugs found in UAT or Prod (vs Dev). Needs the 'Found In' field filled in Asana." });
+    mkChart("qualityChart", { type: "doughnut",
+      data: { labels: ["Critical", "High", "Medium", "Other"],
+        datasets: [{ data: [m.pCritical, m.pHigh, m.pMedium, Math.max(0, m.bugs - m.pCritical - m.pHigh - m.pMedium)],
+          backgroundColor: ["#c62828", "#f29f05", "#1f6feb", "#9aa7b4"], borderWidth: 0 }] },
+      options: { cutout: "60%", responsive: true, plugins: { legend: { position: "right", labels: { boxWidth: 12, font: { size: 11 } } } } } });
+
     if (m.hasFlow) {
       el("flowGrid").innerHTML =
         card("Avg Dev Time", (m.devDays != null ? m.devDays.toFixed(1) : "--") + ' <small>days</small>',
-          { tip: "Average time a task spends being built — from entering 'In Development' to reaching the first testing stage (QA on Dev / Ready for UAT / In UAT). Derived from board section moves." }) +
+          { icon: "🛠️", accent: "#163a5f", tip: "Average time a task spends being built — from entering 'In Development' to reaching the first testing stage (QA on Dev / Ready for UAT / In UAT). Derived from board section moves." }) +
         card("Avg QA Time", (m.qaDays != null ? m.qaDays.toFixed(1) : "--") + ' <small>days</small>',
-          { tip: "Average time in testing — from the first testing stage to Done (UAT Passed / Released, or task completion)." }) +
+          { icon: "🔍", accent: "#1f6feb", tip: "Average time in testing — from the first testing stage to Done (UAT Passed / Released, or task completion)." }) +
         card("Cycle Time", (m.cycleDays != null ? m.cycleDays.toFixed(1) : "--") + ' <small>days</small>',
-          { tip: "Total active build + test time per task — from 'In Development' to Done. Lower is faster delivery." }) +
+          { icon: "🔄", accent: "#0f8b8d", tip: "Total active build + test time per task — from 'In Development' to Done. Lower is faster delivery." }) +
         card("Blocked Hours", (m.blockedHours != null ? m.blockedHours.toFixed(0) : "--"),
-          { tip: "Total hours tasks sat in the 'Blocked' board section this sprint. 0 means tasks weren't moved into Blocked (blocking tracked elsewhere)." });
+          { icon: "⛔", accent: "#c62828", tip: "Total hours tasks sat in the 'Blocked' board section this sprint. 0 means tasks weren't moved into Blocked (blocking tracked elsewhere)." });
+      mkChart("flowChart", { type: "bar",
+        data: { labels: ["Avg Dev", "Avg QA", "Cycle"],
+          datasets: [{ data: [m.devDays || 0, m.qaDays || 0, m.cycleDays || 0],
+            backgroundColor: ["#163a5f", "#1f6feb", "#0f8b8d"], borderRadius: 6, barThickness: 28 }] },
+        options: { indexAxis: "y", responsive: true, plugins: { legend: { display: false } },
+          scales: { x: { beginAtZero: true, title: { display: true, text: "days" } } } } });
     } else {
       el("flowGrid").innerHTML = '<div class="card"><div class="label">Flow metrics</div>' +
         '<div class="muted">No flow data yet. Run the sync with <code>--with-flow</code> to populate dev/QA/cycle time &amp; blocked hours.</div></div>';
+      if (_charts.flowChart) { _charts.flowChart.destroy(); delete _charts.flowChart; }
     }
     renderRisks(sprint);
     renderCharts(sprint, m);

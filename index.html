@@ -4,9 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Dallal Sprint Dashboard</title>
-<link rel="icon" type="image/png" href="dallal-favicon.png?v=12" />
+<link rel="icon" type="image/png" href="dallal-favicon.png?v=13" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
-<link rel="stylesheet" href="styles.css?v=12" />
+<link rel="stylesheet" href="styles.css?v=13" />
 </head>
 <body>
 
@@ -109,11 +109,13 @@
   <!-- QUALITY -->
   <div class="section"><h2>Quality</h2><div class="body">
     <div class="grid" id="qualityGrid"></div>
+    <div class="chartcard" style="margin-top:14px"><h3>Bugs by priority</h3><canvas id="qualityChart" height="120"></canvas></div>
   </div></div>
 
   <!-- FLOW -->
   <div class="section"><h2>Flow</h2><div class="body">
     <div class="grid" id="flowGrid"></div>
+    <div class="chartcard" style="margin-top:14px"><h3>Stage time (days)</h3><canvas id="flowChart" height="120"></canvas></div>
   </div></div>
 
   <!-- RISKS -->
@@ -157,8 +159,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=12"></script>
-<script src="sample-data.js?v=12"></script>
-<script src="app.js?v=12"></script>
+<script src="config.js?v=13"></script>
+<script src="sample-data.js?v=13"></script>
+<script src="app.js?v=13"></script>
 </body>
 </html>
