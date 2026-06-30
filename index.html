@@ -4,7 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Dallal Sprint Dashboard</title>
-<link rel="stylesheet" href="styles.css?v=9" />
+<link rel="icon" type="image/svg+xml" href="favicon.svg?v=10" />
+<link rel="apple-touch-icon" href="favicon.svg" />
+<link rel="stylesheet" href="styles.css?v=10" />
 </head>
 <body>
 
@@ -27,27 +29,32 @@
 
 <!-- Login (shown when auth is required and no active session) -->
 <div id="login" class="hidden">
-  <h2><span class="brand">Dallal</span> Sprint Dashboard</h2>
-  <p class="muted">Sign in to view analytics.</p>
+  <div class="loginbox">
+    <img class="logo" src="favicon.svg" alt="Dallal logo" />
+    <h2>Dallal Sprint Dashboard</h2>
+    <p class="tag">Live delivery, quality &amp; engineering analytics</p>
 
-  <button id="googleBtn" class="oauth">
-    <span class="g">G</span> Sign in with Google
-  </button>
+    <button id="googleBtn" class="oauth">
+      <span class="g">G</span> Sign in with Google
+    </button>
 
-  <div class="divider"><span>or</span></div>
+    <div class="divider"><span>or</span></div>
 
-  <label class="muted">Work email</label>
-  <input id="loginEmail" type="email" autocomplete="username" placeholder="you@dallal.com.kw" />
-  <button id="magicBtn">Email me a magic link</button>
+    <label class="muted">Work email</label>
+    <input id="loginEmail" type="email" autocomplete="username" placeholder="you@dallal.com.kw" />
+    <button id="magicBtn">Email me a magic link</button>
 
-  <div id="loginInfo" class="info hidden"></div>
-  <div id="loginErr" class="err hidden" style="margin:12px 0 0"></div>
+    <div id="loginInfo" class="info hidden"></div>
+    <div id="loginErr" class="err hidden" style="margin:12px 0 0"></div>
 
-  <a id="pwToggle" class="muted pwtoggle" href="#">Use a password instead</a>
-  <div id="pwBlock" class="hidden">
-    <label class="muted">Password</label>
-    <input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••" />
-    <button id="loginBtn">Sign in</button>
+    <a id="pwToggle" class="pwtoggle" href="#">Use a password instead</a>
+    <div id="pwBlock" class="hidden">
+      <label class="muted">Password</label>
+      <input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••" />
+      <button id="loginBtn">Sign in</button>
+    </div>
+
+    <div class="loginfoot">Secure access &middot; @dallal.com.kw</div>
   </div>
 </div>
 
@@ -131,8 +138,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=9"></script>
-<script src="sample-data.js?v=9"></script>
-<script src="app.js?v=9"></script>
+<script src="config.js?v=10"></script>
+<script src="sample-data.js?v=10"></script>
+<script src="app.js?v=10"></script>
 </body>
 </html>
