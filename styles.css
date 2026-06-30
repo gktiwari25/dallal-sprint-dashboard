@@ -17,6 +17,7 @@ nav.tabs .tab.active{background:#fff;color:var(--navy);font-weight:700}
 .repocard .rn{font-weight:700;font-size:14px}
 .repocard .kv{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;border-bottom:1px dashed var(--line)}
 .repocard .kv:last-child{border-bottom:none}
+.repocard .preason{font-size:11px;color:var(--muted);line-height:1.45;margin:-2px 0 10px;padding:7px 9px;background:#f7f9fc;border:1px solid var(--line);border-radius:8px}
 .repocard .kv .k{color:var(--muted)}
 .flag-ok{color:var(--green);font-weight:700}.flag-no{color:var(--red);font-weight:700}
 .info{color:var(--muted);cursor:help;font-size:12px}

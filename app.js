@@ -272,23 +272,44 @@
   // ---------- engineering page ----------
   function postureClass(p) { return p === "Red" ? "red" : p === "Yellow" ? "amber" : "green"; }
   function sevClass(s) { s = (s || "").toUpperCase(); return (s === "CRITICAL" || s === "HIGH") ? "red" : s === "MEDIUM" ? "amber" : s === "LOW" ? "green" : ""; }
-  function kv(k, v) { return '<div class="kv"><span class="k">' + k + "</span><span>" + (v == null || v === "" ? "--" : v) + "</span></div>"; }
+  function kv(k, v, tip) {
+    var t = tip ? ' <span class="tip" data-tip="' + escAttr(tip) + '">i</span>' : "";
+    return '<div class="kv"><span class="k">' + k + t + "</span><span>" + (v == null || v === "" ? "--" : v) + "</span></div>";
+  }
+  function advisoryUrl(a) {
+    a = a || "";
+    if (a.indexOf("GHSA") === 0) return "https://github.com/advisories/" + a;
+    if (a.indexOf("CVE") === 0) return "https://nvd.nist.gov/vuln/detail/" + a;
+    return null;
+  }
+  function postureReason(r) {
+    var out = [], c = r.open_critical, h = r.open_high;
+    if (c === "" && h === "") out.push("vuln scan pending");
+    else if (num(c) > 0 || num(h) > 0) out.push(num(c) + " Critical + " + num(h) + " High CVEs");
+    var dep = String(r.dependabot_enabled) === "1", sec = String(r.secret_scanning_enabled) === "1";
+    if (!dep && !sec) out.push("Dependabot & secret scanning off");
+    else { if (!dep) out.push("Dependabot off"); if (!sec) out.push("secret scanning off"); }
+    if (num(r.unreviewed_merges_30d) > 0) out.push(r.unreviewed_merges_30d + " unreviewed feature merges");
+    if (r.ci_pass_rate_pct !== "" && num(r.ci_pass_rate_pct) < 50) out.push("CI pass rate " + r.ci_pass_rate_pct + "%");
+    return out;
+  }
   function flag(v) { return (String(v) === "1") ? '<span class="flag-ok">on</span>' : '<span class="flag-no">off</span>'; }
   function pctOr(v) { return (v == null || v === "") ? "--" : v + "%"; }
 
   function renderEng() {
     var repos = data.repos;
     el("repoCards").innerHTML = repos.map(function (r) {
+      var reason = postureReason(r);
       return '<div class="repocard"><div class="rh"><span class="rn">' + esc(r.repo) + "</span>" +
         '<span class="rag ' + postureClass(r.posture) + '">' + esc(r.posture) + "</span></div>" +
-        kv("Review coverage", pctOr(r.review_coverage_pct)) +
-        kv("Unreviewed merges (30d)", r.unreviewed_merges_30d) +
-        kv("Merged over changes-req", r.merges_over_changes_requested) +
-        kv("CI pass rate", pctOr(r.ci_pass_rate_pct)) +
-        kv("Open critical / high", (r.open_critical || "?") + " / " + (r.open_high || "?")) +
-        kv("Dependabot", flag(r.dependabot_enabled)) +
-        kv("Secret scanning", flag(r.secret_scanning_enabled)) +
-        kv("Branch protection", flag(r.branch_protection)) + "</div>";
+        (reason.length ? '<div class="preason">Why ' + esc(r.posture) + ": " + reason.map(esc).join(" &middot; ") + "</div>" : "") +
+        kv("PR review coverage", pctOr(r.review_coverage_pct), "Share of FEATURE PRs into dev merged with an approving review. Release-promotion PRs (dev→uat) are excluded. NB: this is code-review %, not test coverage.") +
+        kv("Unreviewed feature merges", r.unreviewed_merges_30d, "Feature PRs merged into dev with no approving review. Promotion PRs (dev→uat) are NOT counted.") +
+        kv("CI pass rate", pctOr(r.ci_pass_rate_pct), "Share of the last ~30 CI workflow runs that passed.") +
+        kv("Open Critical / High", (r.open_critical || "?") + " / " + (r.open_high || "?"), "Open dependency vulnerabilities. Each is listed below with a link + the version to upgrade to.") +
+        kv("Dependabot", flag(r.dependabot_enabled), "Auto-alerts for known-vulnerable dependencies. FREE on private repos — enable in repo Settings → Code security → Dependabot.") +
+        kv("Secret scanning", flag(r.secret_scanning_enabled), "Detects API keys / tokens accidentally committed. Enable in Settings → Code security → Secret scanning.") +
+        kv("Branch protection", flag(r.branch_protection), "Rules requiring review / passing CI before merging. For PRIVATE repos this needs GitHub Team/Pro.") + "</div>";
     }).join("") || '<div class="card muted">No repo data. Run etl_github.py.</div>';
 
     el("postureCards").innerHTML = repos.map(function (r) {
@@ -321,9 +342,12 @@
 
     // vuln table
     var body = data.vulns.filter(function (v) { return v.package; }).map(function (v) {
+      var au = advisoryUrl(v.advisory);
+      var adv = au ? '<a class="tasklink" href="' + au + '" target="_blank" rel="noopener">' + esc(v.advisory) + " &#8599;</a>" : esc(v.advisory);
+      var fix = v.fixed_in ? "Upgrade &ge; <b>" + esc(v.fixed_in) + "</b>" : "—";
       return "<tr><td><span class='rag " + sevClass(v.severity) + "'>" + esc(v.severity) + "</span></td>" +
         "<td>" + esc((v.repo || "").replace("Dallal-", "")) + "</td><td>" + esc(v.package) + "</td>" +
-        "<td>" + esc(v.version) + "</td><td>" + esc(v.advisory) + "</td><td>" + esc(v.fixed_in) + "</td>" +
+        "<td>" + esc(v.version) + "</td><td>" + adv + "</td><td>" + fix + "</td>" +
         "<td class='muted'>" + esc(v.summary) + "</td></tr>";
     }).join("");
     el("vulnTable").querySelector("tbody").innerHTML = body ||

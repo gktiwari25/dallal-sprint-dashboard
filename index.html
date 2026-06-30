@@ -4,9 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Dallal Sprint Dashboard</title>
-<link rel="icon" type="image/png" href="dallal-favicon.png?v=17" />
+<link rel="icon" type="image/png" href="dallal-favicon.png?v=18" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
-<link rel="stylesheet" href="styles.css?v=17" />
+<link rel="stylesheet" href="styles.css?v=18" />
 </head>
 <body>
 
@@ -162,16 +162,18 @@
   <!-- ENGINEERING VIEW -->
   <div id="engView" class="hidden">
     <div class="section"><h2>Engineering Health — Repositories</h2><div class="body">
+      <p class="muted" style="margin:0 0 11px">Posture: <b style="color:#c62828">Red</b> = open Critical CVE(s) to fix &middot; <b style="color:#b9820a">Yellow</b> = config gaps (e.g. Dependabot / secret scanning off) &middot; <b style="color:#2e7d32">Green</b> = clean. "PR review coverage" is code-review % and <b>excludes dev&rarr;UAT promotion PRs</b> (code is reviewed on dev). Hover the <span class="tip" data-tip="Hover an info badge for the definition of each metric.">i</span> badges for definitions.</p>
       <div class="grid" id="repoCards"></div>
     </div></div>
 
     <div class="section"><h2>Security &amp; Vulnerabilities</h2><div class="body">
+      <p class="muted" style="margin:0 0 12px">How to mitigate: click an <b>advisory</b> to read what the vulnerability is, then upgrade the package to the version in <b>Mitigation</b> and re-run the scan. Enabling <b>Dependabot</b> + <b>Secret scanning</b> (free on private repos, Settings &rarr; Code security) keeps this list current automatically.</p>
       <div class="charts">
         <div class="chartcard"><h3>Open vulnerabilities by repo (Critical / High / Medium)</h3><div class="chartbox"><canvas id="vulnChart"></canvas></div></div>
         <div class="chartcard"><h3>Posture</h3><div class="grid" id="postureCards"></div></div>
       </div>
       <table class="risks" id="vulnTable" style="margin-top:14px"><thead><tr>
-        <th>Sev</th><th>Repo</th><th>Package</th><th>Version</th><th>Advisory</th><th>Fixed in</th><th>Detail</th>
+        <th>Sev</th><th>Repo</th><th>Package</th><th>Version</th><th>Advisory</th><th>Mitigation</th><th>What it is</th>
       </tr></thead><tbody></tbody></table>
     </div></div>
 
@@ -189,8 +191,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=17"></script>
-<script src="sample-data.js?v=17"></script>
-<script src="app.js?v=17"></script>
+<script src="config.js?v=18"></script>
+<script src="sample-data.js?v=18"></script>
+<script src="app.js?v=18"></script>
 </body>
 </html>
