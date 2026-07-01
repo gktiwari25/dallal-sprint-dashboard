@@ -14,7 +14,7 @@
   var SPRINT_BACK = (cfg.SPRINT_BACK != null) ? cfg.SPRINT_BACK : 2;
   var REQUIRE_AUTH = cfg.REQUIRE_AUTH !== false;
 
-  var data = { items: [], sprints: [], flow: [], risks: [], burndown: [], repos: [], vulns: [] };
+  var data = { items: [], sprints: [], flow: [], risks: [], burndown: [], repos: [], vulns: [], funnels: [] };
   var velChart, statusChart, burnChart, vulnChart, sbc = null, loadedOnce = false, selectedSprint = null, _collapse = {};
 
   // ---------- helpers ----------
@@ -443,14 +443,64 @@
   }
 
   function showTab(which) {
-    var eng = which === "eng";
-    el("engView").classList.toggle("hidden", !eng);
-    el("sprintView").classList.toggle("hidden", eng);
-    el("sprintSel").classList.toggle("hidden", eng);
-    el("sprintLbl").classList.toggle("hidden", eng);
-    el("tabEng").classList.toggle("active", eng);
-    el("tabDelivery").classList.toggle("active", !eng);
-    if (eng) renderEng();
+    var isDel = which === "delivery", isEng = which === "eng", isFun = which === "funnels";
+    el("sprintView").classList.toggle("hidden", !isDel);
+    el("engView").classList.toggle("hidden", !isEng);
+    el("funnelView").classList.toggle("hidden", !isFun);
+    el("sprintSel").classList.toggle("hidden", !isDel);
+    el("sprintLbl").classList.toggle("hidden", !isDel);
+    el("tabDelivery").classList.toggle("active", isDel);
+    el("tabEng").classList.toggle("active", isEng);
+    el("tabFunnels").classList.toggle("active", isFun);
+    if (isEng) renderEng();
+    if (isFun) renderFunnels();
+  }
+
+  // ---------- funnels page ----------
+  function funnelsData() {
+    if (data.funnels && data.funnels.length) {
+      var g = {};
+      data.funnels.forEach(function (r) { (g[r.funnel] = g[r.funnel] || []).push(r); });
+      return Object.keys(g).map(function (fn) {
+        var steps = g[fn].slice().sort(function (a, b) { return num(a.step_index) - num(b.step_index); })
+          .map(function (r) { return { name: r.step_name, users: num(r.users) }; });
+        return { funnel: fn, source: "Amplitude · Dallal-UAT · live", steps: steps };
+      });
+    }
+    return window.DALLAL_FUNNELS || [];
+  }
+  function renderFunnels() {
+    var fs = funnelsData();
+    el("funnelList").innerHTML = fs.map(function (f, idx) {
+      var users = f.steps.map(function (s) { return s.users; });
+      var top = users[0] || 0;
+      var overall = top ? Math.round(1000 * (users[users.length - 1] / top)) / 10 : 0;
+      var rows = f.steps.map(function (s, i) {
+        var fromStart = top ? Math.round(1000 * s.users / top) / 10 : 0;
+        var fromPrev = i === 0 ? 100 : (users[i - 1] ? Math.round(1000 * s.users / users[i - 1]) / 10 : 0);
+        var drop = i === 0 ? 0 : (users[i - 1] - s.users);
+        return "<tr><td>" + (i + 1) + "</td><td>" + esc(s.name) + "</td><td><b>" + s.users + "</b></td>" +
+          "<td>" + fromStart + "%</td><td>" + fromPrev + "%</td><td class='" + (drop > 0 ? "drop" : "muted") + "'>" + (i === 0 ? "—" : "-" + drop) + "</td></tr>";
+      }).join("");
+      var oc = overall >= 40 ? "green" : overall >= 15 ? "amber" : "red";
+      return '<div class="funnelcard">' +
+        '<div class="fh"><span class="fname">' + esc(f.funnel) + "</span>" +
+        '<span class="rag ' + oc + '">' + overall + "% overall</span></div>" +
+        '<div class="muted" style="font-size:11px;margin:-4px 0 10px">' + esc(f.source) + "</div>" +
+        '<div class="chartbox" style="height:' + Math.max(160, f.steps.length * 34) + 'px"><canvas id="fchart' + idx + '"></canvas></div>' +
+        '<table class="risks ftable"><thead><tr><th>#</th><th>Step</th><th>Users</th><th>vs start</th><th>step conv</th><th>drop-off</th></tr></thead><tbody>' +
+        rows + "</tbody></table></div>";
+    }).join("") || '<div class="muted">No funnel data.</div>';
+
+    fs.forEach(function (f, idx) {
+      mkChart("fchart" + idx, { type: "bar",
+        data: { labels: f.steps.map(function (s) { return s.name; }),
+          datasets: [{ data: f.steps.map(function (s) { return s.users; }),
+            backgroundColor: f.steps.map(function (_, i) { return "rgba(15,139,141," + (1 - i * 0.09) + ")"; }), borderRadius: 5 }] },
+        options: { indexAxis: "y", plugins: { legend: { display: false },
+          tooltip: { callbacks: { label: function (c) { return c.parsed.x + " users"; } } } },
+          scales: { x: { beginAtZero: true, title: { display: true, text: "users" } } } } });
+    });
   }
 
   // Current running sprint: config override, else latest sprint with delivered
@@ -503,9 +553,10 @@
       sbSelect("fact_burndown").catch(function () { return []; }),
       sbSelect("fact_repo_health").catch(function () { return []; }),
       sbSelect("fact_vulns").catch(function () { return []; }),
+      sbSelect("fact_funnels").catch(function () { return []; }),
     ]).then(function (res) {
       data.items = res[0]; data.sprints = res[1]; data.flow = res[2]; data.risks = res[3];
-      data.burndown = res[4]; data.repos = res[5]; data.vulns = res[6];
+      data.burndown = res[4]; data.repos = res[5]; data.vulns = res[6]; data.funnels = res[7];
       loadedOnce = true;
       var def = populateSprintSelect();
       var anySample = data.items.some(function (i) { return String(i.story_points_is_sample) === "1"; });
@@ -513,6 +564,8 @@
       else hide("sampleFlag");
       el("updated").textContent = "Updated " + new Date().toLocaleString();
       render(def);
+      if (!el("engView").classList.contains("hidden")) renderEng();
+      if (!el("funnelView").classList.contains("hidden")) renderFunnels();
     }).catch(function (e) {
       el("error").textContent = "Could not load data: " + e.message +
         "  -  ensure web_read_policies.sql is applied and your account can read.";
@@ -589,6 +642,7 @@
     });
     el("tabDelivery").addEventListener("click", function () { showTab("delivery"); });
     el("tabEng").addEventListener("click", function () { showTab("eng"); });
+    el("tabFunnels").addEventListener("click", function () { showTab("funnels"); });
     el("refreshBtn").addEventListener("click", function () { if (sbc && loadedOnce) loadAll(); });
     // Live auto-refresh: re-pull from Supabase every 5 min and when the tab regains focus — no manual reload.
     setInterval(function () { if (sbc && loadedOnce && !document.hidden) loadAll(); }, 300000);

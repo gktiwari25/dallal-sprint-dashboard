@@ -4,9 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Dallal Sprint Dashboard</title>
-<link rel="icon" type="image/png" href="dallal-favicon.png?v=26" />
+<link rel="icon" type="image/png" href="dallal-favicon.png?v=27" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
-<link rel="stylesheet" href="styles.css?v=26" />
+<link rel="stylesheet" href="styles.css?v=27" />
 </head>
 <body>
 
@@ -18,6 +18,7 @@
   <nav class="tabs">
     <button id="tabDelivery" class="tab active">Delivery</button>
     <button id="tabEng" class="tab">Engineering</button>
+    <button id="tabFunnels" class="tab">Funnels</button>
   </nav>
   <div class="spacer"></div>
   <label class="sub" for="sprintSel" id="sprintLbl">Sprint</label>
@@ -193,13 +194,22 @@
     </div></div>
   </div><!-- /engView -->
 
+  <!-- FUNNELS VIEW -->
+  <div id="funnelView" class="hidden">
+    <div class="section"><h2>User Funnel Analytics</h2><div class="body">
+      <p class="muted" style="margin:0 0 4px" id="funnelSource">Source: Amplitude (Dallal-UAT) &middot; conversion funnels &middot; last 30 days</p>
+      <div id="funnelList"></div>
+    </div></div>
+  </div><!-- /funnelView -->
+
   <p class="muted">Read-only &middot; synced hourly from Asana &middot; dashboard auto-refreshes every 5 min (and on tab focus).</p>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=26"></script>
-<script src="sample-data.js?v=26"></script>
-<script src="app.js?v=26"></script>
+<script src="config.js?v=27"></script>
+<script src="sample-data.js?v=27"></script>
+<script src="funnels-data.js?v=27"></script>
+<script src="app.js?v=27"></script>
 </body>
 </html>

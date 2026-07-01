@@ -21,6 +21,12 @@ nav.tabs .tab.active{background:#fff;color:var(--navy);font-weight:700}
 .repocard .kv .k{color:var(--muted)}
 .flag-ok{color:var(--green);font-weight:700}.flag-no{color:var(--red);font-weight:700}
 .info{color:var(--muted);cursor:help;font-size:12px}
+.funnelcard{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:16px;box-shadow:0 1px 2px rgba(16,42,71,.04)}
+.funnelcard .fh{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.funnelcard .fname{font-weight:700;font-size:15px;color:var(--navy)}
+table.ftable{width:100%;margin-top:12px}
+table.ftable td.drop{color:var(--red);font-weight:600}
+table.ftable td:first-child{color:var(--muted);width:26px}
 .tip{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:var(--muted);color:#fff;font-size:10px;font-style:italic;font-weight:700;font-family:Georgia,serif;cursor:help;position:relative;vertical-align:middle;margin-left:5px}
 .tip::after{content:attr(data-tip);position:absolute;top:150%;left:50%;transform:translateX(-50%);background:#1d2733;color:#fff;padding:9px 11px;border-radius:7px;font:400 12px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;font-style:normal;width:240px;max-width:60vw;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .12s;z-index:50;box-shadow:0 6px 18px rgba(16,42,71,.25)}
 .tip:hover::after{opacity:1;visibility:visible}
