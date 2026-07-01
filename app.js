@@ -226,25 +226,43 @@
     renderBurndown(sprint, m);
   }
 
+  function isoDays(start, end) {
+    var out = [], a = new Date(start + "T00:00:00Z"), b = new Date(end + "T00:00:00Z");
+    if (isNaN(a.getTime()) || isNaN(b.getTime()) || b < a) return out;
+    for (var d = a; d <= b; d = new Date(d.getTime() + 86400000)) out.push(d.toISOString().slice(0, 10));
+    return out;
+  }
   function renderBurndown(sprint, m) {
-    var pts = data.burndown.filter(function (b) { return String(b.sprint) === String(sprint); })
-      .sort(function (a, b) { return (a.snapshot_date || "").localeCompare(b.snapshot_date || ""); });
-    var labels = pts.map(function (p) { return (p.snapshot_date || "").slice(5); });
-    var remaining = pts.map(function (p) { return num(p.remaining_sp); });
-    // ideal line: committed SP -> 0 across the captured days
-    var ideal = [], n = pts.length, start = m.committedSP || (remaining[0] || 0);
-    for (var i = 0; i < n; i++) ideal.push(Math.round((start * (1 - i / Math.max(1, n - 1))) * 10) / 10);
+    var dim = data.sprints.filter(function (s) { return String(s.sprint) === String(sprint); })[0] || {};
+    var start = dim.planned_start || dim.inferred_start;
+    var end = dim.planned_end || dim.inferred_end;
+    var committed = m.committedSP || 0;
+    var snap = {};
+    data.burndown.filter(function (b) { return String(b.sprint) === String(sprint); })
+      .forEach(function (b) { snap[b.snapshot_date] = num(b.remaining_sp); });
     if (burnChart) burnChart.destroy();
-    if (n < 1) {
+    var days = (start && end) ? isoDays(start, end) : Object.keys(snap).sort();
+    if (!days.length || committed <= 0) {
       var ctx = el("burnChart"); if (ctx) ctx.getContext("2d").clearRect(0, 0, ctx.width, ctx.height);
       return;
     }
+    var today = new Date().toISOString().slice(0, 10);
+    var labels = days.map(function (d) { return d.slice(5); });
+    var ideal = days.map(function (d, i) { return Math.round(committed * (1 - i / Math.max(1, days.length - 1)) * 10) / 10; });
+    // Actual remaining: snapshot where we have one; seed sprint-start with full committed; blank the future.
+    var actual = days.map(function (d, i) {
+      if (d in snap) return snap[d];
+      if (i === 0) return committed;
+      return null;
+    });
     burnChart = new Chart(el("burnChart"), {
       type: "line",
       data: { labels: labels, datasets: [
-        { label: "Remaining SP", data: remaining, borderColor: "#c62828", backgroundColor: "rgba(198,40,40,.08)", fill: true, tension: .25 },
+        { label: "Remaining (actual)", data: actual, borderColor: "#c62828", backgroundColor: "rgba(198,40,40,.10)", fill: true, tension: .2, spanGaps: true },
         { label: "Ideal", data: ideal, borderColor: "#6b7a8d", borderDash: [6, 4], pointRadius: 0, fill: false } ] },
-      options: { responsive: true, plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true } } },
+      options: { responsive: true, plugins: { legend: { position: "bottom" },
+        tooltip: { callbacks: { title: function (t) { return "Day " + (t[0].dataIndex + 1) + " (" + t[0].label + ")"; } } } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: "story points" } } } },
     });
   }
 
