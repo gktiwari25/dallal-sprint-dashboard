@@ -471,21 +471,44 @@
     sel.innerHTML = envs.map(function (e) { return '<option value="' + e + '"' + (e === cur ? " selected" : "") + ">Dallal " + e + "</option>"; }).join("");
     return cur;
   }
-  function funnelsData(env) {
-    if (data.funnels && data.funnels.length) {
-      var rows = data.funnels.filter(function (r) { return (r.env || "UAT") === env; });
-      if (rows.length) {
-        var g = {};
-        rows.forEach(function (r) { (g[r.funnel] = g[r.funnel] || []).push(r); });
-        return Object.keys(g).map(function (fn) {
-          var steps = g[fn].slice().sort(function (a, b) { return num(a.step_index) - num(b.step_index); })
-            .map(function (r) { return { name: r.step_name, users: num(r.users) }; });
-          return { funnel: fn, source: "Amplitude · Dallal-" + env + " · live", steps: steps };
-        });
-      }
-      return [];
-    }
-    return env === "UAT" ? (window.DALLAL_FUNNELS || []) : [];
+  var PLATFORM_LABEL = { All: "All platforms", web: "Web", android: "Android", ios: "iOS" };
+  function funnelPlatforms(env) {
+    var s = { All: 1 };
+    var pool = (data.funnels && data.funnels.length ? data.funnels : []).concat(window.DALLAL_FUNNELS || []);
+    pool.forEach(function (r) { if ((r.env || "UAT") === env) s[r.platform || "All"] = 1; });
+    var order = ["All", "web", "android", "ios"];
+    return Object.keys(s).sort(function (a, b) { return order.indexOf(a) - order.indexOf(b); });
+  }
+  function populateFunnelPlatform(env) {
+    var sel = el("funnelPlatform"); if (!sel) return "All";
+    var ps = funnelPlatforms(env);
+    var saved = null; try { saved = localStorage.getItem("dallal_funnel_platform"); } catch (e) {}
+    var cur = (saved && ps.indexOf(saved) !== -1) ? saved : "All";
+    sel.innerHTML = ps.map(function (p) { return '<option value="' + p + '"' + (p === cur ? " selected" : "") + ">" + (PLATFORM_LABEL[p] || p) + "</option>"; }).join("");
+    return cur;
+  }
+  // Rows for env+platform, grouped into funnels. Prefer live Supabase rows; if a
+  // given env/platform view has none live (e.g. before the platform column is
+  // populated), fall back to the bundled snapshot for that view.
+  function rowsFor(src, env, platform) {
+    return (src || []).filter(function (r) {
+      return (r.env || "UAT") === env && (r.platform || "All") === platform;
+    });
+  }
+  function funnelsData(env, platform) {
+    platform = platform || "All";
+    var live = rowsFor(data.funnels, env, platform);
+    var rows = live.length ? live : rowsFor(window.DALLAL_FUNNELS, env, platform);
+    if (!rows.length) return [];
+    var isLive = live.length > 0;
+    var g = {};
+    rows.forEach(function (r) { (g[r.funnel] = g[r.funnel] || []).push(r); });
+    var src = "Amplitude · Dallal-" + env + (platform === "All" ? "" : " · " + (PLATFORM_LABEL[platform] || platform)) + (isLive ? " · live" : " · last 30d");
+    return Object.keys(g).map(function (fn) {
+      var steps = g[fn].slice().sort(function (a, b) { return num(a.step_index) - num(b.step_index); })
+        .map(function (r) { return { name: r.step_name, users: num(r.users) }; });
+      return { funnel: fn, source: src, steps: steps };
+    });
   }
   var FUNNEL_INFO = {
     "Listing Creation": {
@@ -516,17 +539,21 @@
 
   function renderFunnels() {
     var env = populateFunnelEnv();
-    var fs = funnelsData(env);
+    var platform = populateFunnelPlatform(env);
+    var fs = funnelsData(env, platform);
     var envNote = env === "PROD"
       ? "Data source: Amplitude (<b>Dallal PRODUCTION</b>), last 30 days."
       : "Data source: Amplitude (<b>Dallal UAT / test</b> environment), last 30 days. Volumes are low because it is a test env — treat the <b>shape and drop-off points as the signal</b>, not the absolute counts.";
+    var platNote = platform === "All"
+      ? "Showing <b>all platforms</b> combined. Use the Platform filter to split by Web / Android / iOS."
+      : "Filtered to <b>" + esc(PLATFORM_LABEL[platform] || platform) + "</b>. Platform is read from the <code>platform</code> event property; the Discovery funnel starts at <b>View Details</b> for a platform (its Search step isn't platform-tagged).";
     var intro = '<div class="finsight intro"><b>How to read these:</b> each funnel shows how many users move from one step to the next. ' +
       'A <b>steep drop between two bars = where we lose people</b>. The percentages show conversion; the story is in the <b>biggest fall-off</b>. ' +
-      '<br><span class="muted">' + envNote + ' Registration OTP/login steps use proxy events.</span></div>';
+      '<br><span class="muted">' + envNote + ' ' + platNote + ' Registration OTP/login steps use proxy events.</span></div>';
 
     if (!fs.length) {
       el("funnelList").innerHTML = intro + '<div class="finsight">No funnel data for <b>Dallal ' + esc(env) +
-        '</b> yet. Its Amplitude credentials may not be configured, or there were no events in the last 30 days.</div>';
+        '</b> · <b>' + esc(PLATFORM_LABEL[platform] || platform) + '</b> yet. Its Amplitude credentials may not be configured, or there were no events in the last 30 days.</div>';
       return;
     }
     el("funnelList").innerHTML = intro + fs.map(function (f, idx) {
@@ -709,6 +736,7 @@
     el("tabEng").addEventListener("click", function () { showTab("eng"); });
     el("tabFunnels").addEventListener("click", function () { showTab("funnels"); });
     el("funnelEnv").addEventListener("change", function () { try { localStorage.setItem("dallal_funnel_env", this.value); } catch (e) {} renderFunnels(); });
+    el("funnelPlatform").addEventListener("change", function () { try { localStorage.setItem("dallal_funnel_platform", this.value); } catch (e) {} renderFunnels(); });
     el("refreshBtn").addEventListener("click", function () { if (sbc && loadedOnce) loadAll(); });
     // Live auto-refresh: re-pull from Supabase every 5 min and when the tab regains focus — no manual reload.
     setInterval(function () { if (sbc && loadedOnce && !document.hidden) loadAll(); }, 300000);

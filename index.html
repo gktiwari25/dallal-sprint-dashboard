@@ -4,9 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Dallal Sprint Dashboard</title>
-<link rel="icon" type="image/png" href="dallal-favicon.png?v=30" />
+<link rel="icon" type="image/png" href="dallal-favicon.png?v=31" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
-<link rel="stylesheet" href="styles.css?v=30" />
+<link rel="stylesheet" href="styles.css?v=31" />
 </head>
 <body>
 
@@ -197,9 +197,11 @@
   <!-- FUNNELS VIEW -->
   <div id="funnelView" class="hidden">
     <div class="section"><h2>User Funnel Analytics</h2><div class="body">
-      <div style="display:flex;align-items:center;gap:10px;margin:0 0 12px">
+      <div style="display:flex;align-items:center;gap:10px;margin:0 0 12px;flex-wrap:wrap">
         <label class="sub" for="funnelEnv" style="color:var(--muted)">Environment</label>
         <select id="funnelEnv" class="fenv"></select>
+        <label class="sub" for="funnelPlatform" style="color:var(--muted);margin-left:6px">Platform</label>
+        <select id="funnelPlatform" class="fenv"></select>
       </div>
       <div id="funnelList"></div>
     </div></div>
@@ -210,9 +212,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=30"></script>
-<script src="sample-data.js?v=30"></script>
-<script src="funnels-data.js?v=30"></script>
-<script src="app.js?v=30"></script>
+<script src="config.js?v=31"></script>
+<script src="sample-data.js?v=31"></script>
+<script src="funnels-data.js?v=31"></script>
+<script src="app.js?v=31"></script>
 </body>
 </html>
