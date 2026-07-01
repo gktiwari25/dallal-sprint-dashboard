@@ -15,7 +15,7 @@
   var REQUIRE_AUTH = cfg.REQUIRE_AUTH !== false;
 
   var data = { items: [], sprints: [], flow: [], risks: [], burndown: [], repos: [], vulns: [] };
-  var velChart, statusChart, burnChart, vulnChart, sbc = null, loadedOnce = false, selectedSprint = null;
+  var velChart, statusChart, burnChart, vulnChart, sbc = null, loadedOnce = false, selectedSprint = null, _collapse = {};
 
   // ---------- helpers ----------
   function num(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
@@ -94,6 +94,12 @@
       '<span class="trname" title="' + escAttr(it.name) + '">' + esc(it.name) + "</span>" +
       '<span class="trstatus">' + esc(it.status || "") + "</span>" +
       '<a class="tasklink" href="' + ASANA_TASK + it.task_gid + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
+  }
+  // Collapsible list block (native <details>) that remembers open/closed across re-renders.
+  function listBlock(id, title, rowsHtml) {
+    var open = _collapse[id] !== false; // default open
+    return '<details class="lb" data-lb="' + id + '"' + (open ? " open" : "") +
+      '><summary class="listhdr">' + title + "</summary>" + rowsHtml + "</details>";
   }
   function riskCardHtml(r) {
     var k = (r.rag || "").toLowerCase();
@@ -183,8 +189,8 @@
       card("Blocked", m.blocked, { icon: "⛔", accent: "#c62828" }) +
       card("Ready for Release", m.ready, { icon: "🚀", accent: "#0f8b8d" });
     var openItems = m.its.filter(function (i) { return !isDone(i); });
-    el("openList").innerHTML = '<div class="listhdr">Not yet completed &middot; ' + openItems.length + " of " + m.planned + " stories</div>" +
-      (openItems.length ? openItems.map(taskRow).join("") : '<div class="muted">All committed stories completed. 🎉</div>');
+    el("openList").innerHTML = listBlock("open", "Not yet completed &middot; " + openItems.length + " of " + m.planned + " stories",
+      (openItems.length ? openItems.map(taskRow).join("") : '<div class="muted">All committed stories completed. 🎉</div>'));
 
     el("qualityGrid").innerHTML =
       card("Total Bugs", m.bugs, { icon: "🐞", accent: "#6b7a8d", tip: "Tickets in this sprint whose title contains \"BUG\" (or Type = Bug)." }) +
@@ -198,8 +204,8 @@
           backgroundColor: ["#c62828", "#f29f05", "#1f6feb", "#9aa7b4"], borderWidth: 0 }] },
       options: { cutout: "60%", responsive: true, plugins: { legend: { position: "right", labels: { boxWidth: 12, font: { size: 11 } } } } } });
     var bugItems = m.its.filter(isBug);
-    el("bugList").innerHTML = '<div class="listhdr">Bug tickets &middot; ' + bugItems.length + "</div>" +
-      (bugItems.length ? bugItems.map(taskRow).join("") : '<div class="muted">No bug tickets this sprint.</div>');
+    el("bugList").innerHTML = listBlock("bugs", "Bug tickets &middot; " + bugItems.length,
+      (bugItems.length ? bugItems.map(taskRow).join("") : '<div class="muted">No bug tickets this sprint.</div>'));
 
     if (m.hasFlow) {
       el("flowGrid").innerHTML =
@@ -247,6 +253,10 @@
       card("Added mid-sprint", "+" + addCount + ' <small>tickets</small>', { icon: "➕", accent: "#f29f05", tip: creepTip }) +
       card("Scope Creep", creepPct == null ? "--" : "+" + Math.round(creepPct * 100) + "%", { icon: "📈", accent: (creepPct && creepPct > 0.1) ? "#c62828" : "#2e7d32", tip: "Added tickets ÷ baseline tickets." }) +
       card("Added story points", "+" + Math.round(addSP) + ' <small>SP</small>', { icon: "🔢", tip: "Story points of the added tickets — 0 if they aren't estimated yet." });
+
+    var addedItems = m.its.filter(function (i) { var cd = (i.created_at || "").slice(0, 10); return start && cd && cd > start; });
+    el("scopeList").innerHTML = listBlock("scope", "Added mid-sprint &middot; " + addedItems.length + " stories",
+      (addedItems.length ? addedItems.map(taskRow).join("") : '<div class="muted">No mid-sprint additions.</div>'));
 
     if (!start || !end) { if (_charts.scopeChart) { _charts.scopeChart.destroy(); delete _charts.scopeChart; } var c = el("scopeChart"); if (c) c.getContext("2d").clearRect(0, 0, c.width, c.height); return; }
     var days = isoDays(start, end);
@@ -595,6 +605,10 @@
     el("loginClose").addEventListener("click", function () { hide("loginModal"); });
     el("loginModal").addEventListener("click", function (ev) { if (ev.target === el("loginModal")) hide("loginModal"); });
     document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") hide("loginModal"); });
+    // Remember collapsed/expanded state of story lists across re-renders.
+    document.addEventListener("toggle", function (e) {
+      var d = e.target; if (d && d.tagName === "DETAILS" && d.getAttribute("data-lb")) _collapse[d.getAttribute("data-lb")] = d.open;
+    }, true);
 
     // Not configured -> offline sample preview (nothing sensitive to protect).
     if (!isConfigured()) {
