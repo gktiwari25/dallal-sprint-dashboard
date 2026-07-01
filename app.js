@@ -72,6 +72,8 @@
     if (/Backlog|Ready for Development|Sprint Planned|Refinement|Design/i.test(sec)) return "planned";
     return "other";
   }
+  // "Done" = in a Released / UAT-Passed column (board truth), or the Asana complete flag.
+  function isDone(i) { var s = sectionStage(i.section); return s === "released" || s === "ready" || String(i.is_delivered) === "1"; }
   // Risks tied to repos/security live on the Engineering tab, not the delivery Risks list.
   function isEngRisk(r) { return (r.category || "") === "Security"; }
   var ASANA_TASK = "https://app.asana.com/0/1214388950902741/";
@@ -98,7 +100,7 @@
     var its = data.items.filter(function (i) { return String(i.sprint) === String(sprint); });
     var dim = data.sprints.filter(function (s) { return String(s.sprint) === String(sprint); })[0] || {};
     var committedSP = its.reduce(function (a, i) { return a + num(i.story_points); }, 0);
-    var delivered = its.filter(function (i) { return String(i.is_delivered) === "1"; });
+    var delivered = its.filter(isDone);
     var deliveredSP = delivered.reduce(function (a, i) { return a + num(i.story_points); }, 0);
     var commitmentSP = num(dim.commitment_sp) || committedSP;
     var completed = delivered.length, planned = its.length;
@@ -170,7 +172,7 @@
       card("Completed", m.completed, { icon: "✅", accent: "#2e7d32" }) +
       card("Blocked", m.blocked, { icon: "⛔", accent: "#c62828" }) +
       card("Ready for Release", m.ready, { icon: "🚀", accent: "#0f8b8d" });
-    var openItems = m.its.filter(function (i) { return String(i.is_delivered) !== "1"; });
+    var openItems = m.its.filter(function (i) { return !isDone(i); });
     el("openList").innerHTML = '<div class="listhdr">Not yet completed &middot; ' + openItems.length + " of " + m.planned + " stories</div>" +
       (openItems.length ? openItems.map(taskRow).join("") : '<div class="muted">All committed stories completed. 🎉</div>');
 
@@ -510,6 +512,9 @@
     el("tabDelivery").addEventListener("click", function () { showTab("delivery"); });
     el("tabEng").addEventListener("click", function () { showTab("eng"); });
     el("refreshBtn").addEventListener("click", function () { if (sbc && loadedOnce) loadAll(); });
+    // Live auto-refresh: re-pull from Supabase every 5 min and when the tab regains focus — no manual reload.
+    setInterval(function () { if (sbc && loadedOnce && !document.hidden) loadAll(); }, 300000);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden && sbc && loadedOnce) loadAll(); });
     el("googleBtn").addEventListener("click", doGoogle);
     el("magicBtn").addEventListener("click", doMagicLink);
     el("loginEmail").addEventListener("keydown", function (e) { if (e.key === "Enter") doMagicLink(); });
