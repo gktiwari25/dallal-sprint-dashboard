@@ -60,6 +60,18 @@
   function escAttr(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
   // A ticket is a bug if its title contains "BUG" (team convention) or Type=Bug.
   function isBug(i) { return String(i.is_bug) === "1" || /\bbug/i.test(i.name || ""); }
+  // The board SECTION (column) is the source of truth for where a ticket is — the
+  // Status custom field is often left stale — so all stage counts use the section.
+  function sectionStage(sec) {
+    sec = sec || "";
+    if (sec === "Blocked") return "blocked";
+    if (/Released/i.test(sec)) return "released";
+    if (/UAT Passed|Ready for Production/i.test(sec)) return "ready";
+    if (/QA on Dev|Ready for UAT|In UAT/i.test(sec)) return "qa";
+    if (/In Development|Code Review|Merged to Develop|Sub-tasks/i.test(sec)) return "dev";
+    if (/Backlog|Ready for Development|Sprint Planned|Refinement|Design/i.test(sec)) return "planned";
+    return "other";
+  }
   // Risks tied to repos/security live on the Engineering tab, not the delivery Risks list.
   function isEngRisk(r) { return (r.category || "") === "Security"; }
   var ASANA_TASK = "https://app.asana.com/0/1214388950902741/";
@@ -113,10 +125,10 @@
       predictability: hCommitment ? hDeliver / hCommitment : null,
       carryFwd: hCommit ? (hCommit - hDeliver) / hCommit : null,
       planned: planned, completed: completed,
-      inDev: its.filter(function (i) { return (i.status || "").indexOf("In Development") !== -1; }).length,
-      inQA: statusIn(IN_QA_STATUSES),
-      blocked: its.filter(function (i) { return i.section === "Blocked"; }).length,
-      ready: statusIn(READY_STATUSES),
+      inDev: its.filter(function (i) { return sectionStage(i.section) === "dev"; }).length,
+      inQA: its.filter(function (i) { return sectionStage(i.section) === "qa"; }).length,
+      blocked: its.filter(function (i) { return sectionStage(i.section) === "blocked"; }).length,
+      ready: its.filter(function (i) { return sectionStage(i.section) === "ready"; }).length,
       bugs: bugs.length,
       pCritical: bugs.filter(function (i) { return (i.priority || "").indexOf("P1") === 0; }).length,
       pHigh: bugs.filter(function (i) { return (i.priority || "").indexOf("P2") === 0; }).length,
@@ -153,8 +165,8 @@
 
     el("deliveryGrid").innerHTML =
       card("Stories Planned", m.planned, { icon: "📋", accent: "#163a5f" }) +
-      card("In Development", m.inDev, { icon: "🛠️", accent: "#7b61ff", tip: "Stories whose Status is 'In Development' right now." }) +
-      card("In QA", m.inQA, { icon: "🧪", accent: "#1f6feb", tip: "Stories in a testing stage (QA on Dev / Ready for UAT / In UAT)." }) +
+      card("In Development", m.inDev, { icon: "🛠️", accent: "#7b61ff", tip: "Stories in the 'In Development' / Code Review board column (based on the board section, not the stale Status field)." }) +
+      card("In QA", m.inQA, { icon: "🧪", accent: "#1f6feb", tip: "Stories in a testing column: QA on Dev / Ready for UAT / In UAT." }) +
       card("Completed", m.completed, { icon: "✅", accent: "#2e7d32" }) +
       card("Blocked", m.blocked, { icon: "⛔", accent: "#c62828" }) +
       card("Ready for Release", m.ready, { icon: "🚀", accent: "#0f8b8d" });
@@ -259,7 +271,7 @@
         { label: "Committed SP", data: sorted.map(function (s) { return num(s.committed_sp); }), type: "line", borderColor: "#1f6feb", backgroundColor: "transparent", tension: .3 } ] },
       options: { responsive: true, plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true } } },
     });
-    var mix = {}; m.its.forEach(function (i) { var s = i.status || "(none)"; mix[s] = (mix[s] || 0) + 1; });
+    var mix = {}; m.its.forEach(function (i) { var s = i.section || "(none)"; mix[s] = (mix[s] || 0) + 1; });
     if (statusChart) statusChart.destroy();
     statusChart = new Chart(el("statusChart"), {
       type: "doughnut",
