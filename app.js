@@ -59,6 +59,7 @@
   // Sprint Goal is timeline-aware: a just-started sprint with active work is "In
   // Progress", not "Off Track". Off Track only if work stalled with low completion.
   function goalRag(m) {
+    if (m.planned > 0 && m.completed >= m.planned) return ["green", "Complete"];
     if (m.progress != null && m.progress >= 0.85) return ["green", "On Track"];
     if ((m.inDev + m.inQA) > 0) return ["amber", "In Progress"];
     if (m.progress != null && m.progress >= 0.6) return ["amber", "At Risk"];
