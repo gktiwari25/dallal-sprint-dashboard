@@ -15,7 +15,7 @@
   var REQUIRE_AUTH = cfg.REQUIRE_AUTH !== false;
 
   var data = { items: [], sprints: [], flow: [], risks: [], burndown: [], repos: [], vulns: [] };
-  var velChart, statusChart, burnChart, vulnChart, sbc = null, loadedOnce = false;
+  var velChart, statusChart, burnChart, vulnChart, sbc = null, loadedOnce = false, selectedSprint = null;
 
   // ---------- helpers ----------
   function num(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
@@ -56,6 +56,14 @@
         plugins: { legend: { display: false }, tooltip: { enabled: false } }, animation: { duration: 600 } } });
   }
   function ragFor(p) { if (p >= 0.85) return ["green", "On Track"]; if (p >= 0.6) return ["amber", "At Risk"]; return ["red", "Off Track"]; }
+  // Sprint Goal is timeline-aware: a just-started sprint with active work is "In
+  // Progress", not "Off Track". Off Track only if work stalled with low completion.
+  function goalRag(m) {
+    if (m.progress != null && m.progress >= 0.85) return ["green", "On Track"];
+    if ((m.inDev + m.inQA) > 0) return ["amber", "In Progress"];
+    if (m.progress != null && m.progress >= 0.6) return ["amber", "At Risk"];
+    return ["red", "Off Track"];
+  }
   function esc(s) { return (s == null ? "" : String(s)).replace(/[&<>]/g, function (c) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]; }); }
   function escAttr(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
   // A ticket is a bug if its title contains "BUG" (team convention) or Type=Bug.
@@ -146,10 +154,11 @@
 
   // ---------- render ----------
   function render(sprint) {
-    var m = compute(sprint), rag = ragFor(m.progress || 0);
+    var m = compute(sprint), rag = goalRag(m);
+    var goalHex = { green: "#2e7d32", amber: "#f29f05", red: "#c62828" }[rag[0]] || "#0f8b8d";
     el("healthGrid").innerHTML =
       '<div class="gauges">' +
-        gaugeTile("gProgress", "Sprint Progress", m.progress, gaugeColor(m.progress)) +
+        gaugeTile("gProgress", "Sprint Progress", m.progress, goalHex) +
         gaugeTile("gPredict", "Predictability", m.predictability, "#1f6feb") +
         gaugeTile("gCarry", "Carry Forward", m.carryFwd, "#f29f05") +
       "</div>" +
@@ -159,7 +168,7 @@
         card("Committed", (m.usePts ? Math.round(m.committedSP) + " SP" : m.planned + " items"), { icon: "📌", accent: "#163a5f" }) +
         card("Delivered", (m.usePts ? Math.round(m.deliveredSP) + " SP" : m.completed + " items"), { icon: "✅", accent: "#2e7d32" }) +
       "</div>";
-    drawGauge("gProgress", m.progress, gaugeColor(m.progress));
+    drawGauge("gProgress", m.progress, goalHex);
     drawGauge("gPredict", m.predictability, "#1f6feb");
     drawGauge("gCarry", m.carryFwd, "#f29f05");
     el("healthNote").textContent = m.usePts ? "" :
@@ -240,10 +249,9 @@
   }
 
   function renderRisks(sprint) {
-    // Delivery Risks: Asana/delivery risks only (repo/security ones live on Engineering).
-    var rs = data.risks.filter(function (r) {
-      return (!r.sprint || String(r.sprint) === String(sprint)) && !isEngRisk(r);
-    });
+    // Delivery Risks: curated current risks (not sprint-filtered — carryover risks
+    // like the Map epic span sprints). Repo/security risks live on Engineering.
+    var rs = data.risks.filter(function (r) { return !isEngRisk(r); });
     var counts = { red: 0, amber: 0, green: 0 };
     rs.forEach(function (r) { var k = (r.rag || "").toLowerCase(); if (counts[k] != null) counts[k]++; });
     el("riskCards").innerHTML =
@@ -406,8 +414,14 @@
     var sel = el("sprintSel");
     var sprints = windowSprints().sort(function (a, b) { return b - a; });
     sel.innerHTML = sprints.map(function (n) { return '<option value="' + n + '">Sprint ' + n + "</option>"; }).join("");
-    var def = (DEFAULT_SPRINT && sprints.indexOf(num(DEFAULT_SPRINT)) !== -1) ? num(DEFAULT_SPRINT) : sprints[0];
-    sel.value = def; return def;
+    // Preserve the user's choice across auto-refresh / reload; else current sprint.
+    var saved = selectedSprint; if (!saved) { try { saved = localStorage.getItem("dallal_sprint"); } catch (e) {} }
+    var inList = function (n) { return sprints.indexOf(num(n)) !== -1; };
+    var def = (saved && inList(saved)) ? num(saved)
+      : (currentSprint() && inList(currentSprint())) ? currentSprint()
+      : (DEFAULT_SPRINT && inList(DEFAULT_SPRINT)) ? num(DEFAULT_SPRINT)
+      : sprints[0];
+    sel.value = def; selectedSprint = String(def); return def;
   }
 
   // ---------- data layer (authenticated Supabase client) ----------
@@ -508,7 +522,10 @@
 
   function init() {
     if (window.Chart) { Chart.defaults.maintainAspectRatio = false; Chart.defaults.responsive = true; }
-    el("sprintSel").addEventListener("change", function () { render(this.value); });
+    el("sprintSel").addEventListener("change", function () {
+      selectedSprint = this.value; try { localStorage.setItem("dallal_sprint", selectedSprint); } catch (e) {}
+      render(this.value);
+    });
     el("tabDelivery").addEventListener("click", function () { showTab("delivery"); });
     el("tabEng").addEventListener("click", function () { showTab("eng"); });
     el("refreshBtn").addEventListener("click", function () { if (sbc && loadedOnce) loadAll(); });
