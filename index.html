@@ -4,9 +4,9 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Dallal Sprint Dashboard</title>
-<link rel="icon" type="image/png" href="dallal-favicon.png?v=22" />
+<link rel="icon" type="image/png" href="dallal-favicon.png?v=23" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
-<link rel="stylesheet" href="styles.css?v=22" />
+<link rel="stylesheet" href="styles.css?v=23" />
 </head>
 <body>
 
@@ -131,6 +131,12 @@
     <div id="openList" class="listblock"></div>
   </div></div>
 
+  <!-- SCOPE CREEP -->
+  <div class="section"><h2>Scope Creep</h2><div class="body">
+    <div class="grid" id="scopeGrid"></div>
+    <div class="chartcard" style="margin-top:14px"><h3>Committed scope over the sprint (area above baseline = added work)</h3><div class="chartbox"><canvas id="scopeChart"></canvas></div></div>
+  </div></div>
+
   <!-- QUALITY -->
   <div class="section"><h2>Quality</h2><div class="body">
     <div class="grid" id="qualityGrid"></div>
@@ -191,8 +197,8 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=22"></script>
-<script src="sample-data.js?v=22"></script>
-<script src="app.js?v=22"></script>
+<script src="config.js?v=23"></script>
+<script src="sample-data.js?v=23"></script>
+<script src="app.js?v=23"></script>
 </body>
 </html>

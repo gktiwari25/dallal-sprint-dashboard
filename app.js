@@ -224,6 +224,40 @@
     renderRisks(sprint);
     renderCharts(sprint, m);
     renderBurndown(sprint, m);
+    renderScopeCreep(sprint, m);
+  }
+
+  function renderScopeCreep(sprint, m) {
+    var dim = data.sprints.filter(function (s) { return String(s.sprint) === String(sprint); })[0] || {};
+    var start = dim.planned_start || dim.inferred_start;
+    var end = dim.planned_end || dim.inferred_end;
+    var usePts = m.usePts;
+    var unit = usePts ? "SP" : "items";
+    var val = function (i) { return usePts ? num(i.story_points) : 1; };
+    // Baseline = created on/before sprint start; Added = created after start (mid-sprint).
+    var baseline = 0, added = 0, addedCount = 0;
+    m.its.forEach(function (i) {
+      var cd = (i.created_at || "").slice(0, 10);
+      if (start && cd && cd > start) { added += val(i); addedCount++; }
+      else baseline += val(i);
+    });
+    var creepPct = baseline > 0 ? added / baseline : null;
+    var creepTip = "Work added after the sprint start date (approximated by each ticket's creation date vs the sprint start). High = lots of unplanned work entered the sprint.";
+    el("scopeGrid").innerHTML =
+      card("Baseline scope", Math.round(baseline) + ' <small>' + unit + "</small>", { icon: "📌", accent: "#163a5f", tip: "Scope committed at sprint start (tickets created on/before the start date)." }) +
+      card("Added mid-sprint", "+" + Math.round(added) + ' <small>' + unit + "</small>", { icon: "➕", accent: "#f29f05", tip: creepTip }) +
+      card("Scope Creep", creepPct == null ? "--" : "+" + Math.round(creepPct * 100) + "%", { icon: "📈", accent: (creepPct && creepPct > 0.1) ? "#c62828" : "#2e7d32", tip: "Added ÷ baseline scope." }) +
+      card("Tickets added", addedCount, { icon: "🧾", tip: creepTip });
+
+    if (!start || !end) { if (_charts.scopeChart) { _charts.scopeChart.destroy(); delete _charts.scopeChart; } var c = el("scopeChart"); if (c) c.getContext("2d").clearRect(0, 0, c.width, c.height); return; }
+    var days = isoDays(start, end);
+    var cum = days.map(function (d) { var s = 0; m.its.forEach(function (i) { var cd = (i.created_at || "").slice(0, 10); if (cd && cd <= d) s += val(i); }); return Math.round(s * 10) / 10; });
+    var baseArr = days.map(function () { return Math.round(baseline * 10) / 10; });
+    mkChart("scopeChart", { type: "line",
+      data: { labels: days.map(function (d) { return d.slice(5); }), datasets: [
+        { label: "Total committed " + unit, data: cum, borderColor: "#c62828", backgroundColor: "rgba(242,159,5,.18)", fill: 1, tension: .1, stepped: true },
+        { label: "Baseline (at start)", data: baseArr, borderColor: "#6b7a8d", borderDash: [6, 4], pointRadius: 0, fill: false } ] },
+      options: { plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true, title: { display: true, text: unit } } } } });
   }
 
   function isoDays(start, end) {
