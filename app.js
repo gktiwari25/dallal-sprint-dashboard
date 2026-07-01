@@ -469,34 +469,72 @@
     }
     return window.DALLAL_FUNNELS || [];
   }
+  var FUNNEL_INFO = {
+    "Listing Creation": {
+      what: "The <b>supply side</b> — how a property owner or agent goes from starting a listing to publishing it live. Every published listing is new inventory on Dallal, so growing this funnel grows the marketplace.",
+      lens: "Each drop-off is lost inventory. The steepest fall-off is where we lose the most would-be listings — fixing that step directly increases supply."
+    },
+    "Property Discovery": {
+      what: "The <b>demand side</b> — how a buyer/renter goes from searching to scheduling a viewing. This is what turns browsing into real leads for listers.",
+      lens: "An early drop (search → view details) points to search relevance or listing quality. A late drop (saved → contact agent) points to trust, price, or intent — users liked it but didn't reach out."
+    },
+    "User Registration": {
+      what: "The <b>front door</b> — how a new user completes sign-up (register → OTP → login). A leaky funnel here caps everything downstream: fewer accounts means fewer listings and fewer leads.",
+      lens: "OTP is the classic drop-off. A big fall at the OTP step usually means SMS delivery problems or a confusing verification screen — a fix here lifts every other metric."
+    }
+  };
+
+  function funnelInsight(f) {
+    var u = f.steps.map(function (s) { return s.users; }), n = u.length;
+    var entered = u[0] || 0, completed = u[n - 1] || 0;
+    var overall = entered ? Math.round(1000 * completed / entered) / 10 : 0;
+    var bi = 1, bd = -1;
+    for (var i = 1; i < n; i++) { var d = u[i - 1] - u[i]; if (d > bd) { bd = d; bi = i; } }
+    var dropPct = u[bi - 1] ? Math.round(1000 * bd / u[bi - 1]) / 10 : 0;
+    return { entered: entered, completed: completed, overall: overall,
+      fromName: f.steps[bi - 1] ? f.steps[bi - 1].name : "", fromN: u[bi - 1] || 0,
+      toName: f.steps[bi] ? f.steps[bi].name : "", toN: u[bi] || 0, dropPct: dropPct };
+  }
+
   function renderFunnels() {
     var fs = funnelsData();
-    el("funnelList").innerHTML = fs.map(function (f, idx) {
+    var intro = '<div class="finsight intro"><b>How to read these:</b> each funnel shows how many users move from one step to the next. ' +
+      'A <b>steep drop between two bars = where we lose people</b>. The percentages show conversion; the story is in the <b>biggest fall-off</b>. ' +
+      '<br><span class="muted">Data source: Amplitude (Dallal <b>UAT / test</b> environment), last 30 days. Volumes are low because it is a test env — treat the <b>shape and drop-off points as the signal</b>, not the absolute counts. Registration OTP/login steps use proxy events.</span></div>';
+
+    el("funnelList").innerHTML = intro + fs.map(function (f, idx) {
       var users = f.steps.map(function (s) { return s.users; });
       var top = users[0] || 0;
-      var overall = top ? Math.round(1000 * (users[users.length - 1] / top)) / 10 : 0;
+      var ins = funnelInsight(f);
+      var info = FUNNEL_INFO[f.funnel] || { what: "", lens: "" };
+      var oc = ins.overall >= 40 ? "green" : ins.overall >= 15 ? "amber" : "red";
       var rows = f.steps.map(function (s, i) {
         var fromStart = top ? Math.round(1000 * s.users / top) / 10 : 0;
         var fromPrev = i === 0 ? 100 : (users[i - 1] ? Math.round(1000 * s.users / users[i - 1]) / 10 : 0);
         var drop = i === 0 ? 0 : (users[i - 1] - s.users);
-        return "<tr><td>" + (i + 1) + "</td><td>" + esc(s.name) + "</td><td><b>" + s.users + "</b></td>" +
+        var worst = (i === (function () { var b = 1, bd = -1; for (var k = 1; k < users.length; k++) { var d = users[k - 1] - users[k]; if (d > bd) { bd = d; b = k; } } return b; })());
+        return "<tr" + (worst && drop > 0 ? ' class="worst"' : "") + "><td>" + (i + 1) + "</td><td>" + esc(s.name) + "</td><td><b>" + s.users + "</b></td>" +
           "<td>" + fromStart + "%</td><td>" + fromPrev + "%</td><td class='" + (drop > 0 ? "drop" : "muted") + "'>" + (i === 0 ? "—" : "-" + drop) + "</td></tr>";
       }).join("");
-      var oc = overall >= 40 ? "green" : overall >= 15 ? "amber" : "red";
+      var read = "Of <b>" + ins.entered + "</b> who started, <b>" + ins.completed + "</b> reached the end — a <b>" + ins.overall + "% completion rate</b>. " +
+        "The biggest fall-off is <b>" + esc(ins.fromName) + " → " + esc(ins.toName) + "</b>, where <b>" + ins.dropPct + "% drop off</b> (" + ins.fromN + " → " + ins.toN + ").";
       return '<div class="funnelcard">' +
         '<div class="fh"><span class="fname">' + esc(f.funnel) + "</span>" +
-        '<span class="rag ' + oc + '">' + overall + "% overall</span></div>" +
-        '<div class="muted" style="font-size:11px;margin:-4px 0 10px">' + esc(f.source) + "</div>" +
-        '<div class="chartbox" style="height:' + Math.max(160, f.steps.length * 34) + 'px"><canvas id="fchart' + idx + '"></canvas></div>' +
+        '<span class="rag ' + oc + '">' + ins.overall + "% complete</span></div>" +
+        '<div class="fwhat"><b>What it measures:</b> ' + info.what + "</div>" +
+        '<div class="chartbox" style="height:' + Math.max(170, f.steps.length * 36) + 'px"><canvas id="fchart' + idx + '"></canvas></div>' +
+        '<div class="finsight"><b>📊 What the data says:</b> ' + read + '<br><b>👉 Where to look:</b> ' + info.lens + "</div>" +
         '<table class="risks ftable"><thead><tr><th>#</th><th>Step</th><th>Users</th><th>vs start</th><th>step conv</th><th>drop-off</th></tr></thead><tbody>' +
-        rows + "</tbody></table></div>";
+        rows + "</tbody></table>" +
+        '<div class="muted" style="font-size:11px;margin-top:8px">' + esc(f.source) + " · the highlighted row is the biggest drop-off.</div></div>";
     }).join("") || '<div class="muted">No funnel data.</div>';
 
     fs.forEach(function (f, idx) {
+      var ins = funnelInsight(f);
       mkChart("fchart" + idx, { type: "bar",
         data: { labels: f.steps.map(function (s) { return s.name; }),
           datasets: [{ data: f.steps.map(function (s) { return s.users; }),
-            backgroundColor: f.steps.map(function (_, i) { return "rgba(15,139,141," + (1 - i * 0.09) + ")"; }), borderRadius: 5 }] },
+            backgroundColor: f.steps.map(function (s) { return s.name === ins.toName ? "#c62828" : "rgba(15,139,141,.85)"; }), borderRadius: 5 }] },
         options: { indexAxis: "y", plugins: { legend: { display: false },
           tooltip: { callbacks: { label: function (c) { return c.parsed.x + " users"; } } } },
           scales: { x: { beginAtZero: true, title: { display: true, text: "users" } } } } });
