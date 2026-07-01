@@ -19,11 +19,10 @@ window.DALLAL_FUNNELS = [
     { name: "Chat Started", users: 0 },
     { name: "Visit Scheduled", users: 0 }
   ]},
-  { funnel: "User Registration", source: "Amplitude · Dallal-UAT · last 30d (OTP/registration steps use proxies)", steps: [
-    { name: "App Session", users: 625 },
-    { name: "Registration Started", users: 264 },
-    { name: "OTP Screen", users: 110 },
-    { name: "OTP Verified", users: 7 },
-    { name: "Login Success", users: 0 }
+  { funnel: "User Registration", source: "Amplitude · Dallal-UAT · last 30d (OTP/login steps use proxies)", steps: [
+    { name: "Registration Started", users: 24 },
+    { name: "OTP Screen", users: 6 },
+    { name: "OTP Verified", users: 6 },
+    { name: "Login Success", users: 6 }
   ]}
 ];
