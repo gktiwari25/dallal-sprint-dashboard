@@ -690,6 +690,7 @@
   }
 
   function loadSample() {
+    hide("booting"); show("app"); show("topbar");
     var s = window.DALLAL_SAMPLE;
     data.items = s.items || []; data.sprints = s.sprints || []; data.flow = s.flow || []; data.risks = s.risks || [];
     data.burndown = s.burndown || []; data.repos = s.repos || []; data.vulns = s.vulns || [];
@@ -699,8 +700,8 @@
   }
 
   // ---------- auth ----------
-  function showAppUI() { hide("login"); show("app"); show("signOut"); show("topbar"); }
-  function showLoginUI() { show("login"); hide("app"); hide("signOut"); hide("topbar"); }
+  function showAppUI() { hide("booting"); hide("login"); show("app"); show("signOut"); show("topbar"); }
+  function showLoginUI() { hide("booting"); show("login"); hide("app"); hide("signOut"); hide("topbar"); }
 
   function onAuth(session) {
     if (session) {
@@ -785,15 +786,18 @@
     // Not configured -> offline sample preview (nothing sensitive to protect).
     if (!isConfigured()) {
       if (window.DALLAL_SAMPLE) { loadSample(); return; }
-      el("error").textContent = "Supabase not configured. Fill web/config.js."; show("error"); hide("app"); return;
+      hide("booting"); show("app"); el("error").textContent = "Supabase not configured. Fill web/config.js."; show("error"); return;
     }
-    if (!window.supabase) { el("error").textContent = "Auth library failed to load (check network/CDN)."; show("error"); return; }
+    if (!window.supabase) { hide("booting"); show("app"); el("error").textContent = "Auth library failed to load (check network/CDN)."; show("error"); return; }
     sbc = window.supabase.createClient(URL_, KEY_);
 
     if (!REQUIRE_AUTH) { showAppUI(); loadAll(); return; }   // intentional public mode
-    hide("app"); hide("topbar");   // avoid flashing the dashboard/header before the session check resolves
+    // #app/#topbar start hidden in the HTML; reveal only after the session check
+    // resolves (via onAuth). The boot loader covers the gap so nothing flashes.
     sbc.auth.onAuthStateChange(function (_e, session) { onAuth(session); });
-    sbc.auth.getSession().then(function (r) { onAuth(r.data.session); });
+    sbc.auth.getSession()
+      .then(function (r) { onAuth(r.data.session); })
+      .catch(function () { showLoginUI(); });   // never hang on the loader if the check fails
   }
 
   document.addEventListener("DOMContentLoaded", init);
