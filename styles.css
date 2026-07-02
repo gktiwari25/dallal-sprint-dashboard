@@ -156,7 +156,7 @@ table.risks tr:last-child td{border-bottom:none}
 .hero .cta{background:#fff;color:var(--navy);border:none;padding:14px 28px;border-radius:12px;font-size:15px;font-weight:800;cursor:pointer;box-shadow:0 16px 36px rgba(0,0,0,.3);transition:transform .12s,box-shadow .12s}
 .hero .cta:hover{transform:translateY(-2px);box-shadow:0 22px 46px rgba(0,0,0,.36)}
 .hero .ctasub{margin-top:14px;font-size:12px;color:rgba(255,255,255,.72)}
-.features{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:46px}
+.features{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-top:40px;max-width:720px;margin-left:auto;margin-right:auto}
 .feature{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.16);border-radius:16px;padding:24px 22px;text-align:left;backdrop-filter:blur(6px);transition:transform .15s,background .15s}
 .feature:hover{transform:translateY(-3px);background:rgba(255,255,255,.13)}
 .feature .ficon{width:46px;height:46px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:22px;margin-bottom:13px;background:rgba(255,255,255,.16)}
@@ -168,23 +168,6 @@ table.risks tr:last-child td{border-bottom:none}
 .booting{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--navy,#0a2a43);z-index:60}
 .booting .spin{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;animation:bootspin .8s linear infinite}
 @keyframes bootspin{to{transform:rotate(360deg)}}
-
-/* Landing: Churn Dashboard section */
-.churn{margin-top:44px;display:grid;grid-template-columns:1.05fr .95fr;gap:26px;align-items:center;text-align:left;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.16);border-radius:20px;padding:30px;backdrop-filter:blur(6px);animation:rise .55s ease}
-.churn .soon{display:inline-block;font-size:11px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#0a2a43;background:#3ddc84;padding:4px 11px;border-radius:999px}
-.churn h2{margin:12px 0 8px;font-size:25px;color:#fff;letter-spacing:-.3px}
-.churn p{margin:0 0 16px;font-size:14px;color:rgba(255,255,255,.82);line-height:1.55}
-.churn-stats{display:flex;gap:12px;margin:0 0 18px;flex-wrap:wrap}
-.cstat{background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.16);border-radius:12px;padding:9px 14px;min-width:92px}
-.cstat .cnum{display:block;font-size:20px;font-weight:800;color:#fff}
-.cstat .clbl{font-size:11px;color:rgba(255,255,255,.7)}
-.churn-list{list-style:none;margin:0;padding:0;display:grid;gap:9px}
-.churn-list li{font-size:13px;color:rgba(255,255,255,.82);line-height:1.45;padding-left:18px;position:relative}
-.churn-list li b{color:#fff}
-.churn-list li::before{content:"";position:absolute;left:0;top:6px;width:7px;height:7px;border-radius:50%;background:#3ddc84}
-.churn-viz{background:rgba(0,0,0,.16);border:1px solid rgba(255,255,255,.14);border-radius:16px;padding:14px}
-.churnchart{width:100%;height:auto;display:block}
-@media(max-width:760px){.churn{grid-template-columns:1fr}}
 /* Sign-in modal */
 #loginModal{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(8,20,34,.62);backdrop-filter:blur(4px)}
 #loginModal.hidden{display:none}
