@@ -7,9 +7,9 @@
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
 <title>Dallal Sprint Dashboard</title>
-<link rel="icon" type="image/png" href="dallal-favicon.png?v=32" />
+<link rel="icon" type="image/png" href="dallal-favicon.png?v=34" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
-<link rel="stylesheet" href="styles.css?v=32" />
+<link rel="stylesheet" href="styles.css?v=34" />
 </head>
 <body>
 
@@ -180,16 +180,11 @@
     <div class="section"><h2>Security &amp; Vulnerabilities</h2><div class="body">
       <p class="muted" style="margin:0 0 12px">How to mitigate: click an <b>advisory</b> to read what the vulnerability is, then upgrade the package to the version in <b>Mitigation</b> and re-run the scan. Enabling <b>Dependabot</b> + <b>Secret scanning</b> (free on private repos, Settings &rarr; Code security) keeps this list current automatically.</p>
       <div class="charts">
-        <div class="chartcard"><h3>Open vulnerabilities by repo (Critical / High / Medium)</h3><div class="chartbox"><canvas id="vulnChart"></canvas></div></div>
         <div class="chartcard"><h3>Posture</h3><div class="grid" id="postureCards"></div></div>
       </div>
       <table class="risks" id="vulnTable" style="margin-top:14px"><thead><tr>
         <th>Sev</th><th>Repo</th><th>Package</th><th>Version</th><th>Advisory</th><th>Mitigation</th><th>What it is</th>
       </tr></thead><tbody></tbody></table>
-    </div></div>
-
-    <div class="section"><h2>Delivery Governance</h2><div class="body">
-      <div class="grid" id="govCards"></div>
     </div></div>
 
     <div class="section"><h2>Engineering Risks &amp; Security</h2><div class="body">
@@ -215,9 +210,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=32"></script>
-<script src="sample-data.js?v=32"></script>
-<script src="funnels-data.js?v=32"></script>
-<script src="app.js?v=32"></script>
+<script src="config.js?v=34"></script>
+<script src="sample-data.js?v=34"></script>
+<script src="funnels-data.js?v=34"></script>
+<script src="app.js?v=34"></script>
 </body>
 </html>

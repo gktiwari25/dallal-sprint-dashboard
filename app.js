@@ -388,40 +388,14 @@
         (reason.length ? '<div class="preason">Why ' + esc(r.posture) + ": " + reason.map(esc).join(" &middot; ") + "</div>" : "") +
         kv("PR review coverage", pctOr(r.review_coverage_pct), "Share of FEATURE PRs into dev merged with an approving review. Release-promotion PRs (dev→uat) are excluded. NB: this is code-review %, not test coverage.") +
         kv("Unreviewed feature merges", r.unreviewed_merges_30d, "Feature PRs merged into dev with no approving review. Promotion PRs (dev→uat) are NOT counted.") +
-        kv("CI pass rate", pctOr(r.ci_pass_rate_pct), "Share of the last ~30 CI workflow runs that passed.") +
-        kv("Open Critical / High", (r.open_critical || "?") + " / " + (r.open_high || "?"), "Open dependency vulnerabilities. Each is listed below with a link + the version to upgrade to.") +
-        kv("Dependabot", flag(r.dependabot_enabled), "Auto-alerts for known-vulnerable dependencies. FREE on private repos — enable in repo Settings → Code security → Dependabot.") +
-        kv("Secret scanning", flag(r.secret_scanning_enabled), "Detects API keys / tokens accidentally committed. Enable in Settings → Code security → Secret scanning.") +
-        kv("Branch protection", flag(r.branch_protection), "Rules requiring review / passing CI before merging. For PRIVATE repos this needs GitHub Team/Pro.") + "</div>";
+        kv("CI pass rate", pctOr(r.ci_pass_rate_pct), "Share of the last ~30 CI workflow runs that passed.") + "</div>";
     }).join("") || '<div class="card muted">No repo data. Run etl_github.py.</div>';
 
     el("postureCards").innerHTML = repos.map(function (r) {
       return card(r.repo.replace("Dallal-", ""), "", { rag: postureClass(r.posture), ragText: r.posture });
     }).join("");
 
-    // aggregate governance
-    var cov = repos.map(function (r) { return num(r.review_coverage_pct); }).filter(function (v) { return v > 0; });
-    var ci = repos.map(function (r) { return num(r.ci_pass_rate_pct); });
-    var avg = function (a) { return a.length ? Math.round(a.reduce(function (x, y) { return x + y; }, 0) / a.length * 10) / 10 : null; };
-    el("govCards").innerHTML =
-      card("Unreviewed merges (30d)", repos.reduce(function (a, r) { return a + num(r.unreviewed_merges_30d); }, 0)) +
-      card("Avg review coverage", pctOr(avg(cov))) +
-      card("Avg CI pass rate", pctOr(avg(ci))) +
-      card("Repos w/ branch protection", repos.filter(function (r) { return String(r.branch_protection) === "1"; }).length + " / " + repos.length) +
-      card("Repos w/ secret scanning", repos.filter(function (r) { return String(r.secret_scanning_enabled) === "1"; }).length + " / " + repos.length);
-
-    // vuln chart (stacked)
-    var labels = repos.map(function (r) { return r.repo.replace("Dallal-", ""); });
-    if (vulnChart) vulnChart.destroy();
-    vulnChart = new Chart(el("vulnChart"), {
-      type: "bar",
-      data: { labels: labels, datasets: [
-        { label: "Critical", data: repos.map(function (r) { return num(r.open_critical); }), backgroundColor: "#c62828" },
-        { label: "High", data: repos.map(function (r) { return num(r.open_high); }), backgroundColor: "#f29f05" },
-        { label: "Medium", data: repos.map(function (r) { return num(r.open_medium); }), backgroundColor: "#1f6feb" } ] },
-      options: { responsive: true, plugins: { legend: { position: "bottom" } },
-        scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } } },
-    });
+    // (aggregate governance cards + vuln chart removed)
 
     // vuln table
     var body = data.vulns.filter(function (v) { return v.package; }).map(function (v) {
