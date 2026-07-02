@@ -1,4 +1,4 @@
-// Bundled funnel snapshot (Amplitude · Dallal-UAT · last ~30d) used until the live
+// Bundled funnel snapshot (Amplitude · UAT + PROD · last ~30d) used until the live
 // Supabase `fact_funnels` table is populated by etl_amplitude.py. Tagged by env + platform.
 window.DALLAL_FUNNELS = [
   {
@@ -189,7 +189,7 @@ window.DALLAL_FUNNELS = [
     "steps": [
       {
         "name": "View Details",
-        "users": 64
+        "users": 72
       },
       {
         "name": "Gallery Viewed",
@@ -370,6 +370,90 @@ window.DALLAL_FUNNELS = [
       {
         "name": "Login Success",
         "users": 3
+      }
+    ]
+  },
+  {
+    "env": "PROD",
+    "platform": "All",
+    "funnel": "Listing Creation",
+    "source": "Amplitude \u00b7 Dallal-PROD \u00b7 last 30d",
+    "steps": [
+      {
+        "name": "Listing Started",
+        "users": 12
+      },
+      {
+        "name": "Property Details",
+        "users": 10
+      },
+      {
+        "name": "Photos Added",
+        "users": 9
+      },
+      {
+        "name": "Property Review",
+        "users": 7
+      },
+      {
+        "name": "Published",
+        "users": 5
+      }
+    ]
+  },
+  {
+    "env": "PROD",
+    "platform": "All",
+    "funnel": "Property Discovery",
+    "source": "Amplitude \u00b7 Dallal-PROD \u00b7 last 30d",
+    "steps": [
+      {
+        "name": "Search",
+        "users": 2
+      },
+      {
+        "name": "View Details",
+        "users": 0
+      },
+      {
+        "name": "Gallery Viewed",
+        "users": 0
+      },
+      {
+        "name": "Property Saved",
+        "users": 0
+      },
+      {
+        "name": "Agent Contacted",
+        "users": 0
+      },
+      {
+        "name": "Chat Started",
+        "users": 0
+      }
+    ]
+  },
+  {
+    "env": "PROD",
+    "platform": "All",
+    "funnel": "User Registration",
+    "source": "Amplitude \u00b7 Dallal-PROD \u00b7 last 30d",
+    "steps": [
+      {
+        "name": "Registration Started",
+        "users": 10
+      },
+      {
+        "name": "Signed Up",
+        "users": 2
+      },
+      {
+        "name": "OTP Verified",
+        "users": 2
+      },
+      {
+        "name": "Login Success",
+        "users": 1
       }
     ]
   }

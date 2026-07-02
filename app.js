@@ -512,17 +512,48 @@
   }
   var FUNNEL_INFO = {
     "Listing Creation": {
-      what: "The <b>supply side</b> — how a property owner or agent goes from starting a listing to publishing it live. Every published listing is new inventory on Dallal, so growing this funnel grows the marketplace.",
-      lens: "Each drop-off is lost inventory. The steepest fall-off is where we lose the most would-be listings — fixing that step directly increases supply."
+      icon: "🏠", tag: "Supply side",
+      what: "How a property owner or agent goes from <b>starting a listing to publishing it live</b>. Every published listing is new inventory on Dallal, so this funnel is the engine of marketplace <b>supply</b>.",
+      biz: "Business impact: more completed listings = more inventory = more for buyers to discover. The single number that matters is <b>Published</b>.",
+      lens: "Each drop-off is <b>lost inventory</b>. Fix the steepest fall first — it adds the most new listings. A fall at the <b>deep steps (Review → Publish)</b> is the most costly: the user did all the work but never went live."
     },
     "Property Discovery": {
-      what: "The <b>demand side</b> — how a buyer/renter goes from searching to scheduling a viewing. This is what turns browsing into real leads for listers.",
-      lens: "An early drop (search → view details) points to search relevance or listing quality. A late drop (saved → contact agent) points to trust, price, or intent — users liked it but didn't reach out."
+      icon: "🔎", tag: "Demand side",
+      what: "How a buyer or renter goes from <b>searching to contacting an agent / scheduling a viewing</b>. This is what turns browsing into <b>real leads</b> for listers.",
+      biz: "Business impact: this is demand converting to intent. The number that matters is <b>Agent Contacted / Visit Scheduled</b> — those are qualified leads.",
+      lens: "An <b>early drop</b> (Search → View Details) points to search relevance or listing quality. A <b>late drop</b> (Saved → Contact) points to trust, price or intent — users liked it but didn't reach out."
     },
     "User Registration": {
-      what: "The <b>front door</b> — how a new user completes sign-up (register → OTP → login). A leaky funnel here caps everything downstream: fewer accounts means fewer listings and fewer leads.",
-      lens: "OTP is the classic drop-off. A big fall at the OTP step usually means SMS delivery problems or a confusing verification screen — a fix here lifts every other metric."
+      icon: "👤", tag: "Front door",
+      what: "How a new user completes <b>sign-up → verification → login</b>. A leak here caps everything downstream: fewer accounts means fewer listings and fewer leads.",
+      biz: "Business impact: this is top-of-funnel account growth. The number that matters is <b>Login Success</b> — a fully activated user.",
+      lens: "<b>OTP / verification</b> is the classic drop-off. A big fall there usually means SMS delivery problems or a confusing screen — a fix here lifts <i>every</i> other metric."
     }
+  };
+  // Plain-language meaning of each step (covers UAT + PROD event names).
+  var STEP_GLOSSARY = {
+    "Listing Started": "Opened the create-listing flow.",
+    "Property Details": "Entered core details — type, price, bedrooms, area.",
+    "Images Uploaded": "Added at least one photo of the property.",
+    "Location Selected": "Confirmed the property's address / location.",
+    "PACI Verified": "Completed the government PACI address verification.",
+    "Previewed": "Reviewed the finished listing before going live.",
+    "Property Review": "Reviewed the finished listing before going live.",
+    "Photos Added": "Added at least one photo of the property.",
+    "Category Chosen": "Chose the property category (apartment, villa, land…).",
+    "Published": "Listing went live and is now visible to buyers. ✅",
+    "Search": "Ran a property search.",
+    "View Details": "Opened a specific property's detail page.",
+    "Gallery Viewed": "Browsed the property's photo gallery.",
+    "Property Saved": "Saved / favourited a property.",
+    "Agent Contacted": "Messaged the listing agent — a qualified lead. ✅",
+    "Chat Started": "Started a conversation with the agent.",
+    "Visit Scheduled": "Booked a property viewing. ✅",
+    "Registration Started": "Began the sign-up flow.",
+    "Signed Up": "Submitted the sign-up form.",
+    "OTP Screen": "Reached the SMS one-time-passcode screen.",
+    "OTP Verified": "Entered the correct code — phone verified.",
+    "Login Success": "Fully signed in — an activated account. ✅"
   };
 
   function funnelInsight(f) {
@@ -541,58 +572,77 @@
     var env = populateFunnelEnv();
     var platform = populateFunnelPlatform(env);
     var fs = funnelsData(env, platform);
+    var platLabel = PLATFORM_LABEL[platform] || platform;
     var envNote = env === "PROD"
-      ? "Data source: Amplitude (<b>Dallal PRODUCTION</b>), last 30 days."
-      : "Data source: Amplitude (<b>Dallal UAT / test</b> environment), last 30 days. Volumes are low because it is a test env — treat the <b>shape and drop-off points as the signal</b>, not the absolute counts.";
+      ? "<b>Dallal PRODUCTION</b> — real users, last 30 days."
+      : "<b>Dallal UAT</b> (test environment), last 30 days. Volumes are low by design — read the <b>shape and drop-off points</b>, not the absolute counts.";
     var platNote = platform === "All"
-      ? "Showing <b>all platforms</b> combined. Use the Platform filter to split by Web / Android / iOS."
-      : "Filtered to <b>" + esc(PLATFORM_LABEL[platform] || platform) + "</b>. Platform is read from the <code>platform</code> event property; the Discovery funnel starts at <b>View Details</b> for a platform (its Search step isn't platform-tagged).";
-    var intro = '<div class="finsight intro"><b>How to read these:</b> each funnel shows how many users move from one step to the next. ' +
-      'A <b>steep drop between two bars = where we lose people</b>. The percentages show conversion; the story is in the <b>biggest fall-off</b>. ' +
-      '<br><span class="muted">' + envNote + ' ' + platNote + ' Registration OTP/login steps use proxy events.</span></div>';
+      ? "All platforms combined."
+      : "Filtered to <b>" + esc(platLabel) + "</b> (from the <code>platform</code> event property). For a single platform, Discovery starts at <b>View Details</b> — its Search step isn't platform-tagged.";
+    var intro =
+      '<div class="ftabhead">' +
+        '<h3>User Funnel Analytics — how leadership should read this</h3>' +
+        '<p>A <b>funnel</b> is a journey users take, one step at a time. The bars show <b>how many people reach each step</b>; the gap between two bars is <b>where we lose them</b>. We track three journeys:</p>' +
+        '<ul class="ftablist">' +
+          '<li><b>🏠 Listing Creation</b> — owners/agents publishing property → marketplace <i>supply</i>.</li>' +
+          '<li><b>🔎 Property Discovery</b> — buyers searching → contacting agents → marketplace <i>demand</i>.</li>' +
+          '<li><b>👤 User Registration</b> — new users signing up → account <i>growth</i>.</li>' +
+        '</ul>' +
+        '<p class="muted">Source: Amplitude · ' + envNote + ' ' + platNote +
+        ' Switch <b>Environment</b> (UAT / PROD) and <b>Platform</b> (Web / Android / iOS) above to slice each funnel.</p>' +
+      '</div>';
 
     if (!fs.length) {
       el("funnelList").innerHTML = intro + '<div class="finsight">No funnel data for <b>Dallal ' + esc(env) +
-        '</b> · <b>' + esc(PLATFORM_LABEL[platform] || platform) + '</b> yet. Its Amplitude credentials may not be configured, or there were no events in the last 30 days.</div>';
+        '</b> · <b>' + esc(platLabel) + '</b> yet — either no events in the last 30 days, or this platform isn\'t instrumented for these steps.</div>';
       return;
     }
-    el("funnelList").innerHTML = intro + fs.map(function (f, idx) {
+    el("funnelList").innerHTML = intro + fs.map(function (f) {
       var users = f.steps.map(function (s) { return s.users; });
       var top = users[0] || 0;
       var ins = funnelInsight(f);
-      var info = FUNNEL_INFO[f.funnel] || { what: "", lens: "" };
+      var info = FUNNEL_INFO[f.funnel] || { icon: "📈", tag: "", what: "", biz: "", lens: "" };
       var oc = ins.overall >= 40 ? "green" : ins.overall >= 15 ? "amber" : "red";
-      var rows = f.steps.map(function (s, i) {
-        var fromStart = top ? Math.round(1000 * s.users / top) / 10 : 0;
-        var fromPrev = i === 0 ? 100 : (users[i - 1] ? Math.round(1000 * s.users / users[i - 1]) / 10 : 0);
+      var worstIdx = (function () { var b = 1, bd = -1; for (var k = 1; k < users.length; k++) { var d = users[k - 1] - users[k]; if (d > bd) { bd = d; b = k; } } return b; })();
+      var bars = f.steps.map(function (s, i) {
+        var w = top ? Math.max(2, Math.round(1000 * s.users / top) / 10) : 0;
+        var ofStart = top ? Math.round(1000 * s.users / top) / 10 : 0;
+        var conv = i === 0 ? 100 : (users[i - 1] ? Math.round(1000 * s.users / users[i - 1]) / 10 : 0);
         var drop = i === 0 ? 0 : (users[i - 1] - s.users);
-        var worst = (i === (function () { var b = 1, bd = -1; for (var k = 1; k < users.length; k++) { var d = users[k - 1] - users[k]; if (d > bd) { bd = d; b = k; } } return b; })());
-        return "<tr" + (worst && drop > 0 ? ' class="worst"' : "") + "><td>" + (i + 1) + "</td><td>" + esc(s.name) + "</td><td><b>" + s.users + "</b></td>" +
-          "<td>" + fromStart + "%</td><td>" + fromPrev + "%</td><td class='" + (drop > 0 ? "drop" : "muted") + "'>" + (i === 0 ? "—" : "-" + drop) + "</td></tr>";
+        var isWorst = (i === worstIdx && drop > 0);
+        var gl = STEP_GLOSSARY[s.name] || "";
+        var meta = i === 0
+          ? '<span class="fm">entry point · 100% of start</span>'
+          : '<span class="fm">' + ofStart + '% of start</span><span class="fm">step conversion ' + conv + '%</span>' +
+            (drop > 0 ? '<span class="fm drop">−' + drop + ' lost here</span>' : '');
+        return '<div class="fstep' + (isWorst ? ' worst' : '') + '">' +
+          '<div class="fstep-top"><span class="fnum">' + (i + 1) + '</span>' +
+          '<span class="fstep-name">' + esc(s.name) + '</span>' +
+          '<span class="fstep-users">' + s.users + ' <span class="fu">users</span></span></div>' +
+          '<div class="ftrack"><div class="ffill' + (isWorst ? ' bad' : '') + '" style="width:' + w + '%"></div></div>' +
+          '<div class="fstep-meta">' + meta + (isWorst ? '<span class="worsttag">◀ biggest drop-off</span>' : '') + '</div>' +
+          (gl ? '<div class="fstep-gloss">' + esc(gl) + '</div>' : '') +
+          '</div>';
       }).join("");
       var read = "Of <b>" + ins.entered + "</b> who started, <b>" + ins.completed + "</b> reached the end — a <b>" + ins.overall + "% completion rate</b>. " +
-        "The biggest fall-off is <b>" + esc(ins.fromName) + " → " + esc(ins.toName) + "</b>, where <b>" + ins.dropPct + "% drop off</b> (" + ins.fromN + " → " + ins.toN + ").";
+        "The biggest single fall-off is <b>" + esc(ins.fromName) + " → " + esc(ins.toName) + "</b>, losing <b>" + ins.dropPct + "%</b> of the people at that point (" + ins.fromN + " → " + ins.toN + " users).";
       return '<div class="funnelcard">' +
-        '<div class="fh"><span class="fname">' + esc(f.funnel) + "</span>" +
-        '<span class="rag ' + oc + '">' + ins.overall + "% complete</span></div>" +
-        '<div class="fwhat"><b>What it measures:</b> ' + info.what + "</div>" +
-        '<div class="chartbox" style="height:' + Math.max(170, f.steps.length * 36) + 'px"><canvas id="fchart' + idx + '"></canvas></div>' +
-        '<div class="finsight"><b>📊 What the data says:</b> ' + read + '<br><b>👉 Where to look:</b> ' + info.lens + "</div>" +
-        '<table class="risks ftable"><thead><tr><th>#</th><th>Step</th><th>Users</th><th>vs start</th><th>step conv</th><th>drop-off</th></tr></thead><tbody>' +
-        rows + "</tbody></table>" +
-        '<div class="muted" style="font-size:11px;margin-top:8px">' + esc(f.source) + " · the highlighted row is the biggest drop-off.</div></div>";
+        '<div class="fh"><span class="fname">' + info.icon + ' ' + esc(f.funnel) +
+          (info.tag ? ' <span class="ftag">' + info.tag + '</span>' : '') + '</span>' +
+          '<span class="rag ' + oc + '">' + ins.overall + '% complete</span></div>' +
+        '<div class="fwhat">' + info.what + ' <br>' + info.biz + '</div>' +
+        '<div class="fkpis">' +
+          '<div class="fkpi"><span class="fkn">' + ins.entered + '</span><span class="fkl">Entered</span></div>' +
+          '<div class="fkpi arrow">→</div>' +
+          '<div class="fkpi"><span class="fkn">' + ins.completed + '</span><span class="fkl">Completed</span></div>' +
+          '<div class="fkpi"><span class="fkn ' + oc + '">' + ins.overall + '%</span><span class="fkl">Completion</span></div>' +
+          '<div class="fkpi"><span class="fkn red">' + ins.dropPct + '%</span><span class="fkl">Biggest drop</span></div>' +
+        '</div>' +
+        '<div class="funnel">' + bars + '</div>' +
+        '<div class="finsight"><b>📊 What the data says:</b> ' + read + '<br><b>👉 Where to look:</b> ' + info.lens + '</div>' +
+        '<div class="muted" style="font-size:11px;margin-top:8px">' + esc(f.source) + ' · each step shows its plain-language meaning · the red step is the biggest drop-off.</div>' +
+        '</div>';
     }).join("") || '<div class="muted">No funnel data.</div>';
-
-    fs.forEach(function (f, idx) {
-      var ins = funnelInsight(f);
-      mkChart("fchart" + idx, { type: "bar",
-        data: { labels: f.steps.map(function (s) { return s.name; }),
-          datasets: [{ data: f.steps.map(function (s) { return s.users; }),
-            backgroundColor: f.steps.map(function (s) { return s.name === ins.toName ? "#c62828" : "rgba(15,139,141,.85)"; }), borderRadius: 5 }] },
-        options: { indexAxis: "y", plugins: { legend: { display: false },
-          tooltip: { callbacks: { label: function (c) { return c.parsed.x + " users"; } } } },
-          scales: { x: { beginAtZero: true, title: { display: true, text: "users" } } } } });
-    });
   }
 
   // Current running sprint: config override, else latest sprint with delivered

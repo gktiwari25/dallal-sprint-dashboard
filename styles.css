@@ -33,6 +33,38 @@ table.ftable tr.worst td{font-weight:600}
 .finsight{background:#eef6f7;border-left:4px solid var(--teal);border-radius:8px;padding:11px 13px;font-size:13px;line-height:1.55;margin:10px 0}
 .finsight.intro{background:#f4f7fb;border-left-color:var(--navy);margin-bottom:16px}
 .fenv{padding:7px 11px;border:1px solid var(--line);border-radius:8px;font-size:13px;background:#fff;cursor:pointer;font-weight:600;color:var(--navy)}
+/* Funnels tab header */
+.ftabhead{background:#f4f7fb;border:1px solid var(--line);border-left:4px solid var(--navy);border-radius:12px;padding:14px 16px;margin-bottom:16px}
+.ftabhead h3{margin:0 0 6px;color:var(--navy);font-size:15px}
+.ftabhead p{margin:6px 0;font-size:13px;line-height:1.55;color:var(--ink)}
+.ftablist{margin:6px 0 6px;padding-left:18px;font-size:13px;line-height:1.7;color:var(--ink)}
+/* Funnel card header chip */
+.ftag{display:inline-block;font-size:11px;font-weight:700;color:var(--teal);background:#e6f3f3;border-radius:999px;padding:2px 9px;margin-left:6px;vertical-align:middle}
+/* KPI strip */
+.fkpis{display:flex;align-items:stretch;gap:10px;margin:12px 0 14px;flex-wrap:wrap}
+.fkpi{flex:1;min-width:88px;background:#f8fafc;border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:2px;text-align:center;justify-content:center}
+.fkpi.arrow{flex:0 0 auto;min-width:0;border:none;background:none;color:var(--muted);font-size:20px;font-weight:700}
+.fkn{font-size:22px;font-weight:800;color:var(--navy);line-height:1.1}
+.fkn.green{color:var(--green)} .fkn.amber{color:var(--amber)} .fkn.red{color:var(--red)}
+.fkl{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.03em;font-weight:600}
+/* Custom funnel bars */
+.funnel{margin:6px 0 4px}
+.fstep{padding:9px 0;border-bottom:1px dashed var(--line)}
+.fstep:last-child{border-bottom:none}
+.fstep-top{display:flex;align-items:center;gap:9px}
+.fnum{flex:0 0 22px;height:22px;border-radius:50%;background:var(--navy);color:#fff;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center}
+.fstep-name{flex:1;font-weight:600;font-size:13.5px;color:var(--ink)}
+.fstep-users{font-weight:800;font-size:15px;color:var(--navy)}
+.fstep-users .fu{font-size:11px;font-weight:600;color:var(--muted)}
+.ftrack{height:12px;background:#eef1f5;border-radius:7px;margin:6px 0 5px;overflow:hidden}
+.ffill{height:100%;background:linear-gradient(90deg,var(--teal),#12a3a5);border-radius:7px;transition:width .4s ease}
+.ffill.bad{background:linear-gradient(90deg,#e26a5a,var(--red))}
+.fstep-meta{display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center}
+.fm{font-size:11.5px;color:var(--muted);font-weight:600}
+.fm.drop{color:var(--red)}
+.worsttag{font-size:11px;font-weight:700;color:var(--red)}
+.fstep-gloss{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.45}
+.fstep.worst{background:#fdecea;border-radius:8px;padding:9px 10px;border-bottom:none;margin:2px 0}
 .tip{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:var(--muted);color:#fff;font-size:10px;font-style:italic;font-weight:700;font-family:Georgia,serif;cursor:help;position:relative;vertical-align:middle;margin-left:5px}
 .tip::after{content:attr(data-tip);position:absolute;top:150%;left:50%;transform:translateX(-50%);background:#1d2733;color:#fff;padding:9px 11px;border-radius:7px;font:400 12px/1.4 -apple-system,Segoe UI,Roboto,sans-serif;font-style:normal;width:240px;max-width:60vw;opacity:0;visibility:hidden;pointer-events:none;transition:opacity .12s;z-index:50;box-shadow:0 6px 18px rgba(16,42,71,.25)}
 .tip:hover::after{opacity:1;visibility:visible}
