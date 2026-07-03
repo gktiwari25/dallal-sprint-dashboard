@@ -168,6 +168,12 @@ table.risks tr:last-child td{border-bottom:none}
 .booting{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--navy,#0a2a43);z-index:60}
 .booting .spin{width:34px;height:34px;border-radius:50%;border:3px solid rgba(255,255,255,.25);border-top-color:#fff;animation:bootspin .8s linear infinite}
 @keyframes bootspin{to{transform:rotate(360deg)}}
+
+/* Section heading with an Export button (Engineering tables) */
+h2.sech{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.expbtn{font:inherit;font-size:12px;font-weight:700;color:var(--accent,#0f8b8d);background:#fff;border:1px solid var(--line,#dbe3ec);border-radius:8px;padding:5px 12px;cursor:pointer;white-space:nowrap;transition:background .12s}
+.expbtn:hover{background:#eef4f8}
+.expbtn:active{transform:translateY(1px)}
 /* Sign-in modal */
 #loginModal{position:fixed;inset:0;z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(8,20,34,.62);backdrop-filter:blur(4px)}
 #loginModal.hidden{display:none}

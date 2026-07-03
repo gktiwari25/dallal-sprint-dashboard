@@ -379,6 +379,37 @@
   function flag(v) { return (String(v) === "1") ? '<span class="flag-ok">on</span>' : '<span class="flag-no">off</span>'; }
   function pctOr(v) { return (v == null || v === "") ? "--" : v + "%"; }
 
+  // ---------- CSV export (share Engineering tables with developers) ----------
+  function csvCell(v) { return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"'; }
+  function toCSV(rows, cols) {
+    var lines = [cols.map(function (c) { return csvCell(c.label); }).join(",")];
+    rows.forEach(function (r) { lines.push(cols.map(function (c) { return csvCell(r[c.key]); }).join(",")); });
+    return lines.join("\r\n");
+  }
+  function downloadCSV(name, text) {
+    var blob = new Blob(["﻿" + text], { type: "text/csv;charset=utf-8" });   // BOM so Excel reads UTF-8
+    var url = URL.createObjectURL(blob), a = document.createElement("a");
+    a.href = url; a.download = name; document.body.appendChild(a); a.click();
+    setTimeout(function () { document.body.removeChild(a); URL.revokeObjectURL(url); }, 100);
+  }
+  function csvStamp() { return new Date().toISOString().slice(0, 10); }
+  function exportVulns() {
+    var rows = (data.vulns || []).filter(function (v) { return v.package; });
+    downloadCSV("dallal-security-vulnerabilities-" + csvStamp() + ".csv", toCSV(rows, [
+      { key: "severity", label: "Severity" }, { key: "repo", label: "Repo" }, { key: "package", label: "Package" },
+      { key: "version", label: "Version" }, { key: "advisory", label: "Advisory" }, { key: "fixed_in", label: "Fixed in" },
+      { key: "direct", label: "Direct dependency" }, { key: "summary", label: "What it is" },
+    ]));
+  }
+  function exportEngRisks() {
+    var rows = (data.risks || []).filter(isEngRisk);
+    downloadCSV("dallal-engineering-risks-" + csvStamp() + ".csv", toCSV(rows, [
+      { key: "risk_name", label: "Risk" }, { key: "rag", label: "RAG" }, { key: "category", label: "Category" },
+      { key: "owner", label: "Owner" }, { key: "status", label: "Status" }, { key: "impact", label: "Impact" },
+      { key: "mitigation", label: "Mitigation / action" },
+    ]));
+  }
+
   function renderEng() {
     var repos = data.repos;
     el("repoCards").innerHTML = repos.map(function (r) {
@@ -760,6 +791,8 @@
     el("tabDelivery").addEventListener("click", function () { showTab("delivery"); });
     el("tabEng").addEventListener("click", function () { showTab("eng"); });
     el("tabFunnels").addEventListener("click", function () { showTab("funnels"); });
+    el("exportVulns").addEventListener("click", exportVulns);
+    el("exportEngRisks").addEventListener("click", exportEngRisks);
     el("funnelEnv").addEventListener("change", function () { try { localStorage.setItem("dallal_funnel_env", this.value); } catch (e) {} renderFunnels(); });
     el("funnelPlatform").addEventListener("change", function () { try { localStorage.setItem("dallal_funnel_platform", this.value); } catch (e) {} renderFunnels(); });
     el("refreshBtn").addEventListener("click", function () { if (sbc && loadedOnce) loadAll(); });

@@ -7,9 +7,9 @@
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
 <title>Dallal Sprint Dashboard</title>
-<link rel="icon" type="image/png" href="dallal-favicon.png?v=36" />
+<link rel="icon" type="image/png" href="dallal-favicon.png?v=37" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
-<link rel="stylesheet" href="styles.css?v=36" />
+<link rel="stylesheet" href="styles.css?v=37" />
 </head>
 <body>
 
@@ -181,7 +181,7 @@
       <div class="grid" id="repoCards"></div>
     </div></div>
 
-    <div class="section"><h2>Security &amp; Vulnerabilities</h2><div class="body">
+    <div class="section"><h2 class="sech">Security &amp; Vulnerabilities <button id="exportVulns" class="expbtn" type="button" title="Download the vulnerability table as CSV to share with developers">&#x2913; Export CSV</button></h2><div class="body">
       <p class="muted" style="margin:0 0 12px">How to mitigate: click an <b>advisory</b> to read what the vulnerability is, then upgrade the package to the version in <b>Mitigation</b> and re-run the scan. Enabling <b>Dependabot</b> + <b>Secret scanning</b> (free on private repos, Settings &rarr; Code security) keeps this list current automatically.</p>
       <div class="charts">
         <div class="chartcard"><h3>Posture</h3><div class="grid" id="postureCards"></div></div>
@@ -191,7 +191,7 @@
       </tr></thead><tbody></tbody></table>
     </div></div>
 
-    <div class="section"><h2>Engineering Risks &amp; Security</h2><div class="body">
+    <div class="section"><h2 class="sech">Engineering Risks &amp; Security <button id="exportEngRisks" class="expbtn" type="button" title="Download the engineering/security risks as CSV to share with developers">&#x2913; Export CSV</button></h2><div class="body">
       <div id="engRiskList"></div>
     </div></div>
   </div><!-- /engView -->
@@ -214,9 +214,9 @@
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=36"></script>
-<script src="sample-data.js?v=36"></script>
-<script src="funnels-data.js?v=36"></script>
-<script src="app.js?v=36"></script>
+<script src="config.js?v=37"></script>
+<script src="sample-data.js?v=37"></script>
+<script src="funnels-data.js?v=37"></script>
+<script src="app.js?v=37"></script>
 </body>
 </html>
