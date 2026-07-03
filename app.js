@@ -146,6 +146,7 @@
       inQA: its.filter(function (i) { return sectionStage(i.section) === "qa"; }).length,
       blocked: its.filter(function (i) { return sectionStage(i.section) === "blocked"; }).length,
       ready: its.filter(function (i) { return sectionStage(i.section) === "ready"; }).length,
+      released: its.filter(function (i) { return sectionStage(i.section) === "released"; }).length,
       bugs: bugs.length,
       pCritical: bugs.filter(function (i) { return (i.priority || "").indexOf("P1") === 0; }).length,
       pHigh: bugs.filter(function (i) { return (i.priority || "").indexOf("P2") === 0; }).length,
@@ -187,7 +188,7 @@
       card("In QA", m.inQA, { icon: "🧪", accent: "#1f6feb", tip: "Stories in a testing column: QA on Dev / Ready for UAT / In UAT." }) +
       card("Completed", m.completed, { icon: "✅", accent: "#2e7d32" }) +
       card("Blocked", m.blocked, { icon: "⛔", accent: "#c62828" }) +
-      card("Ready for Release", m.ready, { icon: "🚀", accent: "#0f8b8d" });
+      card("Released", m.released, { icon: "🚀", accent: "#0f8b8d", tip: "Stories in the 'Released' board column in Asana (shipped to production). 'Completed' above is the total of all done states (Released + UAT Passed + Ready for Production)." });
     var openItems = m.its.filter(function (i) { return !isDone(i); });
     el("openList").innerHTML = listBlock("open", "Not yet completed &middot; " + openItems.length + " of " + m.planned + " stories",
       (openItems.length ? openItems.map(taskRow).join("") : '<div class="muted">All committed stories completed. 🎉</div>'));
