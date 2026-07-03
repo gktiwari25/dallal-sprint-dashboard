@@ -384,7 +384,7 @@
   function csvCell(v) { return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"'; }
   function toCSV(rows, cols) {
     var lines = [cols.map(function (c) { return csvCell(c.label); }).join(",")];
-    rows.forEach(function (r) { lines.push(cols.map(function (c) { return csvCell(r[c.key]); }).join(",")); });
+    rows.forEach(function (r) { lines.push(cols.map(function (c) { return csvCell(c.val ? c.val(r) : r[c.key]); }).join(",")); });
     return lines.join("\r\n");
   }
   function downloadCSV(name, text) {
@@ -398,7 +398,9 @@
     var rows = (data.vulns || []).filter(function (v) { return v.package; });
     downloadCSV("dallal-security-vulnerabilities-" + csvStamp() + ".csv", toCSV(rows, [
       { key: "severity", label: "Severity" }, { key: "repo", label: "Repo" }, { key: "package", label: "Package" },
-      { key: "version", label: "Version" }, { key: "advisory", label: "Advisory" }, { key: "fixed_in", label: "Fixed in" },
+      { key: "version", label: "Version" }, { key: "advisory", label: "Advisory" },
+      { label: "Advisory URL", val: function (r) { return advisoryUrl(r.advisory) || ""; } },
+      { key: "fixed_in", label: "Fixed in" },
       { key: "direct", label: "Direct dependency" }, { key: "summary", label: "What it is" },
     ]));
   }
