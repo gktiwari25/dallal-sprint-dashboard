@@ -538,6 +538,12 @@
       what: "How a new user completes <b>sign-up → verification → login</b>. A leak here caps everything downstream: fewer accounts means fewer listings and fewer leads.",
       biz: "Business impact: this is top-of-funnel account growth. The number that matters is <b>Login Success</b> — a fully activated user.",
       lens: "<b>OTP / verification</b> is the classic drop-off. A big fall there usually means SMS delivery problems or a confusing screen — a fix here lifts <i>every</i> other metric."
+    },
+    "New-User Retention": {
+      icon: "🔁", tag: "Retention · Churn",
+      what: "Of every <b>new user</b> who first used Dallal, how many <b>came back</b> in each following week. Week 0 is the sign-up week (100%); each later week is the share still active. The gap from one week to the next is <b>churn</b>.",
+      biz: "Business impact: acquisition is wasted if users leave. Retention compounds — a few points held every week is worth more than any single funnel fix. The number that matters is <b>Week 4 retention</b> (the habit line).",
+      lens: "The <b>steepest weekly drop</b> is your churn cliff — that week's drop-offs are the prime <b>re-engagement</b> target (push / email within that window). Users who reach the later weeks rarely leave, so winning the <b>first 1–2 weeks</b> is everything."
     }
   };
   // Plain-language meaning of each step (covers UAT + PROD event names).
@@ -597,6 +603,7 @@
           '<li><b>🏠 Listing Creation</b> — owners/agents publishing property → marketplace <i>supply</i>.</li>' +
           '<li><b>🔎 Property Discovery</b> — buyers searching → contacting agents → marketplace <i>demand</i>.</li>' +
           '<li><b>👤 User Registration</b> — new users signing up → account <i>growth</i>.</li>' +
+          '<li><b>🔁 New-User Retention</b> — how many new users <i>come back</i> each week → <i>churn</i>. Here each “step” is a week, and the gap is who we lost.</li>' +
         '</ul>' +
         '<p class="muted">Source: Amplitude · ' + envNote + ' ' + platNote +
         ' Switch <b>Environment</b> (UAT / PROD) and <b>Platform</b> (Web / Android / iOS) above to slice each funnel.</p>' +
