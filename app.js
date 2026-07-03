@@ -152,7 +152,9 @@
       pHigh: bugs.filter(function (i) { return (i.priority || "").indexOf("P2") === 0; }).length,
       pMedium: bugs.filter(function (i) { return (i.priority || "").indexOf("P3") === 0; }).length,
       regression: bugs.filter(function (i) { return num(i.reopened_count) > 0; }).length,
-      reopenedPct: completed ? reopened / completed : null,
+      reopened: reopened,   // count of items reopened >=1x this sprint
+      // Rework rate: delivered items that were reopened / delivered items (always <=100%).
+      reopenedPct: completed ? its.filter(function (i) { return isDone(i) && num(i.reopened_count) > 0; }).length / completed : null,
       defectEscape: bugs.length ? bugs.filter(function (i) { return i.found_in === "UAT" || i.found_in === "Prod"; }).length / bugs.length : null,
       devDays: avg("dev_days"), qaDays: avg("qa_days"), cycleDays: avg("cycle_days"),
       blockedHours: fl.length ? fl.reduce(function (a, f) { return a + num(f.blocked_hours); }, 0) : null,
@@ -197,7 +199,7 @@
       card("Total Bugs", m.bugs, { icon: "🐞", accent: "#6b7a8d", tip: "Tickets in this sprint whose title contains \"BUG\" (or Type = Bug)." }) +
       card("Critical (P1)", m.pCritical, { icon: "🔴", accent: "#c62828", tip: "Bug tickets with task Priority = P1 Critical." }) +
       card("High (P2)", m.pHigh, { icon: "🟠", accent: "#f29f05", tip: "Bug tickets with task Priority = P2 High." }) +
-      card("Reopened", pct(m.reopenedPct), { icon: "🔁", tip: "Share of completed items that were sent back for rework at least once — derived from Status history (Raised by QA / Reopen / UAT Failed), not the manual field. Refreshes on the daily flow sync." }) +
+      card("Reopened", m.reopened, { icon: "🔁", tip: "Count of items sent back for rework at least once this sprint (bounced to Raised by QA / Reopen / UAT Failed) — derived from Status history, refreshed on the daily flow sync. Rework rate of delivered items: " + pct(m.reopenedPct) + "." }) +
       card("Defect Escape", pct(m.defectEscape), { icon: "🪲", tip: "Share of bugs found in UAT or Prod (vs Dev). Needs the 'Found In' field filled in Asana." });
     mkChart("qualityChart", { type: "doughnut",
       data: { labels: ["Critical", "High", "Medium", "Other"],
