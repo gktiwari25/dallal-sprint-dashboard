@@ -197,7 +197,7 @@
       card("Total Bugs", m.bugs, { icon: "🐞", accent: "#6b7a8d", tip: "Tickets in this sprint whose title contains \"BUG\" (or Type = Bug)." }) +
       card("Critical (P1)", m.pCritical, { icon: "🔴", accent: "#c62828", tip: "Bug tickets with task Priority = P1 Critical." }) +
       card("High (P2)", m.pHigh, { icon: "🟠", accent: "#f29f05", tip: "Bug tickets with task Priority = P2 High." }) +
-      card("Reopened", pct(m.reopenedPct), { icon: "🔁", tip: "Share of completed items with Reopened Count > 0. Needs the 'Reopened Count' field filled in Asana." }) +
+      card("Reopened", pct(m.reopenedPct), { icon: "🔁", tip: "Share of completed items that were sent back for rework at least once — derived from Status history (Raised by QA / Reopen / UAT Failed), not the manual field. Refreshes on the daily flow sync." }) +
       card("Defect Escape", pct(m.defectEscape), { icon: "🪲", tip: "Share of bugs found in UAT or Prod (vs Dev). Needs the 'Found In' field filled in Asana." });
     mkChart("qualityChart", { type: "doughnut",
       data: { labels: ["Critical", "High", "Medium", "Other"],
