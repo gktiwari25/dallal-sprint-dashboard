@@ -241,33 +241,37 @@
     var dim = data.sprints.filter(function (s) { return String(s.sprint) === String(sprint); })[0] || {};
     var start = dim.planned_start || dim.inferred_start;
     var end = dim.planned_end || dim.inferred_end;
+    // Scope creep = unplanned *story* work. Bugs are EXCLUDED: they're raised
+    // during the sprint while testing delivered stories, so they're expected
+    // sprint activity, not scope that "crept in". (Bugs live on the Quality tab.)
+    var stories = m.its.filter(function (i) { return !isBug(i); });
     // Baseline = created on/before sprint start; Added = created after start (mid-sprint).
     // Measured by TICKET COUNT (always meaningful; many added tickets aren't estimated yet).
     var baseCount = 0, addCount = 0, baseSP = 0, addSP = 0;
-    m.its.forEach(function (i) {
+    stories.forEach(function (i) {
       var cd = (i.created_at || "").slice(0, 10), sp = num(i.story_points);
       if (start && cd && cd > start) { addCount++; addSP += sp; }
       else { baseCount++; baseSP += sp; }
     });
     var creepPct = baseCount > 0 ? addCount / baseCount : null;
-    var creepTip = "Tickets added after the sprint start date (approximated by ticket creation date vs sprint start). High = lots of unplanned work entered the sprint.";
+    var creepTip = "Non-bug stories added after the sprint start date (approximated by ticket creation date vs sprint start). Bugs are excluded — they're raised while testing delivered work, not scope creep. High = lots of unplanned work entered the sprint.";
     el("scopeGrid").innerHTML =
-      card("Baseline scope", baseCount + ' <small>tickets</small>', { icon: "📌", accent: "#163a5f", tip: "Tickets committed at sprint start (created on/before the start date). ≈ " + Math.round(baseSP) + " SP." }) +
+      card("Baseline scope", baseCount + ' <small>stories</small>', { icon: "📌", accent: "#163a5f", tip: "Stories committed at sprint start (created on/before the start date, bugs excluded). ≈ " + Math.round(baseSP) + " SP." }) +
       card("Added mid-sprint", "+" + addCount + ' <small>tickets</small>', { icon: "➕", accent: "#f29f05", tip: creepTip }) +
       card("Scope Creep", creepPct == null ? "--" : "+" + Math.round(creepPct * 100) + "%", { icon: "📈", accent: (creepPct && creepPct > 0.1) ? "#c62828" : "#2e7d32", tip: "Added tickets ÷ baseline tickets." }) +
       card("Added story points", "+" + Math.round(addSP) + ' <small>SP</small>', { icon: "🔢", tip: "Story points of the added tickets — 0 if they aren't estimated yet." });
 
-    var addedItems = m.its.filter(function (i) { var cd = (i.created_at || "").slice(0, 10); return start && cd && cd > start; });
-    el("scopeList").innerHTML = listBlock("scope", "Added mid-sprint &middot; " + addedItems.length + " stories",
-      (addedItems.length ? addedItems.map(taskRow).join("") : '<div class="muted">No mid-sprint additions.</div>'));
+    var addedItems = stories.filter(function (i) { var cd = (i.created_at || "").slice(0, 10); return start && cd && cd > start; });
+    el("scopeList").innerHTML = listBlock("scope", "Added mid-sprint &middot; " + addedItems.length + " stories (bugs excluded)",
+      (addedItems.length ? addedItems.map(taskRow).join("") : '<div class="muted">No mid-sprint story additions.</div>'));
 
     if (!start || !end) { if (_charts.scopeChart) { _charts.scopeChart.destroy(); delete _charts.scopeChart; } var c = el("scopeChart"); if (c) c.getContext("2d").clearRect(0, 0, c.width, c.height); return; }
     var days = isoDays(start, end);
-    var cum = days.map(function (d) { var n = 0; m.its.forEach(function (i) { var cd = (i.created_at || "").slice(0, 10); if (cd && cd <= d) n++; }); return n; });
+    var cum = days.map(function (d) { var n = 0; stories.forEach(function (i) { var cd = (i.created_at || "").slice(0, 10); if (cd && cd <= d) n++; }); return n; });
     var baseArr = days.map(function () { return baseCount; });
     mkChart("scopeChart", { type: "line",
       data: { labels: days.map(function (d) { return d.slice(5); }), datasets: [
-        { label: "Total tickets", data: cum, borderColor: "#c62828", backgroundColor: "rgba(242,159,5,.18)", fill: 1, tension: .1, stepped: true },
+        { label: "Stories (bugs excluded)", data: cum, borderColor: "#c62828", backgroundColor: "rgba(242,159,5,.18)", fill: 1, tension: .1, stepped: true },
         { label: "Baseline (at start)", data: baseArr, borderColor: "#6b7a8d", borderDash: [6, 4], pointRadius: 0, fill: false } ] },
       options: { plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true, title: { display: true, text: "tickets" } } } } });
   }
