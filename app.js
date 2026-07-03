@@ -111,12 +111,19 @@
   }
 
   // ---------- metric computation ----------
-  // Tickets still parked in the "Ready for Development" board column were pulled
-  // into the sprint but never started — they're not part of the sprint's status,
-  // so they're excluded from every delivery/status metric and list below.
-  function isReadyForDev(i) { return /ready for development/i.test(i.section || ""); }
+  // Pre-development staging columns: work that's only an idea/design or has been
+  // handed off but not started. It isn't committed sprint scope, so these tickets
+  // are excluded from every delivery/status metric and list below — including the
+  // "Stories Planned" count. Board columns excluded:
+  //   • Backlog - Idea / Refinement / Design
+  //   • Design In-Progress
+  //   • Ready for Development (handoff complete)
+  // (NOTE: "Sprint Planned" is intentionally NOT excluded — it is committed scope.)
+  function isPreSprint(i) {
+    return /backlog\s*-\s*idea|design\s*in-?progress|ready for development/i.test(i.section || "");
+  }
   function compute(sprint) {
-    var its = data.items.filter(function (i) { return String(i.sprint) === String(sprint) && !isReadyForDev(i); });
+    var its = data.items.filter(function (i) { return String(i.sprint) === String(sprint) && !isPreSprint(i); });
     var dim = data.sprints.filter(function (s) { return String(s.sprint) === String(sprint); })[0] || {};
     var committedSP = its.reduce(function (a, i) { return a + num(i.story_points); }, 0);
     var delivered = its.filter(isDone);

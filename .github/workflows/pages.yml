@@ -15,16 +15,45 @@ jobs:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+      # Whichever attempt succeeds provides the page_url (|| = first non-empty).
+      url: ${{ steps.d1.outputs.page_url || steps.d2.outputs.page_url || steps.d3.outputs.page_url || steps.d4.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: '.'
-      - id: deployment
+
+      # GitHub's Pages backend intermittently returns "Deployment failed, try
+      # again later." on an otherwise-valid deploy. Retry up to 4 times total
+      # with exponential backoff; the job only fails if all 4 attempts fail.
+      - id: d1
+        name: Deploy (attempt 1 of 4)
         uses: actions/deploy-pages@v4
         continue-on-error: true
-      - name: Retry deploy on transient Pages backend error ("try again later")
-        if: steps.deployment.outcome == 'failure'
+
+      - name: Backoff before attempt 2 (20s)
+        if: steps.d1.outcome == 'failure'
+        run: sleep 20
+      - id: d2
+        name: Deploy (attempt 2 of 4)
+        if: steps.d1.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Backoff before attempt 3 (45s)
+        if: steps.d1.outcome == 'failure' && steps.d2.outcome == 'failure'
+        run: sleep 45
+      - id: d3
+        name: Deploy (attempt 3 of 4)
+        if: steps.d1.outcome == 'failure' && steps.d2.outcome == 'failure'
+        uses: actions/deploy-pages@v4
+        continue-on-error: true
+
+      - name: Backoff before attempt 4 (90s)
+        if: steps.d1.outcome == 'failure' && steps.d2.outcome == 'failure' && steps.d3.outcome == 'failure'
+        run: sleep 90
+      - id: d4
+        name: Deploy (attempt 4 of 4 — final)
+        if: steps.d1.outcome == 'failure' && steps.d2.outcome == 'failure' && steps.d3.outcome == 'failure'
         uses: actions/deploy-pages@v4
