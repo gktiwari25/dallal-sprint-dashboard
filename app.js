@@ -712,8 +712,11 @@
     var isMile = function (n) { return SANKEY_MILE.indexOf(n) !== -1; };
     var col = function (n) { return n === "Exited" ? "#c0392b" : isMile(n) ? "#2f6df6" : "#e69500"; };
     var raw = function (c) { return c.dataset.data[c.dataIndex] || {}; };
-    card.innerHTML = head + '<div class="chartbox" style="height:540px"><canvas id="pathSankey"></canvas></div>' +
-      '<div class="muted" style="font-size:11px;margin-top:8px">Amplitude · Dallal-' + esc(env) + ' · true user transitions (Export API) · the milestone spine reconciles with the funnel above.</div></div>';
+    // Guaranteed-wide, horizontally-scrollable canvas: 9 spine nodes + off-ramps
+    // never fit a narrow card, so give each column real room and let it scroll.
+    card.innerHTML = head +
+      '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><div style="height:540px;min-width:1120px"><canvas id="pathSankey"></canvas></div></div>' +
+      '<div class="muted" style="font-size:11px;margin-top:8px">Amplitude · Dallal-' + esc(env) + ' · true user transitions (Export API) · the milestone spine reconciles with the funnel above · scroll sideways to see the full path.</div></div>';
     try {
       mkChart("pathSankey", {
         type: "sankey",
