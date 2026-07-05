@@ -686,31 +686,50 @@
     var rows = (data.paths || []).filter(function (r) { return (r.env || "UAT") === env && num(r.users) > 0; });
     var head = '<div class="funnelcard" style="margin-top:14px"><div class="fh">' +
       '<span class="fname">🔀 User Path — where people go &amp; drop off</span>' +
-      '<span class="ftag">Listing Creation</span></div>' +
-      '<div class="fwhat">The real path through the listing flow (from raw event data): the <b>spine</b> is users advancing step→step, and each branch shows <b>where drop-offs actually went next</b> — Search/Browse, Menu, viewing a listing, or leaving. Widths = users, last 30 days.</div>';
+      '<span class="ftag">Listing Creation · last 30d</span></div>' +
+      '<div class="fwhat">The real path through the listing flow. Each box is a screen labelled with <b>how many users reached it</b>; ribbon width = number of users. Hover any ribbon for the exact split.</div>' +
+      '<div class="muted" style="font-size:12.5px;margin:4px 0 10px">' +
+      '<span style="color:#2f6df6;font-weight:700">●</span> stayed in the flow &nbsp;&nbsp;' +
+      '<span style="color:#e69500;font-weight:700">●</span> jumped to another screen &nbsp;&nbsp;' +
+      '<span style="color:#c0392b;font-weight:700">●</span> left the app</div>';
     if (!rows.length) { card.innerHTML = head + '<div class="finsight muted">No path data for <b>Dallal ' + esc(env) + '</b> yet — the path ETL runs on a slower cadence.</div></div>'; return; }
     var ok = false;
     try { ok = !!(window.Chart && Chart.registry && Chart.registry.getController("sankey")); } catch (e) { ok = false; }
     if (!ok) { card.innerHTML = head + '<div class="finsight muted">Path graph unavailable (the Sankey chart plugin didn’t load).</div></div>'; return; }
-    card.innerHTML = head + '<div class="chartbox" style="height:460px"><canvas id="pathSankey"></canvas></div>' +
-      '<div class="muted" style="font-size:11px;margin-top:8px">Amplitude · Dallal-' + esc(env) + ' · true user transitions (Export API) · the milestone spine reconciles with the funnel above.</div></div>';
+    // Short display names (long ones like "5 Property Details" overrun the next
+    // node) + the reached-count baked into each node label so numbers read at a glance.
+    var SHORT = { "1 Started": "Start", "2 PACI": "PACI", "3 Address": "Address", "4 Category": "Category",
+      "5 Property Details": "Details", "6 Pricing": "Pricing", "7 Photos": "Photos", "8 Review": "Review", "9 Published": "Published" };
+    var short = function (n) { return SHORT[n] || n; };
     var edges = rows.map(function (r) { return { from: r.source, to: r.target, flow: num(r.users) }; });
+    var inSum = {}, outSum = {};
+    edges.forEach(function (e) { outSum[e.from] = (outSum[e.from] || 0) + e.flow; inSum[e.to] = (inSum[e.to] || 0) + e.flow; });
+    var reached = function (n) { return inSum[n] || outSum[n] || 0; };   // arrivals (start node: departures)
+    var labels = {};
+    edges.forEach(function (e) { labels[e.from] = short(e.from) + "  " + reached(e.from); labels[e.to] = short(e.to) + "  " + reached(e.to); });
     var columns = {}; SANKEY_MILE.forEach(function (l, i) { columns[l] = i; });
     edges.forEach(function (e) { if (columns[e.to] === undefined) columns[e.to] = SANKEY_MILE.length; });
     var isMile = function (n) { return SANKEY_MILE.indexOf(n) !== -1; };
     var col = function (n) { return n === "Exited" ? "#c0392b" : isMile(n) ? "#2f6df6" : "#e69500"; };
     var raw = function (c) { return c.dataset.data[c.dataIndex] || {}; };
+    card.innerHTML = head + '<div class="chartbox" style="height:540px"><canvas id="pathSankey"></canvas></div>' +
+      '<div class="muted" style="font-size:11px;margin-top:8px">Amplitude · Dallal-' + esc(env) + ' · true user transitions (Export API) · the milestone spine reconciles with the funnel above.</div></div>';
     try {
       mkChart("pathSankey", {
         type: "sankey",
         data: { datasets: [{
-          data: edges,
+          data: edges, labels: labels,
           colorFrom: function (c) { return col(raw(c).from); },
           colorTo: function (c) { return col(raw(c).to); },
-          colorMode: "gradient", column: columns, alpha: 0.5, size: "max"
+          colorMode: "gradient", column: columns, alpha: 0.5, size: "max",
+          nodeWidth: 12, nodePadding: 24, borderWidth: 0, font: { size: 12, weight: "600" }
         }] },
-        options: { plugins: { legend: { display: false }, tooltip: { callbacks: {
-          label: function (c) { var d = raw(c); return d.from + " → " + d.to + ": " + d.flow + " users"; } } } } }
+        options: { maintainAspectRatio: false,
+          layout: { padding: { left: 4, right: 82, top: 10, bottom: 10 } },
+          plugins: { legend: { display: false }, tooltip: { callbacks: {
+            title: function () { return ""; },
+            label: function (c) { var d = raw(c); var den = outSum[d.from] || 0; var pct = den ? Math.round(100 * d.flow / den) : 0;
+              return short(d.from) + " → " + short(d.to) + ":  " + d.flow + " user" + (d.flow === 1 ? "" : "s") + " (" + pct + "% of " + short(d.from) + ")"; } } } } }
       });
     } catch (e) {
       card.innerHTML = head + '<div class="finsight muted">Path graph could not render: ' + esc(e.message || String(e)) + '</div></div>';
