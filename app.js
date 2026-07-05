@@ -715,7 +715,7 @@
     // Guaranteed-wide, horizontally-scrollable canvas: 9 spine nodes + off-ramps
     // never fit a narrow card, so give each column real room and let it scroll.
     card.innerHTML = head +
-      '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><div style="height:540px;min-width:1120px"><canvas id="pathSankey"></canvas></div></div>' +
+      '<div style="overflow-x:auto;-webkit-overflow-scrolling:touch"><div style="height:540px;min-width:1720px"><canvas id="pathSankey"></canvas></div></div>' +
       '<div class="muted" style="font-size:11px;margin-top:8px">Amplitude · Dallal-' + esc(env) + ' · true user transitions (Export API) · the milestone spine reconciles with the funnel above · scroll sideways to see the full path.</div></div>';
     try {
       mkChart("pathSankey", {
