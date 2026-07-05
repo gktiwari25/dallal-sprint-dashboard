@@ -627,6 +627,7 @@
     if (!fs.length) {
       el("funnelList").innerHTML = intro + '<div class="finsight">No funnel data for <b>Dallal ' + esc(env) +
         '</b> · <b>' + esc(platLabel) + '</b> yet — either no events in the last 30 days, or this platform isn\'t instrumented for these steps.</div>';
+      renderPathSankey(env);
       return;
     }
     el("funnelList").innerHTML = intro + fs.map(function (f) {
@@ -675,6 +676,45 @@
         '<div class="muted" style="font-size:11px;margin-top:8px">' + esc(f.source) + ' · each step shows its plain-language meaning · the red step is the biggest drop-off.</div>' +
         '</div>';
     }).join("") || '<div class="muted">No funnel data.</div>';
+    renderPathSankey(env);
+  }
+
+  // ---------- User-path Sankey (fact_paths, computed from raw events) ----------
+  var SANKEY_MILE = ["1 Started", "2 PACI", "3 Address", "4 Category", "5 Property Details", "6 Pricing", "7 Photos", "8 Review", "9 Published"];
+  function renderPathSankey(env) {
+    var card = el("pathSankeyCard"); if (!card) return;
+    var rows = (data.paths || []).filter(function (r) { return (r.env || "UAT") === env && num(r.users) > 0; });
+    var head = '<div class="funnelcard" style="margin-top:14px"><div class="fh">' +
+      '<span class="fname">🔀 User Path — where people go &amp; drop off</span>' +
+      '<span class="ftag">Listing Creation</span></div>' +
+      '<div class="fwhat">The real path through the listing flow (from raw event data): the <b>spine</b> is users advancing step→step, and each branch shows <b>where drop-offs actually went next</b> — Search/Browse, Menu, viewing a listing, or leaving. Widths = users, last 30 days.</div>';
+    if (!rows.length) { card.innerHTML = head + '<div class="finsight muted">No path data for <b>Dallal ' + esc(env) + '</b> yet — the path ETL runs on a slower cadence.</div></div>'; return; }
+    var ok = false;
+    try { ok = !!(window.Chart && Chart.registry && Chart.registry.getController("sankey")); } catch (e) { ok = false; }
+    if (!ok) { card.innerHTML = head + '<div class="finsight muted">Path graph unavailable (the Sankey chart plugin didn’t load).</div></div>'; return; }
+    card.innerHTML = head + '<div class="chartbox" style="height:460px"><canvas id="pathSankey"></canvas></div>' +
+      '<div class="muted" style="font-size:11px;margin-top:8px">Amplitude · Dallal-' + esc(env) + ' · true user transitions (Export API) · the milestone spine reconciles with the funnel above.</div></div>';
+    var edges = rows.map(function (r) { return { from: r.source, to: r.target, flow: num(r.users) }; });
+    var columns = {}; SANKEY_MILE.forEach(function (l, i) { columns[l] = i; });
+    edges.forEach(function (e) { if (columns[e.to] === undefined) columns[e.to] = SANKEY_MILE.length; });
+    var isMile = function (n) { return SANKEY_MILE.indexOf(n) !== -1; };
+    var col = function (n) { return n === "Exited" ? "#c0392b" : isMile(n) ? "#2f6df6" : "#e69500"; };
+    var raw = function (c) { return c.dataset.data[c.dataIndex] || {}; };
+    try {
+      mkChart("pathSankey", {
+        type: "sankey",
+        data: { datasets: [{
+          data: edges,
+          colorFrom: function (c) { return col(raw(c).from); },
+          colorTo: function (c) { return col(raw(c).to); },
+          colorMode: "gradient", column: columns, alpha: 0.5, size: "max"
+        }] },
+        options: { plugins: { legend: { display: false }, tooltip: { callbacks: {
+          label: function (c) { var d = raw(c); return d.from + " → " + d.to + ": " + d.flow + " users"; } } } } }
+      });
+    } catch (e) {
+      card.innerHTML = head + '<div class="finsight muted">Path graph could not render: ' + esc(e.message || String(e)) + '</div></div>';
+    }
   }
 
   // Current running sprint: config override, else latest sprint with delivered
@@ -728,9 +768,10 @@
       sbSelect("fact_repo_health").catch(function () { return []; }),
       sbSelect("fact_vulns").catch(function () { return []; }),
       sbSelect("fact_funnels").catch(function () { return []; }),
+      sbSelect("fact_paths").catch(function () { return []; }),
     ]).then(function (res) {
       data.items = res[0]; data.sprints = res[1]; data.flow = res[2]; data.risks = res[3];
-      data.burndown = res[4]; data.repos = res[5]; data.vulns = res[6]; data.funnels = res[7];
+      data.burndown = res[4]; data.repos = res[5]; data.vulns = res[6]; data.funnels = res[7]; data.paths = res[8];
       loadedOnce = true;
       var def = populateSprintSelect();
       var anySample = data.items.some(function (i) { return String(i.story_points_is_sample) === "1"; });
