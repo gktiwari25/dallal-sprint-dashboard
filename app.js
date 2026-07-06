@@ -244,6 +244,7 @@
     }
     renderRisks(sprint);
     renderCharts(sprint, m);
+    renderTrends(sprint, m);
     renderBurndown(sprint, m);
     renderScopeCreep(sprint, m);
   }
@@ -368,6 +369,73 @@
         backgroundColor: ["#0f8b8d", "#1f6feb", "#f29f05", "#c62828", "#2e7d32", "#6b7a8d", "#9c27b0", "#00897b", "#5d4037"] }] },
       options: { responsive: true, plugins: { legend: { position: "right", labels: { boxWidth: 12, font: { size: 10 } } } } },
     });
+  }
+
+  // Per-sprint aggregate for the trend charts (across the visible sprint window).
+  function sprintAgg(sn) {
+    var mm = compute(sn);
+    var committed = mm.usePts ? mm.committedSP : mm.planned;
+    var delivered = mm.usePts ? mm.deliveredSP : mm.completed;
+    var bugItems = mm.its.filter(isBug);
+    return {
+      sprint: sn, committed: Math.round(committed), delivered: Math.round(delivered),
+      carry: Math.max(0, Math.round(committed - delivered)),
+      predict: mm.predictability != null ? Math.round(mm.predictability * 100) : null,
+      dev: mm.devDays, qa: mm.qaDays, cycle: mm.cycleDays,
+      bugsRaised: bugItems.length, bugsClosed: bugItems.filter(isDone).length,
+    };
+  }
+
+  function renderTrends(sprint, m) {
+    var sns = windowSprints().sort(function (a, b) { return a - b; });
+    var agg = sns.map(sprintAgg);
+    var labels = agg.map(function (a) { return "S" + a.sprint; });
+
+    // KPI row: forecast velocity, flow efficiency, aging of open work.
+    var gids = {}; m.its.forEach(function (i) { gids[i.task_gid] = 1; });
+    var fl = data.flow.filter(function (f) { return gids[f.task_gid]; });
+    var activeD = fl.reduce(function (a, f) { return a + num(f.cycle_days); }, 0);
+    var blockedD = fl.reduce(function (a, f) { return a + num(f.blocked_hours); }, 0) / 24;
+    var flowEff = (activeD + blockedD) > 0 ? activeD / (activeD + blockedD) : null;
+    var now = new Date();
+    var ages = m.its.filter(function (i) { return !isDone(i) && i.created_at; })
+      .map(function (i) { return (now - new Date(i.created_at)) / 86400000; }).filter(function (v) { return v >= 0; });
+    var avgAge = ages.length ? ages.reduce(function (a, b) { return a + b; }, 0) / ages.length : null;
+    var maxAge = ages.length ? Math.max.apply(null, ages) : null;
+    var avgVel = agg.length ? agg.reduce(function (a, x) { return a + x.delivered; }, 0) / agg.length : 0;
+    el("trendKpiGrid").innerHTML =
+      card("Avg Velocity", Math.round(avgVel) + ' <small>SP/sprint</small>', { icon: "⚡", accent: "#0f8b8d", tip: "Mean delivered story points across the last " + agg.length + " sprints — the number to forecast future capacity with." }) +
+      card("Flow Efficiency", flowEff != null ? pct(flowEff) : "--", { icon: "🌊", accent: "#1f6feb", tip: "Active build+test time ÷ (active + blocked) time. Higher = less time stuck waiting. Needs the --with-flow sync." }) +
+      card("Avg Age (open)", avgAge != null ? avgAge.toFixed(1) + ' <small>days</small>' : "--", { icon: "⏳", accent: "#f29f05", tip: "Average days the still-open stories have been alive (created → now). Rising = work is aging." }) +
+      card("Oldest Open", maxAge != null ? Math.round(maxAge) + ' <small>days</small>' : "--", { icon: "🕰️", accent: "#c62828", tip: "Age of the oldest still-open story in this sprint — a candidate to unblock or split." });
+
+    mkChart("predictChart", {
+      type: "bar",
+      data: { labels: labels, datasets: [
+        { type: "bar", label: "Carryover SP", data: agg.map(function (a) { return a.carry; }), backgroundColor: "#f29f05", borderRadius: 5, yAxisID: "y" },
+        { type: "line", label: "Predictability %", data: agg.map(function (a) { return a.predict; }), borderColor: "#1f6feb", backgroundColor: "transparent", tension: .3, yAxisID: "y1" } ] },
+      options: { responsive: true, plugins: { legend: { position: "bottom" } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: "carryover SP" } },
+          y1: { beginAtZero: true, suggestedMax: 100, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "predictability %" } } } } });
+
+    mkChart("cycleTrendChart", { type: "line",
+      data: { labels: labels, datasets: [
+        { label: "Cycle", data: agg.map(function (a) { return a.cycle; }), borderColor: "#0f8b8d", backgroundColor: "transparent", tension: .3 },
+        { label: "Dev", data: agg.map(function (a) { return a.dev; }), borderColor: "#163a5f", backgroundColor: "transparent", tension: .3 },
+        { label: "QA", data: agg.map(function (a) { return a.qa; }), borderColor: "#7b61ff", backgroundColor: "transparent", tension: .3 } ] },
+      options: { responsive: true, plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true, title: { display: true, text: "days" } } } } });
+
+    mkChart("bugTrendChart", { type: "bar",
+      data: { labels: labels, datasets: [
+        { label: "Raised", data: agg.map(function (a) { return a.bugsRaised; }), backgroundColor: "#c62828", borderRadius: 5 },
+        { label: "Closed", data: agg.map(function (a) { return a.bugsClosed; }), backgroundColor: "#2e7d32", borderRadius: 5 } ] },
+      options: { responsive: true, plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true } } } });
+
+    mkChart("wipChart", { type: "bar",
+      data: { labels: ["In Dev", "In QA", "Blocked", "Ready", "Released"],
+        datasets: [{ data: [m.inDev, m.inQA, m.blocked, m.ready, m.released],
+          backgroundColor: ["#7b61ff", "#1f6feb", "#c62828", "#f29f05", "#0f8b8d"], borderRadius: 5, barThickness: 32 }] },
+      options: { indexAxis: "y", responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, title: { display: true, text: "stories" } } } } });
   }
 
   // ---------- engineering page ----------
