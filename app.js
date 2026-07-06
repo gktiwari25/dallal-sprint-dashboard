@@ -677,6 +677,9 @@
     var env = populateFunnelEnv();
     var platform = populateFunnelPlatform(env);
     var fs = funnelsData(env, platform);
+    var METRIC = { "Supply & Demand": 1, "Engagement": 1, "Time to Reach Step (sec)": 1, "Listings Published (weekly)": 1 };
+    var metricFs = fs.filter(function (f) { return METRIC[f.funnel]; });
+    var realFs = fs.filter(function (f) { return !METRIC[f.funnel]; });
     var platLabel = PLATFORM_LABEL[platform] || platform;
     var envNote = env === "PROD"
       ? "<b>Dallal PRODUCTION</b> — real users, last 30 days."
@@ -701,10 +704,11 @@
     if (!fs.length) {
       el("funnelList").innerHTML = intro + '<div class="finsight">No funnel data for <b>Dallal ' + esc(env) +
         '</b> · <b>' + esc(platLabel) + '</b> yet — either no events in the last 30 days, or this platform isn\'t instrumented for these steps.</div>';
+      renderProductMetrics(env, metricFs);
       renderPathSankey(env);
       return;
     }
-    el("funnelList").innerHTML = intro + fs.map(function (f) {
+    el("funnelList").innerHTML = intro + realFs.map(function (f) {
       var users = f.steps.map(function (s) { return s.users; });
       var top = users[0] || 0;
       var ins = funnelInsight(f);
@@ -750,7 +754,37 @@
         '<div class="muted" style="font-size:11px;margin-top:8px">' + esc(f.source) + ' · each step shows its plain-language meaning · the red step is the biggest drop-off.</div>' +
         '</div>';
     }).join("") || '<div class="muted">No funnel data.</div>';
+    renderProductMetrics(env, metricFs);
     renderPathSankey(env);
+  }
+
+  // ---------- Product Health metrics (Supply/Demand, Engagement, Time-to-step, weekly supply) ----------
+  function fmtDur(sec) {
+    sec = num(sec);
+    if (sec < 90) return sec + "s";
+    if (sec < 5400) return Math.round(sec / 60) + "m";
+    if (sec < 172800) return (sec / 3600).toFixed(1) + "h";
+    return (sec / 86400).toFixed(1) + "d";
+  }
+  function renderProductMetrics(env, metricFs) {
+    var host = el("productMetrics"); if (!host) return;
+    if (!metricFs.length) { host.innerHTML = ""; return; }
+    function by(name) { var m = metricFs.filter(function (f) { return f.funnel === name; })[0]; return m ? m.steps : []; }
+    var sd = by("Supply & Demand"), eng = by("Engagement"), tt = by("Time to Reach Step (sec)"), wk = by("Listings Published (weekly)");
+    var h = '<div class="funnelcard" style="margin-top:14px"><div class="fh"><span class="fname">📊 Product Health</span>' +
+      '<span class="ftag">last 30 days · Dallal ' + esc(env) + '</span></div>';
+    if (sd.length) h += '<div class="fwhat" style="margin-bottom:6px"><b>Supply &amp; Demand</b> — the marketplace\'s inputs (listings) and demand signals (searches, leads).</div><div class="grid">' +
+      sd.map(function (s) { var ic = s.name.indexOf("Publish") >= 0 ? "🏠" : s.name.indexOf("Delet") >= 0 ? "🗑️" : s.name.indexOf("Search") >= 0 ? "🔎" : "💬"; return card(s.name, s.users, { icon: ic, accent: "#163a5f" }); }).join("") + "</div>";
+    if (eng.length) h += '<div class="fwhat" style="margin:12px 0 6px"><b>Engagement</b> — active users and <b>stickiness</b> (DAU÷MAU: how often people come back).</div><div class="grid">' +
+      eng.map(function (s) { var st = s.name.indexOf("Stick") >= 0; return card(s.name, s.users + (st ? "%" : ""), { icon: st ? "🧲" : "👥", accent: "#0f8b8d" }); }).join("") + "</div>";
+    if (tt.length) h += '<div class="fwhat" style="margin:12px 0 6px"><b>Time to reach each step</b> — median time from starting a listing; the slowest step is where users linger.</div><div class="grid">' +
+      tt.map(function (s) { return card(s.name, fmtDur(s.users), { icon: "⏱️", accent: "#7b61ff" }); }).join("") + "</div>";
+    if (wk.length) h += '<div class="fwhat" style="margin:12px 0 6px"><b>Listings published — weekly</b> (net new supply; Wk-0 = this week).</div><div class="chartbox" style="height:220px"><canvas id="wkPubChart"></canvas></div>';
+    h += "</div>";
+    host.innerHTML = h;
+    if (wk.length) mkChart("wkPubChart", { type: "line",
+      data: { labels: wk.map(function (s) { return s.name; }), datasets: [{ label: "Published", data: wk.map(function (s) { return num(s.users); }), borderColor: "#2e7d32", backgroundColor: "rgba(46,125,50,.12)", fill: true, tension: .3 }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } });
   }
 
   // ---------- User-path Sankey (fact_paths, computed from raw events) ----------
