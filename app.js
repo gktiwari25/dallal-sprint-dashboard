@@ -564,6 +564,11 @@
   // Plain-language meaning of each step (covers UAT + PROD event names).
   var STEP_GLOSSARY = {
     "Listing Started": "Opened the create-listing flow.",
+    "Started": "Began a listing — reached the address/building step, the first screen every lister hits (regardless of PACI method), so it's the truest count of listings actually started.",
+    "Category": "Chose the property category (apartment, villa, land…).",
+    "Pricing": "Set the asking price / valuation.",
+    "Photos": "Added at least one photo of the property.",
+    "Review": "Reviewed the finished listing before going live.",
     "Property Details": "Entered core details — type, price, bedrooms, area.",
     "Images Uploaded": "Added at least one photo of the property.",
     "Location Selected": "Confirmed the property's address / location.",
@@ -680,7 +685,7 @@
   }
 
   // ---------- User-path Sankey (fact_paths, computed from raw events) ----------
-  var SANKEY_MILE = ["1 Started", "2 PACI", "3 Address", "4 Category", "5 Property Details", "6 Pricing", "7 Photos", "8 Review", "9 Published"];
+  var SANKEY_MILE = ["1 Started", "2 Category", "3 Property Details", "4 Pricing", "5 Photos", "6 Review", "7 Published"];
   function renderPathSankey(env) {
     var card = el("pathSankeyCard"); if (!card) return;
     var rows = (data.paths || []).filter(function (r) { return (r.env || "UAT") === env && num(r.users) > 0; });
@@ -698,8 +703,8 @@
     if (!ok) { card.innerHTML = head + '<div class="finsight muted">Path graph unavailable (the Sankey chart plugin didn’t load).</div></div>'; return; }
     // Short display names (long ones like "5 Property Details" overrun the next
     // node) + the reached-count baked into each node label so numbers read at a glance.
-    var SHORT = { "1 Started": "Start", "2 PACI": "PACI", "3 Address": "Address", "4 Category": "Category",
-      "5 Property Details": "Details", "6 Pricing": "Pricing", "7 Photos": "Photos", "8 Review": "Review", "9 Published": "Published" };
+    var SHORT = { "1 Started": "Start", "2 Category": "Category", "3 Property Details": "Details",
+      "4 Pricing": "Pricing", "5 Photos": "Photos", "6 Review": "Review", "7 Published": "Published" };
     var short = function (n) { return SHORT[n] || n; };
     var edges = rows.map(function (r) { return { from: r.source, to: r.target, flow: num(r.users) }; });
     var inSum = {}, outSum = {};
