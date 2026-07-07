@@ -14,7 +14,7 @@
   var SPRINT_BACK = (cfg.SPRINT_BACK != null) ? cfg.SPRINT_BACK : 2;
   var REQUIRE_AUTH = cfg.REQUIRE_AUTH !== false;
 
-  var data = { items: [], sprints: [], flow: [], risks: [], burndown: [], repos: [], vulns: [], funnels: [] };
+  var data = { items: [], sprints: [], flow: [], risks: [], burndown: [], repos: [], vulns: [], funnels: [], abandoned: [], reengage: [] };
   var velChart, statusChart, burnChart, vulnChart, sbc = null, loadedOnce = false, selectedSprint = null, _collapse = {};
 
   // ---------- helpers ----------
@@ -473,7 +473,6 @@
     if (c === "" && h === "") out.push("vuln scan pending");
     else if (num(c) > 0 || num(h) > 0) out.push(num(c) + " Critical + " + num(h) + " High CVEs");
     if (num(r.unreviewed_merges_30d) > 0) out.push(r.unreviewed_merges_30d + " unreviewed feature merges");
-    if (r.ci_pass_rate_pct !== "" && num(r.ci_pass_rate_pct) < 50) out.push("CI pass rate " + r.ci_pass_rate_pct + "%");
     return out;
   }
   function flag(v) { return (String(v) === "1") ? '<span class="flag-ok">on</span>' : '<span class="flag-no">off</span>'; }
@@ -567,7 +566,11 @@
       '<div class="muted">No engineering risks.</div>';
 
     // Unreviewed feature merges — the actual PR list (who's merging without review).
-    var uprs = (data.unreviewedPrs || []).slice().sort(function (a, b) { return String(b.merged_at || "").localeCompare(String(a.merged_at || "")); });
+    // Bot/agent authors (e.g. @codexkw) are ignored — their merges aren't unreviewed human merges.
+    var IGNORED_PR_AUTHORS = { codexkw: 1 };
+    var uprs = (data.unreviewedPrs || []).filter(function (p) {
+      return !IGNORED_PR_AUTHORS[String(p.author || "").toLowerCase()];
+    }).slice().sort(function (a, b) { return String(b.merged_at || "").localeCompare(String(a.merged_at || "")); });
     var byRepo = {};
     uprs.forEach(function (p) { byRepo[p.repo] = (byRepo[p.repo] || 0) + 1; });
     el("unrevPrGrid").innerHTML =
@@ -586,17 +589,20 @@
   }
 
   function showTab(which) {
-    var isDel = which === "delivery", isEng = which === "eng", isFun = which === "funnels";
+    var isDel = which === "delivery", isEng = which === "eng", isFun = which === "funnels", isMkt = which === "marketing";
     el("sprintView").classList.toggle("hidden", !isDel);
     el("engView").classList.toggle("hidden", !isEng);
     el("funnelView").classList.toggle("hidden", !isFun);
+    el("marketingView").classList.toggle("hidden", !isMkt);
     el("sprintSel").classList.toggle("hidden", !isDel);
     el("sprintLbl").classList.toggle("hidden", !isDel);
     el("tabDelivery").classList.toggle("active", isDel);
     el("tabEng").classList.toggle("active", isEng);
     el("tabFunnels").classList.toggle("active", isFun);
+    el("tabMarketing").classList.toggle("active", isMkt);
     if (isEng) renderEng();
     if (isFun) renderFunnels();
+    if (isMkt) renderMarketing();
   }
 
   // ---------- funnels page ----------
@@ -897,6 +903,195 @@
     }
   }
 
+  // ---------- Marketing: abandoned-listing re-engagement ----------
+  // Message tailored to where the user dropped off (mirrors automate_reengage.py).
+  var MKT_HOOK = {
+    "Started": "You started listing your property but didn't get far — it only takes a few minutes to publish.",
+    "PACI": "You're one step in — just verify your PACI address and your listing is on its way.",
+    "Address": "Your property address is set — add a few details and publish your listing.",
+    "Category": "You picked your category — just the details, price and photos left.",
+    "Property Details": "Your property details are saved — add a price and photos to go live.",
+    "Pricing": "You've set your price — add photos and publish. You're almost there!",
+    "Photos": "You're almost done — just review and publish to go live on Dallal!"
+  };
+  var MKT_SITE = { UAT: "https://uat.dallal.com.kw/registerproperty", PROD: "https://dallal.com.kw/registerproperty" };
+  var mktFilters = { env: null, step: "", source: "", platform: "", lang: "", city: "" };
+  var mktWired = false;
+
+  function mktCompose(u) {
+    var name = ((u.name || "there").split(" ")[0]) || "there";
+    var hook = MKT_HOOK[u.drop_step] || MKT_HOOK.Started;
+    var link = MKT_SITE[u.env] || MKT_SITE.UAT;
+    return {
+      subject: "Your Dallal listing is almost ready",
+      email: "Hi " + name + ",\n\n" + hook + "\n\nPick up right where you left off and publish your property on Dallal:\n" + link + "\n\nNeed a hand? Just reply to this email.\n\n- The Dallal team",
+      whatsapp: "Hi " + name + "! " + hook + " Finish your Dallal listing here: " + link
+    };
+  }
+  function mktLogKey(env) { return "dallal_mkt_dryrun_" + env; }
+  function mktLoadLog(env) { try { return JSON.parse(localStorage.getItem(mktLogKey(env)) || "[]"); } catch (e) { return []; } }
+
+  function mktUniq(rows, key) {
+    var s = {}; rows.forEach(function (r) { var v = (r[key] || "").trim(); if (v) s[v] = 1; });
+    return Object.keys(s).sort();
+  }
+  function mktFill(id, values, cur, allLabel) {
+    var sel = el(id); if (!sel) return;
+    sel.innerHTML = '<option value="">' + allLabel + "</option>" +
+      values.map(function (v) { return '<option value="' + escAttr(v) + '"' + (v === cur ? " selected" : "") + ">" + esc(v) + "</option>"; }).join("");
+  }
+
+  function renderMarketing() {
+    var all = data.abandoned || [];
+    // env selector
+    var envs = mktUniq(all, "env"); if (!envs.length) envs = ["UAT"];
+    if (!mktFilters.env || envs.indexOf(mktFilters.env) === -1) mktFilters.env = envs[0];
+    var envSel = el("mktEnv");
+    if (envSel) envSel.innerHTML = envs.map(function (e) { return '<option value="' + e + '"' + (e === mktFilters.env ? " selected" : "") + ">Dallal " + e + "</option>"; }).join("");
+    var env = mktFilters.env;
+    var pool = all.filter(function (r) { return (r.env || "UAT") === env; });
+
+    // populate segment dropdowns from this env's pool
+    mktFill("mktStep", mktUniq(pool, "drop_step"), mktFilters.step, "All steps");
+    mktFill("mktSource", mktUniq(pool, "source"), mktFilters.source, "All sources");
+    mktFill("mktPlatform", mktUniq(pool, "platform"), mktFilters.platform, "All platforms");
+    mktFill("mktLang", mktUniq(pool, "language"), mktFilters.lang, "All languages");
+    mktFill("mktCity", mktUniq(pool, "city"), mktFilters.city, "All cities");
+
+    if (!mktWired) {
+      mktWired = true;
+      var reRender = function () { renderMarketing(); };
+      el("mktEnv").addEventListener("change", function (e) { mktFilters.env = e.target.value; mktFilters.step = mktFilters.source = mktFilters.platform = mktFilters.lang = mktFilters.city = ""; reRender(); });
+      [["mktStep", "step"], ["mktSource", "source"], ["mktPlatform", "platform"], ["mktLang", "lang"], ["mktCity", "city"]].forEach(function (p) {
+        el(p[0]).addEventListener("change", function (e) { mktFilters[p[1]] = e.target.value; reRender(); });
+      });
+      el("mktRun").addEventListener("click", function () { mktRunDryRun(env); });
+      el("exportMkt").addEventListener("click", function () { mktExport(env); });
+    }
+
+    // apply filters
+    var rows = pool.filter(function (r) {
+      return (!mktFilters.step || r.drop_step === mktFilters.step) &&
+        (!mktFilters.source || r.source === mktFilters.source) &&
+        (!mktFilters.platform || r.platform === mktFilters.platform) &&
+        (!mktFilters.lang || r.language === mktFilters.lang) &&
+        (!mktFilters.city || r.city === mktFilters.city);
+    });
+
+    // KPIs
+    var withEmail = rows.filter(function (r) { return r.email; }).length;
+    var withPhone = rows.filter(function (r) { return r.phone; }).length;
+    var reachable = rows.filter(function (r) { return r.email || r.phone; }).length;
+    // recovered = previously-messaged users no longer in the abandoned set
+    var dry = mktLoadLog(env);
+    var serverLog = (data.reengage || []).filter(function (r) { return (r.env || "UAT") === env; });
+    var messagedIds = {}; dry.concat(serverLog).forEach(function (r) { if (r.amplitude_id) messagedIds[r.amplitude_id] = 1; });
+    var stillAbandoned = {}; pool.forEach(function (r) { stillAbandoned[r.amplitude_id] = 1; });
+    var messagedN = Object.keys(messagedIds).length;
+    var recovered = Object.keys(messagedIds).filter(function (id) { return !stillAbandoned[id]; }).length;
+    var recRate = messagedN ? Math.round(100 * recovered / messagedN) : null;
+
+    el("mktKpis").innerHTML =
+      card("Abandoned (filtered)", rows.length, { icon: "🚪", accent: "#c0392b" }) +
+      card("Reachable", reachable, { icon: "📇", accent: "#163a5f", tip: "Has an email and/or phone on file." }) +
+      card("With email", withEmail, { icon: "✉️", accent: "#0f8b8d" }) +
+      card("With phone", withPhone, { icon: "📱", accent: "#7b61ff" });
+
+    // charts
+    var byStep = {}, bySource = {};
+    rows.forEach(function (r) { byStep[r.drop_step || "?"] = (byStep[r.drop_step || "?"] || 0) + 1; var s = r.source || "direct"; bySource[s] = (bySource[s] || 0) + 1; });
+    var STEP_ORDER = ["Started", "PACI", "Address", "Category", "Property Details", "Pricing", "Photos"];
+    var stepLabels = STEP_ORDER.filter(function (s) { return byStep[s]; });
+    Object.keys(byStep).forEach(function (s) { if (stepLabels.indexOf(s) === -1) stepLabels.push(s); });
+    mkChart("mktStepChart", { type: "bar",
+      data: { labels: stepLabels, datasets: [{ label: "Users", data: stepLabels.map(function (s) { return byStep[s]; }), backgroundColor: "#c0392b" }] },
+      options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } });
+    var srcLabels = Object.keys(bySource).sort(function (a, b) { return bySource[b] - bySource[a]; });
+    mkChart("mktSourceChart", { type: "bar",
+      data: { labels: srcLabels, datasets: [{ label: "Users", data: srcLabels.map(function (s) { return bySource[s]; }), backgroundColor: "#163a5f" }] },
+      options: { indexAxis: "y", responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } } });
+
+    // campaign KPIs + log
+    el("mktCampaignKpis").innerHTML =
+      card("Messaged (dry-run + sent)", messagedN, { icon: "📨", accent: "#7b61ff", tip: "Distinct users a campaign has composed for (dry-run logged locally, plus any server-side sends)." }) +
+      card("Recovered", recovered, { icon: "✅", accent: "#2e7d32", tip: "Messaged users who are no longer in the abandoned set (they published)." }) +
+      card("Recovery rate", recRate == null ? "--" : recRate + "%", { icon: "📈", accent: "#2e7d32", bar: recRate || 0, barColor: "#2e7d32" }) +
+      card("Last dry-run", dry.length ? (dry[0].at || "").replace("T", " ").slice(0, 16) : "—", { icon: "🕓", accent: "#163a5f" });
+
+    renderMktCampaignLog(env, dry);
+    renderMktList(rows);
+  }
+
+  function renderMktList(rows) {
+    var host = el("mktList"); if (!host) return;
+    if (!rows.length) { host.innerHTML = '<div class="muted">No abandoned users match these filters. 🎉</div>'; return; }
+    rows.sort(function (a, b) { return String(b.last_seen || "").localeCompare(String(a.last_seen || "")); });
+    host.innerHTML = rows.map(function (u) {
+      var m = mktCompose(u);
+      var segs = [u.drop_step, u.city, u.language, u.platform, u.source, u.user_type].filter(Boolean).map(function (s) { return esc(s); }).join(" &middot; ");
+      var mailto = u.email ? '<a class="tasklink" href="mailto:' + escAttr(u.email) + "?subject=" + encodeURIComponent(m.subject) + "&body=" + encodeURIComponent(m.email) + '">✉️ Email</a>' : "";
+      var wa = u.phone ? '<a class="tasklink" href="https://wa.me/' + escAttr((u.phone + "").replace(/[^0-9]/g, "")) + "?text=" + encodeURIComponent(m.whatsapp) + '" target="_blank" rel="noopener">💬 WhatsApp</a>' : "";
+      var contact = [u.email ? esc(u.email) : "", u.phone ? esc(u.phone) : ""].filter(Boolean).join(" &middot; ") || '<span class="muted">no contact on file</span>';
+      return '<div class="taskrow"><div class="tasktitle">' +
+        '<span style="font-weight:600">' + esc(u.name || "(unknown user)") + '</span>' +
+        ' <span class="rag red" style="font-size:11px">dropped at ' + esc(u.drop_step || "?") + '</span>' +
+        '<div class="muted" style="font-size:12px;margin-top:2px">' + segs + '</div>' +
+        '<div class="muted" style="font-size:12px;margin-top:2px">' + contact + ' &middot; last seen ' + esc((u.last_seen || "").replace("T", " ")) + '</div>' +
+        '<div style="margin-top:6px;display:flex;gap:14px">' + mailto + wa + '</div>' +
+        '</div></div>';
+    }).join("");
+  }
+
+  function renderMktCampaignLog(env, dry) {
+    var host = el("mktCampaignLog"); if (!host) return;
+    if (!dry.length) { host.innerHTML = '<div class="muted">No campaign run yet. Click <b>Preview dry-run</b> to compose the Email + WhatsApp each abandoned user would receive (nothing is sent).</div>'; return; }
+    var last = dry[0];
+    var items = (last.items || []).slice(0, 40);
+    host.innerHTML = '<div class="muted" style="margin-bottom:8px">Dry-run at <b>' + esc((last.at || "").replace("T", " ").slice(0, 16)) +
+      '</b> — composed for <b>' + (last.items || []).length + '</b> users (' + last.emails + ' email, ' + last.whatsapps + ' WhatsApp). Nothing was sent.</div>' +
+      items.map(function (it) {
+        return '<div class="taskrow"><div class="tasktitle">' +
+          '<span style="font-weight:600">' + esc(it.name || "(unknown)") + '</span> <span class="muted" style="font-size:12px">· ' + esc(it.drop_step) + ' · ' + esc(it.channels) + '</span>' +
+          '<div class="muted" style="font-size:12px;margin-top:3px;white-space:pre-wrap">' + esc(it.preview) + '</div>' +
+          '</div></div>';
+      }).join("") + ((last.items || []).length > 40 ? '<div class="muted" style="margin-top:6px">…and ' + ((last.items || []).length - 40) + ' more.</div>' : "");
+  }
+
+  function mktRunDryRun(env) {
+    var pool = (data.abandoned || []).filter(function (r) {
+      return (r.env || "UAT") === env &&
+        (!mktFilters.step || r.drop_step === mktFilters.step) &&
+        (!mktFilters.source || r.source === mktFilters.source) &&
+        (!mktFilters.platform || r.platform === mktFilters.platform) &&
+        (!mktFilters.lang || r.language === mktFilters.lang) &&
+        (!mktFilters.city || r.city === mktFilters.city);
+    });
+    var emails = 0, whatsapps = 0, ids = {}, items = [];
+    pool.forEach(function (u) {
+      var m = mktCompose(u); var chans = [];
+      if (u.email) { emails++; chans.push("email"); }
+      if (u.phone) { whatsapps++; chans.push("whatsapp"); }
+      if (!chans.length) return;
+      ids[u.amplitude_id] = 1;
+      items.push({ amplitude_id: u.amplitude_id, name: u.name, drop_step: u.drop_step, channels: chans.join(" + "), preview: m.email });
+    });
+    var entry = { at: new Date().toISOString(), emails: emails, whatsapps: whatsapps, count: Object.keys(ids).length, items: items };
+    var log = mktLoadLog(env); log.unshift(entry); log = log.slice(0, 10);
+    try { localStorage.setItem(mktLogKey(env), JSON.stringify(log)); } catch (e) {}
+    renderMarketing();
+  }
+
+  function mktExport(env) {
+    var rows = (data.abandoned || []).filter(function (r) { return (r.env || "UAT") === env; });
+    var cols = ["env", "name", "email", "phone", "drop_step", "source", "platform", "city", "region", "country", "language", "user_type", "started_at", "last_seen"];
+    var csv = cols.join(",") + "\n" + rows.map(function (r) {
+      return cols.map(function (c) { var v = (r[c] == null ? "" : String(r[c])).replace(/"/g, '""'); return /[",\n]/.test(v) ? '"' + v + '"' : v; }).join(",");
+    }).join("\n");
+    var blob = new Blob([csv], { type: "text/csv" });
+    var a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = "abandoned_listers_" + env + ".csv"; a.click();
+  }
+
   // Current running sprint: config override, else latest sprint with delivered
   // work, +1 (the next one is "running"). Used to window the dropdown/trend.
   function currentSprint() {
@@ -961,10 +1156,12 @@
       sbSelect("fact_funnels").catch(function () { return []; }),
       sbSelect("fact_paths").catch(function () { return []; }),
       sbSelect("fact_unreviewed_prs").catch(function () { return []; }),
+      sbSelect("fact_abandoned_listers").catch(function () { return []; }),
+      sbSelect("fact_reengagement_log").catch(function () { return []; }),
     ]).then(function (res) {
       data.items = res[0]; data.sprints = res[1]; data.flow = res[2]; data.risks = res[3];
       data.burndown = res[4]; data.repos = res[5]; data.vulns = res[6]; data.funnels = res[7]; data.paths = res[8];
-      data.unreviewedPrs = res[9];
+      data.unreviewedPrs = res[9]; data.abandoned = res[10]; data.reengage = res[11];
       loadedOnce = true;
       var def = populateSprintSelect();
       var anySample = data.items.some(function (i) { return String(i.story_points_is_sample) === "1"; });
@@ -974,6 +1171,7 @@
       render(def);
       if (!el("engView").classList.contains("hidden")) renderEng();
       if (!el("funnelView").classList.contains("hidden")) renderFunnels();
+      if (!el("marketingView").classList.contains("hidden")) renderMarketing();
     }).catch(function (e) {
       el("error").textContent = "Could not load data: " + e.message +
         "  -  ensure web_read_policies.sql is applied and your account can read.";
@@ -1052,6 +1250,7 @@
     el("tabDelivery").addEventListener("click", function () { showTab("delivery"); });
     el("tabEng").addEventListener("click", function () { showTab("eng"); });
     el("tabFunnels").addEventListener("click", function () { showTab("funnels"); });
+    el("tabMarketing").addEventListener("click", function () { showTab("marketing"); });
     el("exportRepoHealth").addEventListener("click", exportRepoHealth);
     el("exportVulns").addEventListener("click", exportVulns);
     el("exportEngRisks").addEventListener("click", exportEngRisks);
