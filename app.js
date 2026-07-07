@@ -503,6 +503,24 @@
       { key: "direct", label: "Direct dependency" }, { key: "summary", label: "What it is" },
     ]));
   }
+  function exportRepoHealth() {
+    var rows = (data.repos || []);
+    downloadCSV("dallal-engineering-repo-health-" + csvStamp() + ".csv", toCSV(rows, [
+      { key: "repo", label: "Repo" },
+      { key: "posture", label: "Posture" },
+      { label: "Why posture", val: function (r) { return postureReason(r).join(" | "); } },
+      { key: "ci_pass_rate_pct", label: "CI pass rate %" },
+      { key: "ci_runs_sampled", label: "CI runs sampled" },
+      { key: "review_coverage_pct", label: "PR review coverage %" },
+      { key: "unreviewed_merges_30d", label: "Unreviewed feature merges (30d)" },
+      { key: "merged_prs_30d", label: "Merged feature PRs (30d)" },
+      { key: "open_critical", label: "Open Critical CVEs" },
+      { key: "open_high", label: "Open High CVEs" },
+      { key: "open_medium", label: "Open Medium CVEs" },
+      { key: "branch_protection", label: "Branch protection" },
+      { key: "default_branch", label: "Default branch" },
+    ]));
+  }
   function exportEngRisks() {
     var rows = (data.risks || []).filter(isEngRisk);
     downloadCSV("dallal-engineering-risks-" + csvStamp() + ".csv", toCSV(rows, [
@@ -547,6 +565,24 @@
     var engRisks = data.risks.filter(isEngRisk);
     el("engRiskList").innerHTML = engRisks.map(riskCardHtml).join("") ||
       '<div class="muted">No engineering risks.</div>';
+
+    // Unreviewed feature merges — the actual PR list (who's merging without review).
+    var uprs = (data.unreviewedPrs || []).slice().sort(function (a, b) { return String(b.merged_at || "").localeCompare(String(a.merged_at || "")); });
+    var byRepo = {};
+    uprs.forEach(function (p) { byRepo[p.repo] = (byRepo[p.repo] || 0) + 1; });
+    el("unrevPrGrid").innerHTML =
+      card("Unreviewed PRs (30d)", uprs.length, { icon: "🔓", accent: uprs.length ? "#c62828" : "#2e7d32", tip: "Feature/bugfix PRs merged into dev with no approving review in the last 30 days. Promotion PRs (dev→uat) are excluded — that code was reviewed on dev." }) +
+      ["Dallal-BE-ROR", "Dallal-ReactJs", "Dallal-React-Native-Mobile"].map(function (r) {
+        return card(r.replace("Dallal-", ""), byRepo[r] || 0, { icon: "📦", accent: (byRepo[r] || 0) ? "#b9820a" : "#2e7d32" });
+      }).join("");
+    el("unrevPrList").innerHTML = listBlock("unrevpr", "Feature PRs merged without an approving review &middot; " + uprs.length,
+      uprs.length ? uprs.map(function (p) {
+        return '<div class="taskrow"><div class="tasktitle">' +
+          '<a class="tasklink" href="' + esc(p.url || "#") + '" target="_blank" rel="noopener">' +
+          esc((p.repo || "").replace("Dallal-", "")) + " #" + esc(String(p.pr_number)) + " &#8599;</a>" +
+          '<span class="muted"> &middot; @' + esc(p.author || "?") + " &middot; " + esc(p.merged_at || "") + " &rarr; " + esc(p.base || "") + "</span>" +
+          '<div class="muted" style="font-size:12px;margin-top:2px">' + esc(p.title || "") + "</div></div></div>";
+      }).join("") : '<div class="muted">No unreviewed feature merges in the last 30 days. 🎉</div>');
   }
 
   function showTab(which) {
@@ -924,9 +960,11 @@
       sbSelect("fact_vulns").catch(function () { return []; }),
       sbSelect("fact_funnels").catch(function () { return []; }),
       sbSelect("fact_paths").catch(function () { return []; }),
+      sbSelect("fact_unreviewed_prs").catch(function () { return []; }),
     ]).then(function (res) {
       data.items = res[0]; data.sprints = res[1]; data.flow = res[2]; data.risks = res[3];
       data.burndown = res[4]; data.repos = res[5]; data.vulns = res[6]; data.funnels = res[7]; data.paths = res[8];
+      data.unreviewedPrs = res[9];
       loadedOnce = true;
       var def = populateSprintSelect();
       var anySample = data.items.some(function (i) { return String(i.story_points_is_sample) === "1"; });
@@ -1014,6 +1052,7 @@
     el("tabDelivery").addEventListener("click", function () { showTab("delivery"); });
     el("tabEng").addEventListener("click", function () { showTab("eng"); });
     el("tabFunnels").addEventListener("click", function () { showTab("funnels"); });
+    el("exportRepoHealth").addEventListener("click", exportRepoHealth);
     el("exportVulns").addEventListener("click", exportVulns);
     el("exportEngRisks").addEventListener("click", exportEngRisks);
     el("funnelEnv").addEventListener("change", function () { try { localStorage.setItem("dallal_funnel_env", this.value); } catch (e) {} renderFunnels(); });
