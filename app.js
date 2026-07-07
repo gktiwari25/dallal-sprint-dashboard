@@ -967,6 +967,14 @@
       // which would otherwise pin these to whatever env was default on first render.
       el("mktRun").addEventListener("click", function () { mktRunDryRun(mktFilters.env); });
       el("exportMkt").addEventListener("click", function () { mktExport(mktFilters.env); });
+      // Collapsible Abandoned Users section (state persisted).
+      var tog = el("mktUsersToggle");
+      if (tog) {
+        tog.addEventListener("click", mktToggleUsers);
+        tog.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); mktToggleUsers(); } });
+        var saved = null; try { saved = localStorage.getItem("dallal_mkt_users_collapsed"); } catch (e) {}
+        if (saved === "1") mktToggleUsers();
+      }
     }
 
     // apply filters
@@ -1022,8 +1030,19 @@
     renderMktList(rows);
   }
 
+  function mktToggleUsers() {
+    var body = el("mktUsersBody"), tog = el("mktUsersToggle"); if (!body || !tog) return;
+    var ic = tog.querySelector(".collapse-ic");
+    var collapsed = body.style.display === "none";   // currently collapsed? -> expand
+    body.style.display = collapsed ? "" : "none";
+    if (ic) ic.innerHTML = collapsed ? "&#9662;" : "&#9656;";   // ▾ open / ▸ closed
+    tog.setAttribute("aria-expanded", collapsed ? "true" : "false");
+    try { localStorage.setItem("dallal_mkt_users_collapsed", collapsed ? "0" : "1"); } catch (e) {}
+  }
+
   function renderMktList(rows) {
     var host = el("mktList"); if (!host) return;
+    var cnt = el("mktUsersCount"); if (cnt) cnt.textContent = rows.length ? "· " + rows.length + " user" + (rows.length === 1 ? "" : "s") : "";
     if (!rows.length) { host.innerHTML = '<div class="muted">No abandoned users match these filters. 🎉</div>'; return; }
     rows.sort(function (a, b) { return String(b.last_seen || "").localeCompare(String(a.last_seen || "")); });
     host.innerHTML = rows.map(function (u) {
