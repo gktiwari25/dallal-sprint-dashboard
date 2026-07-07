@@ -967,14 +967,9 @@
       // which would otherwise pin these to whatever env was default on first render.
       el("mktRun").addEventListener("click", function () { mktRunDryRun(mktFilters.env); });
       el("exportMkt").addEventListener("click", function () { mktExport(mktFilters.env); });
-      // Collapsible Abandoned Users section (state persisted).
-      var tog = el("mktUsersToggle");
-      if (tog) {
-        tog.addEventListener("click", mktToggleUsers);
-        tog.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); mktToggleUsers(); } });
-        var saved = null; try { saved = localStorage.getItem("dallal_mkt_users_collapsed"); } catch (e) {}
-        if (saved === "1") mktToggleUsers();
-      }
+      // Collapsible sections (state persisted per section).
+      mktWireCollapse("mktListingsToggle", "mktListingsBody", "dallal_mkt_listings_collapsed");
+      mktWireCollapse("mktUsersToggle", "mktUsersBody", "dallal_mkt_users_collapsed");
     }
 
     // apply filters
@@ -1030,14 +1025,23 @@
     renderMktList(rows);
   }
 
-  function mktToggleUsers() {
-    var body = el("mktUsersBody"), tog = el("mktUsersToggle"); if (!body || !tog) return;
+  // Generic collapsible section: toggles a .body's visibility, swaps the ▾/▸ icon,
+  // and persists the collapsed state under `key`.
+  function mktToggleSection(body, tog, key) {
+    if (!body || !tog) return;
     var ic = tog.querySelector(".collapse-ic");
     var collapsed = body.style.display === "none";   // currently collapsed? -> expand
     body.style.display = collapsed ? "" : "none";
     if (ic) ic.innerHTML = collapsed ? "&#9662;" : "&#9656;";   // ▾ open / ▸ closed
     tog.setAttribute("aria-expanded", collapsed ? "true" : "false");
-    try { localStorage.setItem("dallal_mkt_users_collapsed", collapsed ? "0" : "1"); } catch (e) {}
+    try { localStorage.setItem(key, collapsed ? "0" : "1"); } catch (e) {}
+  }
+  function mktWireCollapse(togId, bodyId, key) {
+    var tog = el(togId), body = el(bodyId); if (!tog || !body) return;
+    tog.addEventListener("click", function () { mktToggleSection(body, tog, key); });
+    tog.addEventListener("keydown", function (e) { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); mktToggleSection(body, tog, key); } });
+    var saved = null; try { saved = localStorage.getItem(key); } catch (e) {}
+    if (saved === "1") mktToggleSection(body, tog, key);   // restore collapsed
   }
 
   function renderMktList(rows) {

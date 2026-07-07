@@ -7,9 +7,9 @@
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
 <title>Dallal Sprint Dashboard</title>
-<link rel="icon" type="image/png" href="dallal-favicon.png?v=63" />
+<link rel="icon" type="image/png" href="dallal-favicon.png?v=64" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
-<link rel="stylesheet" href="styles.css?v=63" />
+<link rel="stylesheet" href="styles.css?v=64" />
 </head>
 <body>
 
@@ -238,11 +238,7 @@
 
   <!-- MARKETING VIEW -->
   <div id="marketingView" class="hidden">
-    <div class="section" id="mktUsersSec"><h2 class="collapse-h" id="mktUsersToggle" role="button" tabindex="0" aria-expanded="true" style="cursor:pointer;user-select:none;display:flex;align-items:center;gap:9px"><span class="collapse-ic" style="font-size:15px;color:var(--muted);width:14px;display:inline-block">&#9662;</span>Abandoned Users <span class="muted" id="mktUsersCount" style="font-size:14px;font-weight:400"></span></h2><div class="body" id="mktUsersBody">
-      <div id="mktList" class="listblock"></div>
-    </div></div>
-
-    <div class="section"><h2>Abandoned Listings — Re-engagement</h2><div class="body">
+    <div class="section"><h2 class="collapse-h" id="mktListingsToggle" role="button" tabindex="0" aria-expanded="true" style="cursor:pointer;user-select:none;display:flex;align-items:center;gap:9px"><span class="collapse-ic" style="font-size:15px;color:var(--muted);width:14px;display:inline-block">&#9662;</span>Abandoned Listings — Re-engagement</h2><div class="body" id="mktListingsBody">
       <p class="muted" style="margin:0 0 12px">Users who <b>started listing a property but never published</b> (last 30 days). Message them where they dropped off to recover supply. Automation runs as a <b>dry-run</b> (composes &amp; logs, sends nothing) until email/WhatsApp credentials are wired up — send to any individual now with the per-row <b>Email</b> / <b>WhatsApp</b> buttons.</p>
       <div style="display:flex;align-items:center;gap:10px;margin:0 0 14px;flex-wrap:wrap">
         <label class="sub" for="mktEnv" style="color:var(--muted)">Environment</label>
@@ -265,6 +261,10 @@
       </div>
     </div></div>
 
+    <div class="section" id="mktUsersSec"><h2 class="collapse-h" id="mktUsersToggle" role="button" tabindex="0" aria-expanded="true" style="cursor:pointer;user-select:none;display:flex;align-items:center;gap:9px"><span class="collapse-ic" style="font-size:15px;color:var(--muted);width:14px;display:inline-block">&#9662;</span>Abandoned Users <span class="muted" id="mktUsersCount" style="font-size:14px;font-weight:400"></span></h2><div class="body" id="mktUsersBody">
+      <div id="mktList" class="listblock"></div>
+    </div></div>
+
     <div class="section"><h2 class="sech">Automated Campaign — dry-run <button id="mktRun" class="expbtn" type="button" title="Compose the personalised Email + WhatsApp each abandoned user would receive (dry-run, nothing is sent) and log it locally">&#9654; Preview dry-run</button> <button id="exportMkt" class="expbtn" type="button" title="Download the abandoned-lister list as CSV">&#x2913; Export CSV</button></h2><div class="body">
       <div class="grid" id="mktCampaignKpis"></div>
       <div id="mktCampaignLog" class="listblock"></div>
@@ -277,9 +277,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-sankey@0.12.1/dist/chartjs-chart-sankey.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=63"></script>
-<script src="sample-data.js?v=63"></script>
-<script src="funnels-data.js?v=63"></script>
-<script src="app.js?v=63"></script>
+<script src="config.js?v=64"></script>
+<script src="sample-data.js?v=64"></script>
+<script src="funnels-data.js?v=64"></script>
+<script src="app.js?v=64"></script>
 </body>
 </html>
