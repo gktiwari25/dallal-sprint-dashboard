@@ -508,8 +508,6 @@
       { key: "repo", label: "Repo" },
       { key: "posture", label: "Posture" },
       { label: "Why posture", val: function (r) { return postureReason(r).join(" | "); } },
-      { key: "ci_pass_rate_pct", label: "CI pass rate %" },
-      { key: "ci_runs_sampled", label: "CI runs sampled" },
       { key: "review_coverage_pct", label: "PR review coverage %" },
       { key: "unreviewed_merges_30d", label: "Unreviewed feature merges (30d)" },
       { key: "merged_prs_30d", label: "Merged feature PRs (30d)" },
@@ -537,8 +535,7 @@
         '<span class="rag ' + postureClass(r.posture) + '">' + esc(r.posture) + "</span></div>" +
         (reason.length ? '<div class="preason">Why ' + esc(r.posture) + ": " + reason.map(esc).join(" &middot; ") + "</div>" : "") +
         kv("PR review coverage", pctOr(r.review_coverage_pct), "Share of FEATURE PRs into dev merged with an approving review. Release-promotion PRs (dev→uat) are excluded. NB: this is code-review %, not test coverage.") +
-        kv("Unreviewed feature merges", r.unreviewed_merges_30d, "Feature PRs merged into dev with no approving review. Promotion PRs (dev→uat) are NOT counted.") +
-        kv("CI pass rate", pctOr(r.ci_pass_rate_pct), "Share of the last ~30 CI workflow runs that passed.") + "</div>";
+        kv("Unreviewed feature merges", r.unreviewed_merges_30d, "Feature PRs merged into dev with no approving review. Promotion PRs (dev→uat) are NOT counted.") + "</div>";
     }).join("") || '<div class="card muted">No repo data. Run etl_github.py.</div>';
 
     el("postureCards").innerHTML = repos.map(function (r) {
