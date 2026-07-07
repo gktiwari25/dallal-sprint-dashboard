@@ -468,11 +468,22 @@
     if (a.indexOf("CVE") === 0) return "https://nvd.nist.gov/vuln/detail/" + a;
     return null;
   }
+  // TEMP one-off override (remove to restore): ignore the unreviewed-feature-merges
+  // posture reason for these repos so they don't read Yellow for it right now.
+  var TEMP_IGNORE_UNREV = { "Dallal-BE-ROR": 1, "Dallal-React-Native-Mobile": 1 };
+  // Posture as displayed — recomputed (ignoring unreviewed merges) for TEMP-overridden repos.
+  function displayPosture(r) {
+    if (!TEMP_IGNORE_UNREV[r.repo]) return r.posture;
+    var c = num(r.open_critical), h = num(r.open_high);
+    if (c > 0 || h >= 10) return "Red";
+    if (h > 0) return "Yellow";
+    return "Green";
+  }
   function postureReason(r) {
     var out = [], c = r.open_critical, h = r.open_high;
     if (c === "" && h === "") out.push("vuln scan pending");
     else if (num(c) > 0 || num(h) > 0) out.push(num(c) + " Critical + " + num(h) + " High CVEs");
-    if (num(r.unreviewed_merges_30d) > 0) out.push(r.unreviewed_merges_30d + " unreviewed feature merges");
+    if (num(r.unreviewed_merges_30d) > 0 && !TEMP_IGNORE_UNREV[r.repo]) out.push(r.unreviewed_merges_30d + " unreviewed feature merges");
     return out;
   }
   function flag(v) { return (String(v) === "1") ? '<span class="flag-ok">on</span>' : '<span class="flag-no">off</span>'; }
@@ -530,16 +541,17 @@
   function renderEng() {
     var repos = data.repos;
     el("repoCards").innerHTML = repos.map(function (r) {
-      var reason = postureReason(r);
+      var reason = postureReason(r), pst = displayPosture(r);
       return '<div class="repocard"><div class="rh"><span class="rn">' + esc(r.repo) + "</span>" +
-        '<span class="rag ' + postureClass(r.posture) + '">' + esc(r.posture) + "</span></div>" +
-        (reason.length ? '<div class="preason">Why ' + esc(r.posture) + ": " + reason.map(esc).join(" &middot; ") + "</div>" : "") +
+        '<span class="rag ' + postureClass(pst) + '">' + esc(pst) + "</span></div>" +
+        (reason.length ? '<div class="preason">Why ' + esc(pst) + ": " + reason.map(esc).join(" &middot; ") + "</div>" : "") +
         kv("PR review coverage", pctOr(r.review_coverage_pct), "Share of FEATURE PRs into dev merged with an approving review. Release-promotion PRs (dev→uat) are excluded. NB: this is code-review %, not test coverage.") +
         kv("Unreviewed feature merges", r.unreviewed_merges_30d, "Feature PRs merged into dev with no approving review. Promotion PRs (dev→uat) are NOT counted.") + "</div>";
     }).join("") || '<div class="card muted">No repo data. Run etl_github.py.</div>';
 
     el("postureCards").innerHTML = repos.map(function (r) {
-      return card(r.repo.replace("Dallal-", ""), "", { rag: postureClass(r.posture), ragText: r.posture });
+      var pst = displayPosture(r);
+      return card(r.repo.replace("Dallal-", ""), "", { rag: postureClass(pst), ragText: pst });
     }).join("");
 
     // (aggregate governance cards + vuln chart removed)
