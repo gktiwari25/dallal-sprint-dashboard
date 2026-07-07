@@ -111,18 +111,19 @@
   }
 
   // ---------- metric computation ----------
-  // Pre-development staging columns: work that's only an idea/design or has been
-  // handed off but not started. It isn't committed sprint scope, so these tickets
-  // are excluded from every delivery/status metric and list below — including the
-  // "Stories Planned" count. Board columns excluded:
+  // Still-ideating columns excluded from every delivery/status metric — work that's
+  // only an idea or in design, NOT yet committed. Excluded board columns:
   //   • Backlog - Idea / Refinement / Design
   //   • Design In-Progress
-  //   • Ready for Development (handoff complete)
-  // (NOTE: "Sprint Planned" is intentionally NOT excluded — it is committed scope.)
+  // INCLUDED (committed scope): "Ready for Development (handoff complete)" and every
+  // downstream column (In Development, QA, UAT, Released, Reopen, Sprint Planned…).
   function isPreSprint(i) {
-    return /backlog\s*-\s*idea|design\s*in-?progress|ready for development/i.test(i.section || "");
+    return /backlog\s*-\s*idea|design\s*in-?progress/i.test(i.section || "");
   }
   function compute(sprint) {
+    // Any ticket carrying this Sprint number counts — EXCEPT still-ideating columns
+    // (Backlog - Idea / Refinement / Design, Design In-Progress). "Ready for Development
+    // (handoff complete)" and everything downstream IS committed scope and is included.
     var its = data.items.filter(function (i) { return String(i.sprint) === String(sprint) && !isPreSprint(i); });
     var dim = data.sprints.filter(function (s) { return String(s.sprint) === String(sprint); })[0] || {};
     var committedSP = its.reduce(function (a, i) { return a + num(i.story_points); }, 0);
@@ -193,8 +194,9 @@
     drawGauge("gProgress", m.progress, goalHex);
     drawGauge("gPredict", m.predictability, "#1f6feb");
     drawGauge("gCarry", m.carryFwd, "#f29f05");
-    el("healthNote").textContent = m.usePts ? "" :
-      "Story Points not set in Asana for this sprint — Sprint Health is showing item counts. It switches to SP automatically once tasks are estimated.";
+    el("healthNote").innerHTML = m.usePts
+      ? 'Progress, Predictability &amp; Carry-Forward are measured in <b>story points</b> — ' + Math.round(m.deliveredSP) + '/' + Math.round(m.committedSP) + ' SP delivered (' + pct(m.progress) + '), so Carry-Forward = ' + pct(m.carryFwd) + '. By <b>item count</b> it\'s ' + m.completed + '/' + m.planned + ' stories done (' + pct(m.planned ? m.completed / m.planned : 0) + '). The two differ when the completed stories are smaller — or unestimated — versus the ones still open.'
+      : "Story Points not set in Asana for this sprint — Sprint Health is showing item counts. It switches to SP automatically once tasks are estimated.";
 
     el("deliveryGrid").innerHTML =
       card("Stories Planned", m.planned, { icon: "📋", accent: "#163a5f" }) +
@@ -333,7 +335,7 @@
   function renderRisks(sprint) {
     // Delivery Risks: curated current risks (not sprint-filtered — carryover risks
     // like the Map epic span sprints). Repo/security risks live on Engineering.
-    var rs = data.risks.filter(function (r) { return !isEngRisk(r); });
+    var rs = data.risks.filter(function (r) { return !isEngRisk(r) && String(r.sprint) === String(sprint); });
     var counts = { red: 0, amber: 0, green: 0 };
     rs.forEach(function (r) { var k = (r.rag || "").toLowerCase(); if (counts[k] != null) counts[k]++; });
     el("riskCards").innerHTML =
@@ -341,7 +343,7 @@
       card("Amber", '<span class="dot amber"></span> ' + counts.amber) +
       card("Green", '<span class="dot green"></span> ' + counts.green);
     el("riskList").innerHTML = rs.map(riskCardHtml).join("") ||
-      '<div class="muted">No delivery risks recorded for this sprint.</div>';
+      '<div class="muted">No delivery risks logged for Sprint ' + esc(String(sprint)) + '. Risks are a <b>manually-curated</b> list (the Supabase <code>risks</code> table) — add rows there to surface them here. (Security/repo risks live on the Engineering tab.)</div>';
   }
 
   // Escape text, then turn any URL into a clickable link (e.g. Asana story links).
@@ -429,7 +431,7 @@
 
     mkChart("bugTrendChart", { type: "bar",
       data: { labels: labels, datasets: [
-        { label: "Raised", data: agg.map(function (a) { return a.bugsRaised; }), backgroundColor: "#c62828", borderRadius: 5 },
+        { label: "Total bugs in sprint", data: agg.map(function (a) { return a.bugsRaised; }), backgroundColor: "#c62828", borderRadius: 5 },
         { label: "Closed", data: agg.map(function (a) { return a.bugsClosed; }), backgroundColor: "#2e7d32", borderRadius: 5 } ] },
       options: { responsive: true, plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true } } } });
 
@@ -879,11 +881,14 @@
     // empty, not-yet-started future sprint, so it's now only a fallback.
     var saved = selectedSprint; if (!saved) { try { saved = localStorage.getItem("dallal_sprint"); } catch (e) {} }
     var inList = function (n) { return sprints.indexOf(num(n)) !== -1; };
-    var hasWork = function (n) { return compute(n).planned > 0; };
-    var withWork = sprints.filter(hasWork);   // sprints is sorted desc → [0] = latest with work
-    var def = (saved && inList(saved) && hasWork(num(saved))) ? num(saved)
-      : withWork.length ? withWork[0]
-      : (currentSprint() && inList(currentSprint())) ? currentSprint()
+    // Default to the ACTIVE sprint = the latest sprint that has delivered work. Future
+    // sprints now carry backlog/design items too, so "latest with any work" would jump
+    // to the furthest future planning sprint — delivered-work is the right signal.
+    var delivered = sprints.filter(function (n) {
+      return data.items.some(function (i) { return String(i.sprint) === String(n) && String(i.is_delivered) === "1"; });
+    });
+    var def = (saved && inList(saved)) ? num(saved)
+      : delivered.length ? delivered[0]
       : (DEFAULT_SPRINT && inList(DEFAULT_SPRINT)) ? num(DEFAULT_SPRINT)
       : sprints[0];
     sel.value = def; selectedSprint = String(def); return def;
