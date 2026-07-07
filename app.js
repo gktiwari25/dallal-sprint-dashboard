@@ -1029,9 +1029,12 @@
       var mailto = u.email ? '<a class="tasklink" href="mailto:' + escAttr(u.email) + "?subject=" + encodeURIComponent(m.subject) + "&body=" + encodeURIComponent(m.email) + '">✉️ Email</a>' : "";
       var wa = u.phone ? '<a class="tasklink" href="https://wa.me/' + escAttr((u.phone + "").replace(/[^0-9]/g, "")) + "?text=" + encodeURIComponent(m.whatsapp) + '" target="_blank" rel="noopener">💬 WhatsApp</a>' : "";
       var contact = [u.email ? esc(u.email) : "", u.phone ? esc(u.phone) : ""].filter(Boolean).join(" &middot; ") || '<span class="muted">no contact on file</span>';
+      var uid = u.user_id || u.amplitude_id || "";
+      var uidHtml = uid ? '<span class="muted" style="font-size:12px">ID: <code>' + esc(uid) + "</code></span>" : "";
       return '<div class="taskrow"><div class="tasktitle">' +
         '<span style="font-weight:600">' + esc(u.name || "(unknown user)") + '</span>' +
         ' <span class="rag red" style="font-size:11px">dropped at ' + esc(u.drop_step || "?") + '</span>' +
+        (uidHtml ? ' ' + uidHtml : "") +
         '<div class="muted" style="font-size:12px;margin-top:2px">' + segs + '</div>' +
         '<div class="muted" style="font-size:12px;margin-top:2px">' + contact + ' &middot; last seen ' + esc((u.last_seen || "").replace("T", " ")) + '</div>' +
         '<div style="margin-top:6px;display:flex;gap:14px">' + mailto + wa + '</div>' +
@@ -1080,7 +1083,7 @@
 
   function mktExport(env) {
     var rows = (data.abandoned || []).filter(function (r) { return (r.env || "UAT") === env; });
-    var cols = ["env", "name", "email", "phone", "drop_step", "source", "platform", "city", "region", "country", "language", "user_type", "started_at", "last_seen"];
+    var cols = ["env", "user_id", "amplitude_id", "name", "email", "phone", "drop_step", "source", "platform", "city", "region", "country", "language", "user_type", "started_at", "last_seen"];
     var csv = cols.join(",") + "\n" + rows.map(function (r) {
       return cols.map(function (c) { var v = (r[c] == null ? "" : String(r[c])).replace(/"/g, '""'); return /[",\n]/.test(v) ? '"' + v + '"' : v; }).join(",");
     }).join("\n");
