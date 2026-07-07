@@ -246,6 +246,19 @@
         '<div class="muted">No flow data yet. Run the sync with <code>--with-flow</code> to populate dev/QA/cycle time &amp; blocked hours.</div></div>';
       if (_charts.flowChart) { _charts.flowChart.destroy(); delete _charts.flowChart; }
     }
+    // Unestimated stories — committed stories (excluding bugs & sub-tasks) with no
+    // Story Points. They're invisible to all SP-based metrics (velocity, burndown,
+    // carry-forward), so surfacing them is the fastest way to close the data gap.
+    var stories = m.its.filter(function (i) { return !isBug(i) && !/sub-?task/i.test(i.type || ""); });
+    var missing = stories.filter(function (i) { return num(i.story_points) === 0; });
+    var coverage = stories.length ? (stories.length - missing.length) / stories.length : 1;
+    el("missingSPGrid").innerHTML =
+      card("Missing Story Points", missing.length, { icon: "❓", accent: missing.length ? "#c62828" : "#2e7d32", tip: "Committed stories (excluding bugs & sub-tasks) with no Story Points set. They're invisible to velocity, burndown and Carry-Forward (all SP-based), so they make progress look worse than it is — estimate them in Asana." }) +
+      card("Estimated", stories.length - missing.length, { icon: "✅", accent: "#2e7d32" }) +
+      card("Estimation Coverage", pct(coverage), { icon: "📊", accent: coverage >= 0.9 ? "#2e7d32" : coverage >= 0.7 ? "#f29f05" : "#c62828", tip: "Share of committed stories that carry a Story Point estimate. Higher = more trustworthy SP metrics." });
+    el("missingSPList").innerHTML = listBlock("missSP", "Stories needing an estimate &middot; " + missing.length,
+      missing.length ? missing.map(taskRow).join("") : '<div class="muted">All committed stories are estimated. 🎉</div>');
+
     renderRisks(sprint);
     renderCharts(sprint, m);
     renderTrends(sprint, m);
