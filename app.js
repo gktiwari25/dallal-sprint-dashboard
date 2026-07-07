@@ -942,7 +942,8 @@
     var all = data.abandoned || [];
     // env selector
     var envs = mktUniq(all, "env"); if (!envs.length) envs = ["UAT"];
-    if (!mktFilters.env || envs.indexOf(mktFilters.env) === -1) mktFilters.env = envs[0];
+    // Default to UAT (the primary test env) when present, else the first env.
+    if (!mktFilters.env || envs.indexOf(mktFilters.env) === -1) mktFilters.env = envs.indexOf("UAT") !== -1 ? "UAT" : envs[0];
     var envSel = el("mktEnv");
     if (envSel) envSel.innerHTML = envs.map(function (e) { return '<option value="' + e + '"' + (e === mktFilters.env ? " selected" : "") + ">Dallal " + e + "</option>"; }).join("");
     var env = mktFilters.env;
@@ -962,8 +963,10 @@
       [["mktStep", "step"], ["mktSource", "source"], ["mktPlatform", "platform"], ["mktLang", "lang"], ["mktCity", "city"]].forEach(function (p) {
         el(p[0]).addEventListener("change", function (e) { mktFilters[p[1]] = e.target.value; reRender(); });
       });
-      el("mktRun").addEventListener("click", function () { mktRunDryRun(env); });
-      el("exportMkt").addEventListener("click", function () { mktExport(env); });
+      // Read the live selected env at click time — not the wire-time closure,
+      // which would otherwise pin these to whatever env was default on first render.
+      el("mktRun").addEventListener("click", function () { mktRunDryRun(mktFilters.env); });
+      el("exportMkt").addEventListener("click", function () { mktExport(mktFilters.env); });
     }
 
     // apply filters
