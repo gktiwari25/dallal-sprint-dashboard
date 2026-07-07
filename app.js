@@ -159,6 +159,7 @@
       ready: its.filter(function (i) { return sectionStage(i.section) === "ready"; }).length,
       released: its.filter(function (i) { return sectionStage(i.section) === "released"; }).length,
       bugs: bugs.length,
+      bugsClosed: bugs.filter(isDone).length,
       pCritical: bugs.filter(function (i) { return (i.priority || "").indexOf("P1") === 0; }).length,
       pHigh: bugs.filter(function (i) { return (i.priority || "").indexOf("P2") === 0; }).length,
       pMedium: bugs.filter(function (i) { return (i.priority || "").indexOf("P3") === 0; }).length,
@@ -208,6 +209,7 @@
 
     el("qualityGrid").innerHTML =
       card("Total Bugs", m.bugs, { icon: "🐞", accent: "#6b7a8d", tip: "Tickets in this sprint whose title contains \"BUG\" (or Type = Bug)." }) +
+      card("Bugs Closed", m.bugsClosed, { icon: "✅", accent: "#2e7d32", tip: "Bug tickets resolved this sprint (Released / UAT Passed / done). Total Bugs − Bugs Closed = still-open bugs." }) +
       card("Critical (P1)", m.pCritical, { icon: "🔴", accent: "#c62828", tip: "Bug tickets with task Priority = P1 Critical." }) +
       card("High (P2)", m.pHigh, { icon: "🟠", accent: "#f29f05", tip: "Bug tickets with task Priority = P2 High." }) +
       card("Reopened", m.reopened, { icon: "🔁", tip: "Count of items sent back for rework at least once this sprint (bounced to Raised by QA / Reopen / UAT Failed) — derived from Status history, refreshed on the daily flow sync. Rework rate of delivered items: " + pct(m.reopenedPct) + "." }) +
