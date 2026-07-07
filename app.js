@@ -869,10 +869,18 @@
     var sel = el("sprintSel");
     var sprints = windowSprints().sort(function (a, b) { return b - a; });
     sel.innerHTML = sprints.map(function (n) { return '<option value="' + n + '">Sprint ' + n + "</option>"; }).join("");
-    // Preserve the user's choice across auto-refresh / reload; else current sprint.
+    // Preserve the user's choice across auto-refresh / reload; else the latest sprint
+    // that actually has committed work. IMPORTANT: don't default to (or stay on) a
+    // sprint whose items are all pre-development (Backlog/Design/Ready-for-Dev) — those
+    // are excluded by isPreSprint, so the whole dashboard would compute to zero and
+    // look broken. currentSprint() ("latest delivered + 1") can point at such an
+    // empty, not-yet-started future sprint, so it's now only a fallback.
     var saved = selectedSprint; if (!saved) { try { saved = localStorage.getItem("dallal_sprint"); } catch (e) {} }
     var inList = function (n) { return sprints.indexOf(num(n)) !== -1; };
-    var def = (saved && inList(saved)) ? num(saved)
+    var hasWork = function (n) { return compute(n).planned > 0; };
+    var withWork = sprints.filter(hasWork);   // sprints is sorted desc → [0] = latest with work
+    var def = (saved && inList(saved) && hasWork(num(saved))) ? num(saved)
+      : withWork.length ? withWork[0]
       : (currentSprint() && inList(currentSprint())) ? currentSprint()
       : (DEFAULT_SPRINT && inList(DEFAULT_SPRINT)) ? num(DEFAULT_SPRINT)
       : sprints[0];
