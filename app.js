@@ -472,9 +472,6 @@
     var out = [], c = r.open_critical, h = r.open_high;
     if (c === "" && h === "") out.push("vuln scan pending");
     else if (num(c) > 0 || num(h) > 0) out.push(num(c) + " Critical + " + num(h) + " High CVEs");
-    var dep = String(r.dependabot_enabled) === "1", sec = String(r.secret_scanning_enabled) === "1";
-    if (!dep && !sec) out.push("Dependabot & secret scanning off");
-    else { if (!dep) out.push("Dependabot off"); if (!sec) out.push("secret scanning off"); }
     if (num(r.unreviewed_merges_30d) > 0) out.push(r.unreviewed_merges_30d + " unreviewed feature merges");
     if (r.ci_pass_rate_pct !== "" && num(r.ci_pass_rate_pct) < 50) out.push("CI pass rate " + r.ci_pass_rate_pct + "%");
     return out;
