@@ -7,9 +7,9 @@
 <meta http-equiv="Pragma" content="no-cache" />
 <meta http-equiv="Expires" content="0" />
 <title>Dallal Sprint Dashboard</title>
-<link rel="icon" type="image/png" href="dallal-favicon.png?v=67" />
+<link rel="icon" type="image/png" href="dallal-favicon.png?v=68" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
-<link rel="stylesheet" href="styles.css?v=67" />
+<link rel="stylesheet" href="styles.css?v=68" />
 </head>
 <body>
 
@@ -27,6 +27,7 @@
     <button id="tabFunnels" class="tab">Funnels</button>
     <button id="tabMarketing" class="tab">Marketing</button>
     <button id="tabFlow" class="tab">Re-engagement Flow</button>
+    <button id="tabApi" class="tab">Production API</button>
   </nav>
   <div class="spacer"></div>
   <label class="sub" for="sprintSel" id="sprintLbl">Sprint</label>
@@ -275,7 +276,7 @@
   <!-- RE-ENGAGEMENT FLOW VIEW -->
   <div id="flowView" class="hidden">
     <div class="section"><h2>Re-engagement Flow &mdash; Amplitude &rarr; CRM &rarr; Care &rarr; Sales</h2><div class="body">
-      <p class="muted" style="margin:0 0 10px">User drop-off recovery pipeline: Amplitude detects the drop-off &rarr; CRM builds a de-duplicated profile &rarr; automated Email / WhatsApp &rarr; a 48h <b>Activity Guard</b> halts escalation the instant the user returns &rarr; Customer Care call &rarr; Sales re-trigger, with a Reporting feedback loop. <a class="tasklink" href="reengagement-flow.html?v=67" target="_blank" rel="noopener">Open full screen &#8599;</a></p>
+      <p class="muted" style="margin:0 0 10px">User drop-off recovery pipeline: Amplitude detects the drop-off &rarr; CRM builds a de-duplicated profile &rarr; automated Email / WhatsApp &rarr; a 48h <b>Activity Guard</b> halts escalation the instant the user returns &rarr; Customer Care call &rarr; Sales re-trigger, with a Reporting feedback loop. <a class="tasklink" href="reengagement-flow.html?v=68" target="_blank" rel="noopener">Open full screen &#8599;</a></p>
       <div style="display:flex;flex-wrap:wrap;gap:7px 15px;margin:0 0 14px;font-size:12.5px;color:#5b6577">
         <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#eaf2ff;border:1px solid #7fa2e8"></span>Data &middot; Notify Care &middot; Sales</span>
         <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#e9f7ef;border:1px solid #7fc79a"></span>CRM / System</span>
@@ -286,9 +287,34 @@
         <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#e4f6ea;border:1px solid #4fae74"></span>Recovered &middot; Activity Guard halt</span>
         <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:16px;border-top:2px dashed #93a0b6"></span>Feedback loop</span>
       </div>
-      <iframe id="flowFrame" src="reengagement-flow.html?v=67" title="User Drop-off Recovery Flow" loading="lazy" scrolling="no" style="width:100%;height:900px;border:0;border-radius:12px;background:transparent"></iframe>
+      <iframe id="flowFrame" src="reengagement-flow.html?v=68" title="User Drop-off Recovery Flow" loading="lazy" scrolling="no" style="width:100%;height:900px;border:0;border-radius:12px;background:transparent"></iframe>
     </div></div>
   </div><!-- /flowView -->
+
+  <!-- PRODUCTION API VIEW -->
+  <div id="apiView" class="hidden">
+    <div class="section"><h2 class="sech">Production API &mdash; Traffic &amp; Health <button id="exportApi" class="expbtn" type="button" title="Download the per-endpoint API metrics as CSV">&#x2913; Export CSV</button></h2><div class="body">
+      <div style="display:flex;align-items:center;gap:10px;margin:0 0 12px;flex-wrap:wrap">
+        <label class="sub" for="apiEnv" style="color:var(--muted)">Environment</label>
+        <select id="apiEnv" class="fenv"></select>
+        <span id="apiWindow" class="muted" style="font-size:12.5px"></span>
+      </div>
+      <div class="grid" id="apiKpis"></div>
+      <p class="muted" style="margin:12px 0 0;font-size:12.5px">A request is counted <b>slow</b> when its response time is <b>&ge; 1 second</b>. Errors are responses with HTTP status &ge; 400 (4xx + 5xx).</p>
+    </div></div>
+
+    <div class="section"><h2>Endpoints &mdash; method, traffic &amp; latency</h2><div class="body">
+      <p class="muted" style="margin:0 0 10px">Every API route with its HTTP method, request volume, errors, average &amp; P95 response time, and slow-request count (&ge; 1s). Sorted by traffic.</p>
+      <table class="risks" id="apiTable"><thead><tr>
+        <th>Method</th><th>Endpoint</th><th>Requests</th><th>Errors</th><th>Err %</th><th>Avg ms</th><th>P95 ms</th><th>Slow &ge;1s</th>
+      </tr></thead><tbody></tbody></table>
+    </div></div>
+
+    <div class="section"><h2>Recent Requests &mdash; method &amp; response</h2><div class="body">
+      <p class="muted" style="margin:0 0 10px">The most recent captured calls with their HTTP method, endpoint, response status and response time.</p>
+      <div id="apiLog" class="listblock"></div>
+    </div></div>
+  </div><!-- /apiView -->
 
   <p class="muted">Read-only &middot; synced hourly from Asana &middot; dashboard auto-refreshes every 5 min (and on tab focus).</p>
 </div>
@@ -296,9 +322,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-sankey@0.12.1/dist/chartjs-chart-sankey.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=67"></script>
-<script src="sample-data.js?v=67"></script>
-<script src="funnels-data.js?v=67"></script>
-<script src="app.js?v=67"></script>
+<script src="config.js?v=68"></script>
+<script src="sample-data.js?v=68"></script>
+<script src="funnels-data.js?v=68"></script>
+<script src="app.js?v=68"></script>
 </body>
 </html>

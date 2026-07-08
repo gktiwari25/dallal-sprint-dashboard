@@ -598,12 +598,13 @@
   }
 
   function showTab(which) {
-    var isDel = which === "delivery", isEng = which === "eng", isFun = which === "funnels", isMkt = which === "marketing", isFlow = which === "flow";
+    var isDel = which === "delivery", isEng = which === "eng", isFun = which === "funnels", isMkt = which === "marketing", isFlow = which === "flow", isApi = which === "api";
     el("sprintView").classList.toggle("hidden", !isDel);
     el("engView").classList.toggle("hidden", !isEng);
     el("funnelView").classList.toggle("hidden", !isFun);
     el("marketingView").classList.toggle("hidden", !isMkt);
     el("flowView").classList.toggle("hidden", !isFlow);
+    el("apiView").classList.toggle("hidden", !isApi);
     el("sprintSel").classList.toggle("hidden", !isDel);
     el("sprintLbl").classList.toggle("hidden", !isDel);
     el("tabDelivery").classList.toggle("active", isDel);
@@ -611,9 +612,11 @@
     el("tabFunnels").classList.toggle("active", isFun);
     el("tabMarketing").classList.toggle("active", isMkt);
     el("tabFlow").classList.toggle("active", isFlow);
+    el("tabApi").classList.toggle("active", isApi);
     if (isEng) renderEng();
     if (isFun) renderFunnels();
     if (isMkt) renderMarketing();
+    if (isApi) renderApi();
   }
 
   // ---------- funnels page ----------
@@ -1176,6 +1179,128 @@
   }
 
   // ---------- data layer (authenticated Supabase client) ----------
+  // ---------- production API page ----------
+  var apiEnv = "PROD";
+  var API_SLOW_MS = 1000;              // a request taking >= 1s is "slow" (change here if the definition differs)
+  function fmtInt(n) { return String(Math.round(num(n))).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+  function methodBadge(m) {
+    m = String(m || "").toUpperCase();
+    var c = m === "GET" ? "#2e7d32" : m === "POST" ? "#1f6feb" : (m === "PUT" || m === "PATCH") ? "#b9820a" : m === "DELETE" ? "#c62828" : "#5b6577";
+    return '<span style="display:inline-block;min-width:48px;text-align:center;font:700 11px ui-monospace,Menlo,monospace;color:#fff;background:' + c + ';padding:2px 7px;border-radius:6px">' + esc(m) + "</span>";
+  }
+  function statusBadge(s) {
+    s = num(s); var c = s >= 500 ? "#c62828" : s >= 400 ? "#b9820a" : s >= 300 ? "#1f6feb" : "#2e7d32";
+    return '<span style="font:700 12px ui-monospace,Menlo,monospace;color:' + c + '">' + esc(String(s || "")) + "</span>";
+  }
+  function apiTime(v) { var d = new Date(v); return isNaN(d.getTime()) ? String(v || "") : d.toLocaleTimeString(); }
+
+  var _sampleApi = null;
+  function sampleApi() {
+    if (_sampleApi) return _sampleApi;
+    var eps = [
+      { method: "GET",   endpoint: "/api/v1/listings",       requests: 84210, errors: 126, avg_ms: 180,  p95_ms: 640,  slow_count: 410 },
+      { method: "GET",   endpoint: "/api/v1/listings/:id",   requests: 52140, errors: 88,  avg_ms: 150,  p95_ms: 520,  slow_count: 190 },
+      { method: "GET",   endpoint: "/api/v1/search",         requests: 39880, errors: 242, avg_ms: 420,  p95_ms: 1450, slow_count: 2870 },
+      { method: "POST",  endpoint: "/api/v1/auth/otp",       requests: 14320, errors: 96,  avg_ms: 260,  p95_ms: 900,  slow_count: 120 },
+      { method: "POST",  endpoint: "/api/v1/auth/login",     requests: 12760, errors: 210, avg_ms: 300,  p95_ms: 1100, slow_count: 540 },
+      { method: "GET",   endpoint: "/api/v1/users/me",       requests: 11890, errors: 34,  avg_ms: 110,  p95_ms: 300,  slow_count: 20 },
+      { method: "GET",   endpoint: "/api/v1/favorites",      requests: 9210,  errors: 22,  avg_ms: 130,  p95_ms: 360,  slow_count: 30 },
+      { method: "GET",   endpoint: "/api/v1/notifications",  requests: 8330,  errors: 40,  avg_ms: 150,  p95_ms: 420,  slow_count: 60 },
+      { method: "GET",   endpoint: "/api/v1/cities",         requests: 7640,  errors: 8,   avg_ms: 60,   p95_ms: 160,  slow_count: 4 },
+      { method: "POST",  endpoint: "/api/v1/listings",       requests: 6420,  errors: 180, avg_ms: 540,  p95_ms: 1800, slow_count: 820 },
+      { method: "PUT",   endpoint: "/api/v1/listings/:id",   requests: 4310,  errors: 64,  avg_ms: 480,  p95_ms: 1500, slow_count: 410 },
+      { method: "POST",  endpoint: "/api/v1/uploads/images", requests: 3980,  errors: 150, avg_ms: 1240, p95_ms: 4200, slow_count: 2600 },
+      { method: "POST",  endpoint: "/api/v1/leads",          requests: 2870,  errors: 58,  avg_ms: 340,  p95_ms: 1200, slow_count: 210 },
+      { method: "DELETE", endpoint: "/api/v1/favorites/:id", requests: 1740,  errors: 18,  avg_ms: 120,  p95_ms: 340,  slow_count: 12 }
+    ];
+    eps.forEach(function (e) { e.env = "PROD"; });
+    var uat = eps.slice(0, 6).map(function (e) {
+      return { env: "UAT", method: e.method, endpoint: e.endpoint, requests: Math.round(e.requests / 22), errors: Math.round(e.errors / 12), avg_ms: e.avg_ms, p95_ms: e.p95_ms, slow_count: Math.round(e.slow_count / 22) };
+    });
+    var pool = [
+      ["GET", "/api/v1/search", 200, 380], ["GET", "/api/v1/listings", 200, 150], ["POST", "/api/v1/auth/otp", 200, 240],
+      ["GET", "/api/v1/listings/:id", 200, 140], ["POST", "/api/v1/listings", 201, 610], ["GET", "/api/v1/search", 200, 1620],
+      ["POST", "/api/v1/auth/login", 401, 150], ["GET", "/api/v1/users/me", 200, 90], ["POST", "/api/v1/uploads/images", 200, 1980],
+      ["GET", "/api/v1/favorites", 200, 120], ["PUT", "/api/v1/listings/:id", 200, 540], ["GET", "/api/v1/search", 500, 240],
+      ["GET", "/api/v1/listings", 200, 160], ["POST", "/api/v1/leads", 201, 320], ["GET", "/api/v1/notifications", 200, 140],
+      ["GET", "/api/v1/listings/:id", 404, 80], ["POST", "/api/v1/auth/otp", 429, 60], ["GET", "/api/v1/cities", 200, 50],
+      ["POST", "/api/v1/listings", 422, 300], ["GET", "/api/v1/search", 200, 720], ["DELETE", "/api/v1/favorites/:id", 200, 110],
+      ["GET", "/api/v1/listings", 200, 175], ["POST", "/api/v1/uploads/images", 500, 3200], ["GET", "/api/v1/users/me", 200, 100]
+    ];
+    var now = Date.now();
+    var reqs = pool.map(function (p, i) { return { env: "PROD", method: p[0], endpoint: p[1], status: p[2], response_ms: p[3], occurred_at: new Date(now - i * 41000).toISOString() }; });
+    _sampleApi = { eps: eps.concat(uat), reqs: reqs };
+    return _sampleApi;
+  }
+
+  function populateApiEnv(envs) {
+    var sel = el("apiEnv"); if (!sel || sel.options.length) return;
+    envs.forEach(function (e) { var o = document.createElement("option"); o.value = e; o.textContent = e; sel.appendChild(o); });
+    sel.value = apiEnv;
+    sel.addEventListener("change", function () { apiEnv = sel.value; renderApi(); });
+  }
+
+  function renderApi() {
+    var live = (data.apiEndpoints && data.apiEndpoints.length);
+    var eps = live ? data.apiEndpoints : sampleApi().eps;
+    var reqs = (data.apiRequests && data.apiRequests.length) ? data.apiRequests : sampleApi().reqs;
+    var envs = [];
+    eps.forEach(function (e) { var v = e.env || "PROD"; if (envs.indexOf(v) === -1) envs.push(v); });
+    if (!envs.length) envs = ["PROD"];
+    if (envs.indexOf(apiEnv) === -1) apiEnv = envs[0];
+    populateApiEnv(envs);
+
+    var E = eps.filter(function (e) { return (e.env || "PROD") === apiEnv; });
+    var R = reqs.filter(function (r) { return (r.env || "PROD") === apiEnv; });
+
+    var total = 0, errors = 0, slow = 0, wsum = 0;
+    E.forEach(function (e) { var rq = num(e.requests); total += rq; errors += num(e.errors); slow += num(e.slow_count); wsum += num(e.avg_ms) * rq; });
+    var avg = total ? Math.round(wsum / total) : 0;
+    var errRate = total ? errors / total : 0, slowRate = total ? slow / total : 0, okRate = total ? (1 - errRate) : 0;
+
+    el("apiWindow").textContent = live ? "Live · current rolling window" : "Sample data — this is how it will look once request capture is wired up";
+
+    el("apiKpis").innerHTML =
+      card("Total Requests", fmtInt(total), { icon: "🌐", accent: "#1f6feb", tip: "All API requests captured in the current window for " + apiEnv + "." }) +
+      card("Errors", fmtInt(errors) + ' <span style="font-size:13px;color:var(--muted,#5b6577)">(' + pct(errRate) + ")</span>", { icon: "⛔", accent: errRate > 0.02 ? "#c62828" : "#2e7d32", tip: "Responses with HTTP status ≥ 400 (4xx + 5xx)." }) +
+      card("Avg Response Time", fmtInt(avg) + ' <span style="font-size:13px;color:var(--muted,#5b6577)">ms</span>', { icon: "⏱️", accent: avg > 500 ? "#b9820a" : "#2e7d32", tip: "Request-weighted mean response time across all endpoints." }) +
+      card("Slow Requests", fmtInt(slow) + ' <span style="font-size:13px;color:var(--muted,#5b6577)">(' + pct(slowRate) + ")</span>", { icon: "🐢", accent: slowRate > 0.02 ? "#b9820a" : "#2e7d32", tip: "Requests taking ≥ 1s (" + API_SLOW_MS + " ms)." }) +
+      card("Success Rate", pct(okRate), { icon: "✅", accent: okRate >= 0.98 ? "#2e7d32" : okRate >= 0.95 ? "#b9820a" : "#c62828", tip: "Share of requests with status < 400." });
+
+    var rows = E.slice().sort(function (a, b) { return num(b.requests) - num(a.requests); }).map(function (e) {
+      var er = num(e.requests) ? num(e.errors) / num(e.requests) : 0;
+      var erc = er >= 0.05 ? "#c62828" : er >= 0.02 ? "#b9820a" : "#2e7d32";
+      var avgc = num(e.avg_ms) >= API_SLOW_MS ? "#c62828" : num(e.avg_ms) >= 500 ? "#b9820a" : "inherit";
+      return "<tr><td>" + methodBadge(e.method) + "</td>" +
+        '<td style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px">' + esc(e.endpoint) + "</td>" +
+        "<td>" + fmtInt(e.requests) + "</td><td>" + fmtInt(e.errors) + "</td>" +
+        '<td style="color:' + erc + ';font-weight:700">' + pct(er) + "</td>" +
+        '<td style="color:' + avgc + '">' + fmtInt(e.avg_ms) + "</td>" +
+        "<td>" + fmtInt(e.p95_ms) + "</td><td>" + fmtInt(e.slow_count) + "</td></tr>";
+    }).join("");
+    el("apiTable").querySelector("tbody").innerHTML = rows || '<tr><td colspan="8" class="muted">No API data.</td></tr>';
+
+    var logRows = R.slice().sort(function (a, b) { return String(b.occurred_at || "").localeCompare(String(a.occurred_at || "")); }).slice(0, 30).map(function (r) {
+      var isSlow = num(r.response_ms) >= API_SLOW_MS;
+      return '<div class="taskrow"><div class="tasktitle" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
+        methodBadge(r.method) +
+        '<span style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px">' + esc(r.endpoint) + "</span>" +
+        statusBadge(r.status) +
+        '<span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:' + (isSlow ? "#c62828" : "var(--muted,#5b6577)") + '">' + fmtInt(r.response_ms) + " ms" + (isSlow ? " · slow" : "") + "</span>" +
+        '<span class="muted" style="font-size:12px;margin-left:auto">' + esc(apiTime(r.occurred_at)) + "</span></div></div>";
+    }).join("");
+    el("apiLog").innerHTML = listBlock("apilog", "Method &amp; response of recent API calls &middot; " + R.length, logRows || '<div class="muted">No recent requests.</div>');
+  }
+
+  function exportApi() {
+    var live = (data.apiEndpoints && data.apiEndpoints.length);
+    var eps = (live ? data.apiEndpoints : sampleApi().eps).filter(function (e) { return (e.env || "PROD") === apiEnv; });
+    downloadCSV("dallal-api-endpoints-" + apiEnv + "-" + csvStamp() + ".csv", toCSV(eps, [
+      { key: "method", label: "Method" }, { key: "endpoint", label: "Endpoint" }, { key: "requests", label: "Requests" },
+      { key: "errors", label: "Errors" }, { key: "avg_ms", label: "Avg ms" }, { key: "p95_ms", label: "P95 ms" }, { key: "slow_count", label: "Slow >=1s" }
+    ]));
+  }
+
   function sbSelect(table) {
     return sbc.from(table).select("*").limit(5000).then(function (r) {
       if (r.error) throw new Error(table + ": " + r.error.message);
@@ -1198,10 +1323,13 @@
       sbSelect("fact_unreviewed_prs").catch(function () { return []; }),
       sbSelect("fact_abandoned_listers").catch(function () { return []; }),
       sbSelect("fact_reengagement_log").catch(function () { return []; }),
+      sbSelect("fact_api_endpoints").catch(function () { return []; }),
+      sbSelect("fact_api_requests").catch(function () { return []; }),
     ]).then(function (res) {
       data.items = res[0]; data.sprints = res[1]; data.flow = res[2]; data.risks = res[3];
       data.burndown = res[4]; data.repos = res[5]; data.vulns = res[6]; data.funnels = res[7]; data.paths = res[8];
       data.unreviewedPrs = res[9]; data.abandoned = res[10]; data.reengage = res[11];
+      data.apiEndpoints = res[12]; data.apiRequests = res[13];
       loadedOnce = true;
       var def = populateSprintSelect();
       var anySample = data.items.some(function (i) { return String(i.story_points_is_sample) === "1"; });
@@ -1212,6 +1340,7 @@
       if (!el("engView").classList.contains("hidden")) renderEng();
       if (!el("funnelView").classList.contains("hidden")) renderFunnels();
       if (!el("marketingView").classList.contains("hidden")) renderMarketing();
+      if (!el("apiView").classList.contains("hidden")) renderApi();
     }).catch(function (e) {
       el("error").textContent = "Could not load data: " + e.message +
         "  -  ensure web_read_policies.sql is applied and your account can read.";
@@ -1292,6 +1421,8 @@
     el("tabFunnels").addEventListener("click", function () { showTab("funnels"); });
     el("tabMarketing").addEventListener("click", function () { showTab("marketing"); });
     el("tabFlow").addEventListener("click", function () { showTab("flow"); });
+    el("tabApi").addEventListener("click", function () { showTab("api"); });
+    el("exportApi").addEventListener("click", exportApi);
     window.addEventListener("message", function (ev) {
       if (ev && ev.data && typeof ev.data.flowHeight === "number") {
         var f = el("flowFrame"); if (f) f.style.height = (ev.data.flowHeight + 4) + "px";
