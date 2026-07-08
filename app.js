@@ -229,6 +229,21 @@
     }).join("");
     el("retroInsights").innerHTML = listBlock("retroinsights", "What the data says &middot; " + ins.length, insRows || '<div class="muted">No sprint data.</div>');
 
+    // Stories to split — larger than 5 SP (action: slice at planning). Links to the Asana ticket.
+    if (el("retroBig")) {
+      var big = m.its.filter(function (i) { return num(i.story_points) > 5 && !/sub-?task/i.test(String(i.type || "")); })
+        .sort(function (a, b) { return num(b.story_points) - num(a.story_points); });
+      var bigRows = big.map(function (i) {
+        return '<div class="taskrow"><div class="tasktitle">' +
+          '<span class="rag amber" style="margin-right:8px">' + num(i.story_points) + " SP</span>" +
+          esc(i.name || i.task_gid) +
+          '<span class="muted" style="font-size:12px"> &middot; ' + esc(i.type || "—") + (i.status ? " &middot; " + esc(i.status) : "") + "</span> " +
+          '<a class="tasklink" href="' + ASANA_TASK + esc(i.task_gid) + '" target="_blank" rel="noopener">Open &#8599;</a>' +
+          "</div></div>";
+      }).join("");
+      el("retroBig").innerHTML = listBlock("retrobig", "Stories to split &middot; larger than 5 SP &middot; " + big.length, bigRows || '<div class="muted">No stories over 5 SP this sprint. 🎉</div>');
+    }
+
     var notes = (data.retro && data.retro.length ? data.retro : sampleRetro(sprint)).filter(function (r) { return String(r.sprint) === String(sprint); });
     if (!notes.length) notes = sampleRetro(sprint);
     function noteList(dom, type, title) {
