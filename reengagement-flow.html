@@ -1,0 +1,331 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>User Drop-off Recovery Flow</title>
+<style>
+  :root{
+    --page:#f4f6fa; --canvas:#ffffff; --ink:#1c2536; --muted:#5b6577;
+    --arrow:#3f4a5f; --arrow2:#93a0b6; --line:#e2e7f0;
+    --blue-bg:#eaf2ff; --blue-bd:#b6cdf2; --blue-hd:#2b5fd0;
+    --green-bg:#e9f7ef; --green-bd:#aeddc0; --green-hd:#2f8f4e;
+    --purple-bg:#f1ecfb; --purple-bd:#d0c1ee; --purple-hd:#6b4bc0;
+    --cream-bg:#fdf5e1; --cream-bd:#ecd6a0; --cream-hd:#b07d0a;
+    --teal-bg:#e5f6f5; --teal-bd:#aadfdb; --teal-hd:#0f8b8d;
+    --red-bg:#fdebec; --red-bd:#f2bfc2; --red-hd:#d0424a;
+    --guard-bg:#e7f7f6; --guard-bd:#8fd6cf; --guard-hd:#0e8f86;
+    --chk:#2f8f4e; --yes:#2f8f4e; --no:#d0424a;
+    --shadow:0 1px 2px rgba(20,30,60,.05),0 10px 26px -18px rgba(20,30,60,.35);
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --page:#0d1220; --canvas:#131b2b; --ink:#e7ecf6; --muted:#95a1b8;
+      --arrow:#8493ad; --arrow2:#55617a; --line:#243049;
+      --blue-bg:#16233c; --blue-bd:#31486f; --blue-hd:#89a7f2;
+      --green-bg:#132a1f; --green-bd:#2f5a3f; --green-hd:#5cc27e;
+      --purple-bg:#211b39; --purple-bd:#453a6b; --purple-hd:#b7a2f2;
+      --cream-bg:#2b2410; --cream-bd:#5a4a1e; --cream-hd:#e0b24a;
+      --teal-bg:#0f2a2a; --teal-bd:#245650; --teal-hd:#3bbfbf;
+      --red-bg:#2e1618; --red-bd:#5f2f33; --red-hd:#f07b82;
+      --guard-bg:#0f2a28; --guard-bd:#2a5f58; --guard-hd:#4fc3b8;
+      --chk:#5cc27e; --yes:#5cc27e; --no:#f07b82;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -18px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="light"]{
+    --page:#f4f6fa; --canvas:#ffffff; --ink:#1c2536; --muted:#5b6577;
+    --arrow:#3f4a5f; --arrow2:#93a0b6; --line:#e2e7f0;
+    --blue-bg:#eaf2ff; --blue-bd:#b6cdf2; --blue-hd:#2b5fd0;
+    --green-bg:#e9f7ef; --green-bd:#aeddc0; --green-hd:#2f8f4e;
+    --purple-bg:#f1ecfb; --purple-bd:#d0c1ee; --purple-hd:#6b4bc0;
+    --cream-bg:#fdf5e1; --cream-bd:#ecd6a0; --cream-hd:#b07d0a;
+    --teal-bg:#e5f6f5; --teal-bd:#aadfdb; --teal-hd:#0f8b8d;
+    --red-bg:#fdebec; --red-bd:#f2bfc2; --red-hd:#d0424a;
+    --guard-bg:#e7f7f6; --guard-bd:#8fd6cf; --guard-hd:#0e8f86;
+    --chk:#2f8f4e; --yes:#2f8f4e; --no:#d0424a;
+    --shadow:0 1px 2px rgba(20,30,60,.05),0 10px 26px -18px rgba(20,30,60,.35);
+  }
+  :root[data-theme="dark"]{
+    --page:#0d1220; --canvas:#131b2b; --ink:#e7ecf6; --muted:#95a1b8;
+    --arrow:#8493ad; --arrow2:#55617a; --line:#243049;
+    --blue-bg:#16233c; --blue-bd:#31486f; --blue-hd:#89a7f2;
+    --green-bg:#132a1f; --green-bd:#2f5a3f; --green-hd:#5cc27e;
+    --purple-bg:#211b39; --purple-bd:#453a6b; --purple-hd:#b7a2f2;
+    --cream-bg:#2b2410; --cream-bd:#5a4a1e; --cream-hd:#e0b24a;
+    --teal-bg:#0f2a2a; --teal-bd:#245650; --teal-hd:#3bbfbf;
+    --red-bg:#2e1618; --red-bd:#5f2f33; --red-hd:#f07b82;
+    --guard-bg:#0f2a28; --guard-bd:#2a5f58; --guard-hd:#4fc3b8;
+    --chk:#5cc27e; --yes:#5cc27e; --no:#f07b82;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -18px rgba(0,0,0,.7);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  .head{max-width:1200px;margin:0 auto;padding:26px 20px 6px;text-align:center}
+  .head h1{margin:0;font-size:clamp(21px,3vw,30px);letter-spacing:-.02em;font-weight:800}
+  .head p{margin:6px 0 0;color:var(--muted);font-size:clamp(13px,1.6vw,16px)}
+
+  .stage{overflow-x:auto;padding:6px 12px 28px}
+  .canvas{position:relative;width:1600px;height:1140px;margin:0 auto;transform-origin:top left}
+
+  svg.wires{position:absolute;inset:0;width:1600px;height:1140px;overflow:visible;pointer-events:none}
+  .ln{stroke:var(--arrow);stroke-width:2.4;fill:none}
+  .ln.dash{stroke:var(--arrow2);stroke-width:2;stroke-dasharray:7 6}
+  .ln.ok{stroke:var(--yes);stroke-width:2.4}
+  .wlabel{font:700 15px var(--sans)}
+  .glabel{font:700 12.5px var(--sans)}
+
+  .box{position:absolute;border:1.6px solid var(--line);border-radius:14px;padding:12px 14px;
+    background:var(--canvas);box-shadow:var(--shadow);font-size:13px;line-height:1.4}
+  .box h3{margin:0;font-size:15px;line-height:1.18;color:var(--hd,var(--ink));font-weight:700}
+  .bh{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .ic{font-size:18px;line-height:1}
+  .sub{font-weight:700;font-size:12.5px;margin:0 0 5px;color:var(--ink)}
+  ul.bl{margin:3px 0 0;padding-left:16px}
+  ul.bl li{margin:2.5px 0}
+  ul.cl{list-style:none;margin:4px 0 0;padding:0}
+  ul.cl li{position:relative;padding-left:19px;margin:3.5px 0}
+  ul.cl li::before{content:"✓";position:absolute;left:0;top:0;color:var(--chk);font-weight:800}
+  .inset{margin-top:9px;border-radius:9px;padding:7px 10px;font-size:12px}
+  .inset b{display:block;color:var(--hd)}
+  .inset span{color:var(--muted)}
+  .inset.solid{background:color-mix(in srgb,var(--green-bd) 26%,transparent);border:1px solid var(--green-bd)}
+  .inset.dash{border:1.5px dashed var(--purple-bd);background:color-mix(in srgb,var(--purple-bd) 14%,transparent);text-align:left}
+  .inset.dash ul{margin:5px 0 0;padding-left:15px}
+  .chip{display:inline-block;background:color-mix(in srgb,var(--teal-hd) 16%,transparent);
+    color:var(--teal-hd);font-weight:700;font-size:12px;padding:4px 10px;border-radius:8px;margin:0 0 7px}
+  .center{text-align:center}
+  .center .bh{justify-content:center}
+  .icons{display:flex;gap:12px;justify-content:center;margin-bottom:5px}
+  .icons .ic{font-size:22px}
+  .vmid{display:flex;align-items:center;justify-content:center;gap:10px}
+  .vmid .ic{font-size:24px}
+  .vmid h3{font-size:16px}
+  .gtext{font-size:12px;color:var(--ink);line-height:1.42}
+
+  .blue{background:var(--blue-bg);border-color:var(--blue-bd);--hd:var(--blue-hd)}
+  .green{background:var(--green-bg);border-color:var(--green-bd);--hd:var(--green-hd)}
+  .purple{background:var(--purple-bg);border-color:var(--purple-bd);--hd:var(--purple-hd)}
+  .cream{background:var(--cream-bg);border-color:var(--cream-bd);--hd:var(--cream-hd)}
+  .teal{background:var(--teal-bg);border-color:var(--teal-bd);--hd:var(--teal-hd)}
+  .red{background:var(--red-bg);border-color:var(--red-bd);--hd:var(--red-hd)}
+  .guard{background:var(--guard-bg);border:1.6px solid var(--guard-bd);--hd:var(--guard-hd)}
+
+  .diamond{position:absolute;width:116px;height:116px;transform:rotate(45deg);
+    background:var(--cream-bg);border:2px solid var(--cream-bd);border-radius:14px;
+    display:flex;align-items:center;justify-content:center;box-shadow:var(--shadow)}
+  .diamond .dtext{transform:rotate(-45deg);width:150px;text-align:center;font-size:12.5px;
+    font-weight:700;color:var(--cream-hd);line-height:1.25}
+
+  .keybox{position:absolute;border:1.6px solid var(--line);border-radius:14px;background:var(--canvas);
+    padding:13px 16px;box-shadow:var(--shadow)}
+  .keybox .kt{font-weight:800;font-size:14px;margin-bottom:8px}
+  .krow{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--ink);margin:5.5px 0}
+  .krow .ic{font-size:15px;width:18px;text-align:center}
+  .kdash{width:20px;height:0;border-top:2px dashed var(--arrow2)}
+  .kok{width:18px;height:0;border-top:2.4px solid var(--yes)}
+  .kdia{width:12px;height:12px;background:var(--cream-bg);border:1.6px solid var(--cream-bd);
+    transform:rotate(45deg);border-radius:2px}
+
+  .benefits{position:absolute;border:1.6px solid var(--line);border-radius:14px;background:var(--canvas);
+    box-shadow:var(--shadow);padding:11px 18px}
+  .benefits .bt{text-align:center;font-weight:800;font-size:14px;margin-bottom:9px}
+  .brow{display:flex;justify-content:space-between;gap:16px}
+  .brow span{display:flex;align-items:flex-start;gap:7px;font-size:12.5px;color:var(--ink);flex:1}
+  .brow .chk{flex:none;margin-top:1px;color:var(--chk);font-weight:800}
+
+  .note{max-width:1200px;margin:0 auto;padding:0 20px 40px;color:var(--muted);font-size:12.5px;text-align:center}
+  .note code{font-family:var(--mono);background:var(--canvas);border:1px solid var(--line);padding:1px 6px;border-radius:5px}
+</style>
+
+<div class="head">
+  <h1>User Drop-off Recovery Flow</h1>
+  <p>From Amplitude → CRM → automated follow-ups → human escalation</p>
+</div>
+
+<div class="stage">
+  <div class="canvas" id="canvas">
+
+    <svg class="wires" viewBox="0 0 1600 1140" aria-hidden="true">
+      <defs>
+        <marker id="ah" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto-start-reverse">
+          <path d="M0.5,0.5 L8.5,4.5 L0.5,8.5 z" fill="context-stroke"/>
+        </marker>
+      </defs>
+      <!-- top row -->
+      <path class="ln" marker-end="url(#ah)" d="M250,255 L297,255"/>
+      <path class="ln" marker-end="url(#ah)" d="M600,255 L652,255"/>
+      <path class="ln" marker-end="url(#ah)" d="M905,255 L962,255"/>
+      <path class="ln" marker-end="url(#ah)" d="M1115,255 L1227,255"/>
+      <!-- notify -> care calls -->
+      <path class="ln" marker-end="url(#ah)" d="M1355,390 L1355,467"/>
+      <!-- care calls -> decision -->
+      <path class="ln" marker-end="url(#ah)" d="M1225,600 L1060,600"/>
+      <!-- decision Yes -> update -->
+      <path class="ln" marker-end="url(#ah)" d="M893,600 L803,600"/>
+      <!-- update -> reporting -->
+      <path class="ln" marker-end="url(#ah)" d="M590,607 L483,607"/>
+      <!-- decision No -> wait2 -->
+      <path class="ln" marker-end="url(#ah)" d="M975,682 L975,712"/>
+      <!-- wait2 -> sales -->
+      <path class="ln" marker-end="url(#ah)" d="M975,810 L975,837"/>
+      <!-- green activity-guard branches -->
+      <path class="ln ok" marker-end="url(#ah)" d="M1040,300 L1038,332"/>
+      <path class="ln ok" marker-end="url(#ah)" d="M905,762 L672,762 L672,765"/>
+      <!-- feedback loops -->
+      <path class="ln dash" marker-end="url(#ah)" d="M270,515 L270,410 L145,410 L145,383"/>
+      <path class="ln dash" marker-end="url(#ah)" d="M1110,917 L1330,917 L1330,818"/>
+      <!-- labels -->
+      <text class="wlabel" x="843" y="588" fill="var(--yes)">Yes</text>
+      <text class="wlabel" x="990" y="702" fill="var(--no)">No</text>
+      <text class="glabel" x="1050" y="323" fill="var(--yes)">active again</text>
+      <text class="glabel" x="562" y="750" fill="var(--yes)">active again</text>
+      <text class="glabel" x="1171" y="246" text-anchor="middle" fill="var(--muted)">still inactive</text>
+      <text class="glabel" x="990" y="828" fill="var(--muted)">still inactive</text>
+    </svg>
+
+    <!-- 1 Amplitude -->
+    <div class="box blue" style="left:40px;top:140px;width:210px;height:240px">
+      <div class="bh"><span class="ic">📈</span><h3>Amplitude</h3></div>
+      <div class="sub">User behavior data</div>
+      <ul class="bl"><li>Events</li><li>Funnel steps</li><li>Drop-off points</li><li>User properties</li></ul>
+    </div>
+
+    <!-- 2 CRM -->
+    <div class="box green" style="left:300px;top:130px;width:300px;height:325px">
+      <div class="bh"><span class="ic">🗄️</span><h3>CRM</h3></div>
+      <div class="sub">User Profile &amp; Drop-off Details</div>
+      <ul class="cl">
+        <li>Where user dropped</li>
+        <li>Last active timestamp</li>
+        <li>Contact details (Email / WhatsApp)</li>
+        <li>Platform (Web / iOS / Android)</li>
+        <li>Location (Country / City)</li>
+        <li>User properties &amp; journey data</li>
+        <li>De-duplicated — one record per user</li>
+      </ul>
+      <div class="inset solid"><b>👤 Single User View</b><span>Identity-matched (phone / email / user-id) → no duplicate contacts or double outreach</span></div>
+    </div>
+
+    <!-- 3 Automated Outreach -->
+    <div class="box purple center" style="left:655px;top:130px;width:250px;height:325px">
+      <div class="icons"><span class="ic">✉️</span><span class="ic">💬</span></div>
+      <h3>Automated Outreach</h3>
+      <div class="sub" style="margin-top:5px;font-weight:600">Send Email / WhatsApp with a personalized message</div>
+      <div class="inset dash">
+        <b>Message includes:</b>
+        <ul class="bl"><li>Where user dropped</li><li>What they were doing</li><li>How to continue</li><li>CTA to complete action</li></ul>
+      </div>
+    </div>
+
+    <!-- 4 Wait 48h (1) -->
+    <div class="box cream vmid" style="left:965px;top:200px;width:150px;height:100px">
+      <span class="ic">⏳</span><h3>Wait<br>48 Hours</h3>
+    </div>
+
+    <!-- Activity Guard 1 -->
+    <div class="box guard" style="left:910px;top:335px;width:255px;height:120px">
+      <div class="bh"><span class="ic">🛰️</span><h3>Activity Guard</h3></div>
+      <div class="gtext">During the 48h wait, watch for a <b>publish / new-activity</b> event or a changed <b>last-active</b> timestamp. If the user returns → <b>halt instantly</b>, mark <b>Recovered</b>.</div>
+    </div>
+
+    <!-- 5 Notify Customer Care -->
+    <div class="box blue" style="left:1230px;top:140px;width:250px;height:250px">
+      <div class="bh"><span class="ic">🎧</span><h3>Notify<br>Customer Care Team</h3></div>
+      <div class="sub">Task created in CRM</div>
+      <ul class="bl"><li>Physical follow-up</li><li>Preferred call</li><li>User details attached</li><li>Drop-off step &amp; last activity included</li></ul>
+    </div>
+
+    <!-- 6 Customer Care Calls User -->
+    <div class="box teal" style="left:1225px;top:470px;width:260px;height:345px">
+      <div class="bh"><span class="ic">📞</span><h3>Customer Care Calls User</h3></div>
+      <div class="chip">CRM Call Count = 1</div>
+      <div class="sub">Post call: Update Call Status</div>
+      <ul class="bl"><li>Connected</li><li>Interested</li><li>Not Interested</li><li>Callback Requested</li><li>No Response</li><li>Wrong Number</li><li>Other (Add Note)</li></ul>
+    </div>
+
+    <!-- decision -->
+    <div class="diamond" style="left:917px;top:542px">
+      <div class="dtext">Was user connected / status updated?</div>
+    </div>
+
+    <!-- 8 Update Stored in CRM -->
+    <div class="box green" style="left:590px;top:500px;width:210px;height:215px">
+      <div class="bh"><span class="ic">✅</span><h3>Update Stored in CRM</h3></div>
+      <ul class="bl"><li>Status stored</li><li>Call notes saved</li><li>User journey updated</li></ul>
+      <div class="inset solid"><b>End / Close Loop</b><span>No further action</span></div>
+    </div>
+
+    <!-- 9 Reporting -->
+    <div class="box red" style="left:230px;top:515px;width:250px;height:195px">
+      <div class="bh"><span class="ic">📊</span><h3>Reporting &amp; Insights</h3></div>
+      <ul class="bl"><li>Drop-off analysis</li><li>Recovery rate</li><li>Channel performance</li><li>Call outcomes</li><li>Team performance</li></ul>
+    </div>
+
+    <!-- 10 Wait 48h (2) -->
+    <div class="box cream vmid" style="left:905px;top:715px;width:140px;height:95px">
+      <span class="ic">⏳</span><h3>Wait<br>48 Hours</h3>
+    </div>
+
+    <!-- Activity Guard 2 -->
+    <div class="box guard" style="left:555px;top:765px;width:235px;height:112px">
+      <div class="bh"><span class="ic">🛰️</span><h3>Activity Guard</h3></div>
+      <div class="gtext">Same check before Sales: if <b>last-active</b> changes or any new activity, <b>halt</b> — a returned user is never handed to Sales.</div>
+    </div>
+
+    <!-- 11 Sales -->
+    <div class="box blue" style="left:800px;top:840px;width:310px;height:155px">
+      <div class="bh"><span class="ic">👥</span><h3>Re-trigger Notification to Sales Team</h3></div>
+      <div class="sub">If no update / user still inactive</div>
+      <ul class="bl"><li>Task created in CRM</li><li>Sales to connect with user</li><li>All user details &amp; history attached</li></ul>
+    </div>
+
+    <!-- Key -->
+    <div class="keybox" style="left:40px;top:740px;width:250px;height:278px">
+      <div class="kt">Key</div>
+      <div class="krow"><span class="ic">🛢️</span>Data Source</div>
+      <div class="krow"><span class="ic">🗄️</span>CRM / System</div>
+      <div class="krow"><span class="ic">✉️</span>Automated Communication</div>
+      <div class="krow"><span class="ic">⏳</span>Time Delay</div>
+      <div class="krow"><span class="ic">🛰️</span>Activity Guard (halt on return)</div>
+      <div class="krow"><span class="ic">📞</span>Human Action &amp; Call</div>
+      <div class="krow"><span class="kdia"></span>&nbsp;Decision Point</div>
+      <div class="krow"><span class="kok"></span>Recovered branch</div>
+      <div class="krow"><span class="kdash"></span>Feedback Loop</div>
+    </div>
+
+    <!-- Benefits -->
+    <div class="benefits" style="left:420px;top:1030px;width:770px;height:85px">
+      <div class="bt">Benefits of this Flow</div>
+      <div class="brow">
+        <span><span class="chk">✓</span>Timely follow-up with users</span>
+        <span><span class="chk">✓</span>Higher conversion recovery</span>
+        <span><span class="chk">✓</span>Clear visibility in CRM</span>
+        <span><span class="chk">✓</span>Better coordination between teams</span>
+        <span><span class="chk">✓</span>Data-driven improvements</span>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<p class="note">Recreated from <code>Flow CX Re-Engagement</code> · left-to-right recovery pipeline with an Activity Guard on each 48h wait, a Reporting feedback loop, and a Sales re-trigger. Scroll horizontally on small screens.</p>
+
+<script>
+  (function(){
+    var canvas=document.getElementById('canvas'), stage=canvas.parentElement, W=1600, H=1140;
+    function report(){
+      try{ if(window.parent && window.parent!==window){
+        window.parent.postMessage({flowHeight: Math.ceil(document.documentElement.scrollHeight)}, '*');
+      } }catch(e){}
+    }
+    function fit(){
+      var s=Math.min(1,(stage.clientWidth-24)/W);
+      canvas.style.transform='scale('+s+')';
+      stage.style.height=(H*s+8)+'px';
+      report();
+    }
+    window.addEventListener('resize',fit); fit(); setTimeout(fit,60); setTimeout(report,200);
+  })();
+</script>

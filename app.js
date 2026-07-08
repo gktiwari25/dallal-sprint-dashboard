@@ -598,17 +598,19 @@
   }
 
   function showTab(which) {
-    var isDel = which === "delivery", isEng = which === "eng", isFun = which === "funnels", isMkt = which === "marketing";
+    var isDel = which === "delivery", isEng = which === "eng", isFun = which === "funnels", isMkt = which === "marketing", isFlow = which === "flow";
     el("sprintView").classList.toggle("hidden", !isDel);
     el("engView").classList.toggle("hidden", !isEng);
     el("funnelView").classList.toggle("hidden", !isFun);
     el("marketingView").classList.toggle("hidden", !isMkt);
+    el("flowView").classList.toggle("hidden", !isFlow);
     el("sprintSel").classList.toggle("hidden", !isDel);
     el("sprintLbl").classList.toggle("hidden", !isDel);
     el("tabDelivery").classList.toggle("active", isDel);
     el("tabEng").classList.toggle("active", isEng);
     el("tabFunnels").classList.toggle("active", isFun);
     el("tabMarketing").classList.toggle("active", isMkt);
+    el("tabFlow").classList.toggle("active", isFlow);
     if (isEng) renderEng();
     if (isFun) renderFunnels();
     if (isMkt) renderMarketing();
@@ -1289,6 +1291,12 @@
     el("tabEng").addEventListener("click", function () { showTab("eng"); });
     el("tabFunnels").addEventListener("click", function () { showTab("funnels"); });
     el("tabMarketing").addEventListener("click", function () { showTab("marketing"); });
+    el("tabFlow").addEventListener("click", function () { showTab("flow"); });
+    window.addEventListener("message", function (ev) {
+      if (ev && ev.data && typeof ev.data.flowHeight === "number") {
+        var f = el("flowFrame"); if (f) f.style.height = (ev.data.flowHeight + 4) + "px";
+      }
+    });
     el("exportRepoHealth").addEventListener("click", exportRepoHealth);
     el("exportVulns").addEventListener("click", exportVulns);
     el("exportEngRisks").addEventListener("click", exportEngRisks);
