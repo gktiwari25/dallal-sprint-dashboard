@@ -68,7 +68,9 @@
   function esc(s) { return (s == null ? "" : String(s)).replace(/[&<>]/g, function (c) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]; }); }
   function escAttr(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
   // A ticket is a bug if its title contains "BUG" (team convention) or Type=Bug.
-  function isBug(i) { return String(i.is_bug) === "1" || /\bbug/i.test(i.name || ""); }
+  // Only work items whose TYPE is "Bug" count as bugs — Feature / Enhancement / Requirement
+  // items are never counted as bugs, even if "bug" appears in their title.
+  function isBug(i) { return /^bug$/i.test(String(i.type || "").trim()); }
   // The board SECTION (column) is the source of truth for where a ticket is — the
   // Status custom field is often left stale — so all stage counts use the section.
   function sectionStage(sec) {
