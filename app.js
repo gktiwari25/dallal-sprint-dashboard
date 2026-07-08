@@ -1194,6 +1194,54 @@
   }
   function apiTime(v) { var d = new Date(v); return isNaN(d.getTime()) ? String(v || "") : d.toLocaleTimeString(); }
 
+  // ----- captured request/response detail (headers + body) shown when a row is clicked -----
+  function hashStr(s) { var h = 0; s = String(s); for (var i = 0; i < s.length; i++) { h = (h * 31 + s.charCodeAt(i)) | 0; } return h; }
+  function apiSampleBody(endpoint, method) {
+    if (/\/listings$/.test(endpoint) && method === "GET") return JSON.stringify({ data: [{ id: 4821, title: "2BR Apartment in Salmiya", price_kwd: 450, type: "apartment", city: "Salmiya", published: true }], meta: { page: 1, per_page: 20, total: 1284 } }, null, 2);
+    if (/\/listings\/:id$/.test(endpoint) && method === "GET") return JSON.stringify({ data: { id: 4821, title: "2BR Apartment in Salmiya", price_kwd: 450, bedrooms: 2, bathrooms: 2, area_sqm: 120, city: "Salmiya", images: 12, published: true } }, null, 2);
+    if (/\/listings/.test(endpoint) && (method === "POST" || method === "PUT")) return JSON.stringify({ data: { id: 4999, status: "draft", step: "photos" } }, null, 2);
+    if (/\/search/.test(endpoint)) return JSON.stringify({ data: [{ id: 4821 }, { id: 4790 }], meta: { total: 37, took_ms: 412 } }, null, 2);
+    if (/\/auth\/otp/.test(endpoint)) return JSON.stringify({ data: { sent: true, channel: "whatsapp", expires_in: 120 } }, null, 2);
+    if (/\/auth\/login/.test(endpoint)) return JSON.stringify({ data: { token: "eyJhbGciOiJIUzI1Ni…", user: { id: 88213, name: "Ali" } } }, null, 2);
+    if (/\/users\/me/.test(endpoint)) return JSON.stringify({ data: { id: 88213, name: "Ali", phone: "+9655xxxxxxx", listings: 3 } }, null, 2);
+    if (/\/favorites/.test(endpoint)) return JSON.stringify({ data: [{ listing_id: 4821 }, { listing_id: 4655 }] }, null, 2);
+    if (/\/uploads\/images/.test(endpoint)) return JSON.stringify({ data: { url: "https://cdn.dallal.com/i/9f2.jpg", width: 1600, height: 1200 } }, null, 2);
+    if (/\/leads/.test(endpoint)) return JSON.stringify({ data: { id: 7712, status: "new" } }, null, 2);
+    if (/\/cities/.test(endpoint)) return JSON.stringify({ data: [{ id: 1, name: "Kuwait City" }, { id: 2, name: "Salmiya" }] }, null, 2);
+    if (/\/notifications/.test(endpoint)) return JSON.stringify({ data: [{ id: 1, type: "lead", read: false }], meta: { unread: 1 } }, null, 2);
+    return JSON.stringify({ data: {} }, null, 2);
+  }
+  function apiSample(method, endpoint, status) {
+    method = String(method || "GET").toUpperCase(); status = num(status) || 200;
+    var reqId = "req_" + (hashStr(endpoint + method) >>> 0).toString(16).slice(0, 12);
+    var reqHeaders = { "Authorization": "Bearer eyJhbGciOiJIUzI1Ni…", "Content-Type": "application/json", "Accept": "application/json", "Accept-Language": "ar-KW", "User-Agent": "Dallal-iOS/3.4.1 (iPhone; iOS 17.5)", "X-Request-Id": reqId };
+    if (method === "GET" || method === "DELETE") delete reqHeaders["Content-Type"];
+    var resHeaders = { "Content-Type": "application/json; charset=utf-8", "Cache-Control": method === "GET" ? "public, max-age=30" : "no-store", "X-Request-Id": reqId, "X-Runtime": "0.182", "ETag": 'W/"' + (hashStr(endpoint) >>> 0).toString(16).slice(0, 10) + '"' };
+    var body;
+    if (status >= 500) body = JSON.stringify({ error: "internal_server_error", message: "Something went wrong", request_id: reqId }, null, 2);
+    else if (status === 401) body = JSON.stringify({ error: "unauthorized", message: "Invalid or expired token" }, null, 2);
+    else if (status === 404) body = JSON.stringify({ error: "not_found", message: "Resource not found" }, null, 2);
+    else if (status === 422) body = JSON.stringify({ error: "unprocessable_entity", errors: { title: ["can't be blank"] } }, null, 2);
+    else if (status === 429) body = JSON.stringify({ error: "rate_limited", retry_after: 30 }, null, 2);
+    else body = apiSampleBody(endpoint, method);
+    return { reqHeaders: reqHeaders, resHeaders: resHeaders, body: body };
+  }
+  function apiHeaderLines(o) {
+    return Object.keys(o).map(function (k) { return '<div style="margin:2px 0"><span style="color:#1f6feb">' + esc(k) + '</span><span style="color:#8a94a6">: </span>' + esc(o[k]) + "</div>"; }).join("");
+  }
+  function apiCaptureHtml(method, endpoint, status) {
+    var cap = apiSample(method, endpoint, status);
+    var box = "font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.55";
+    var hd = "font:700 11px system-ui,sans-serif;text-transform:uppercase;letter-spacing:.05em;color:#5b6577;margin:0 0 5px";
+    return '<div style="' + box + '">' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px">' +
+        '<div><div style="' + hd + '">Request &middot; ' + esc(String(method).toUpperCase()) + " " + esc(endpoint) + "</div>" + apiHeaderLines(cap.reqHeaders) + "</div>" +
+        '<div><div style="' + hd + '">Response headers &middot; ' + esc(String(status || 200)) + "</div>" + apiHeaderLines(cap.resHeaders) + "</div>" +
+      "</div>" +
+      '<div style="' + hd + ';margin-top:11px">Response body</div>' +
+      '<pre style="white-space:pre-wrap;word-break:break-word;background:#f4f6fa;border:1px solid #e2e7f0;border-radius:8px;padding:11px;margin:0;overflow:auto">' + esc(cap.body) + "</pre></div>";
+  }
+
   var _sampleApi = null;
   function sampleApi() {
     if (_sampleApi) return _sampleApi;
@@ -1267,27 +1315,31 @@
       card("Slow Requests", fmtInt(slow) + ' <span style="font-size:13px;color:var(--muted,#5b6577)">(' + pct(slowRate) + ")</span>", { icon: "🐢", accent: slowRate > 0.02 ? "#b9820a" : "#2e7d32", tip: "Requests taking ≥ 1s (" + API_SLOW_MS + " ms)." }) +
       card("Success Rate", pct(okRate), { icon: "✅", accent: okRate >= 0.98 ? "#2e7d32" : okRate >= 0.95 ? "#b9820a" : "#c62828", tip: "Share of requests with status < 400." });
 
-    var rows = E.slice().sort(function (a, b) { return num(b.requests) - num(a.requests); }).map(function (e) {
+    var epRows = E.slice().sort(function (a, b) { return num(b.requests) - num(a.requests); }).map(function (e, i) {
       var er = num(e.requests) ? num(e.errors) / num(e.requests) : 0;
       var erc = er >= 0.05 ? "#c62828" : er >= 0.02 ? "#b9820a" : "#2e7d32";
       var avgc = num(e.avg_ms) >= API_SLOW_MS ? "#c62828" : num(e.avg_ms) >= 500 ? "#b9820a" : "inherit";
-      return "<tr><td>" + methodBadge(e.method) + "</td>" +
-        '<td style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px">' + esc(e.endpoint) + "</td>" +
+      return '<tr class="aprow" data-i="' + i + '" style="cursor:pointer"><td>' + methodBadge(e.method) + "</td>" +
+        '<td style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px"><span class="epind" style="color:#9aa6bb">&#9656;</span> ' + esc(e.endpoint) + "</td>" +
         "<td>" + fmtInt(e.requests) + "</td><td>" + fmtInt(e.errors) + "</td>" +
         '<td style="color:' + erc + ';font-weight:700">' + pct(er) + "</td>" +
         '<td style="color:' + avgc + '">' + fmtInt(e.avg_ms) + "</td>" +
-        "<td>" + fmtInt(e.p95_ms) + "</td><td>" + fmtInt(e.slow_count) + "</td></tr>";
+        "<td>" + fmtInt(e.p95_ms) + "</td><td>" + fmtInt(e.slow_count) + "</td></tr>" +
+        '<tr class="apdet hidden" data-i="' + i + '"><td colspan="8" style="background:#f7f9fc">' + apiCaptureHtml(e.method, e.endpoint, 200) + "</td></tr>";
     }).join("");
-    el("apiTable").querySelector("tbody").innerHTML = rows || '<tr><td colspan="8" class="muted">No API data.</td></tr>';
+    var epTable = '<table class="risks"><thead><tr><th>Method</th><th>Endpoint</th><th>Requests</th><th>Errors</th><th>Err %</th><th>Avg ms</th><th>P95 ms</th><th>Slow &ge;1s</th></tr></thead><tbody>' +
+      (epRows || '<tr><td colspan="8" class="muted">No API data.</td></tr>') + "</tbody></table>";
+    el("apiEndpoints").innerHTML = listBlock("apiendpoints", "Endpoints &middot; " + E.length + " routes", epTable);
 
     var logRows = R.slice().sort(function (a, b) { return String(b.occurred_at || "").localeCompare(String(a.occurred_at || "")); }).slice(0, 30).map(function (r) {
       var isSlow = num(r.response_ms) >= API_SLOW_MS;
-      return '<div class="taskrow"><div class="tasktitle" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">' +
-        methodBadge(r.method) +
+      var head = methodBadge(r.method) +
         '<span style="font-family:ui-monospace,Menlo,monospace;font-size:12.5px">' + esc(r.endpoint) + "</span>" +
         statusBadge(r.status) +
         '<span style="font-family:ui-monospace,Menlo,monospace;font-size:12px;color:' + (isSlow ? "#c62828" : "var(--muted,#5b6577)") + '">' + fmtInt(r.response_ms) + " ms" + (isSlow ? " · slow" : "") + "</span>" +
-        '<span class="muted" style="font-size:12px;margin-left:auto">' + esc(apiTime(r.occurred_at)) + "</span></div></div>";
+        '<span class="muted" style="font-size:12px;margin-left:auto">' + esc(apiTime(r.occurred_at)) + "</span>";
+      return '<details class="apireq" style="border-bottom:1px solid #eef1f5"><summary style="cursor:pointer;padding:9px 4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">' + head + "</summary>" +
+        '<div style="padding:4px 4px 13px">' + apiCaptureHtml(r.method, r.endpoint, r.status) + "</div></details>";
     }).join("");
     el("apiLog").innerHTML = listBlock("apilog", "Method &amp; response of recent API calls &middot; " + R.length, logRows || '<div class="muted">No recent requests.</div>');
   }
@@ -1423,6 +1475,21 @@
     el("tabFlow").addEventListener("click", function () { showTab("flow"); });
     el("tabApi").addEventListener("click", function () { showTab("api"); });
     el("exportApi").addEventListener("click", exportApi);
+    (function () {
+      var epc = el("apiEndpoints");
+      if (!epc) return;
+      epc.addEventListener("click", function (ev) {
+        var row = ev.target && ev.target.closest ? ev.target.closest(".aprow") : null;
+        if (!row || !epc.contains(row)) return;
+        var i = row.getAttribute("data-i");
+        var det = epc.querySelector('.apdet[data-i="' + i + '"]');
+        if (det) {
+          det.classList.toggle("hidden");
+          var ind = row.querySelector(".epind");
+          if (ind) ind.innerHTML = det.classList.contains("hidden") ? "&#9656;" : "&#9662;";
+        }
+      });
+    })();
     window.addEventListener("message", function (ev) {
       if (ev && ev.data && typeof ev.data.flowHeight === "number") {
         var f = el("flowFrame"); if (f) f.style.height = (ev.data.flowHeight + 4) + "px";
