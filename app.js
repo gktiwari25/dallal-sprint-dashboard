@@ -175,9 +175,77 @@
     };
   }
 
+  // ---------- sprint retrospective ----------
+  function retroBadge(kind) {
+    var cls = kind === "good" ? "green" : kind === "bad" ? "red" : "amber";
+    var t = kind === "good" ? "Went well" : kind === "bad" ? "Needs attention" : "Watch";
+    return '<span class="rag ' + cls + '" style="flex:none">' + t + "</span>";
+  }
+  function sampleRetro(sprint) {
+    return [
+      { sprint: sprint, type: "well", text: "Burndown tracked close to the ideal line for most of the sprint." },
+      { sprint: sprint, type: "well", text: "No P1/Critical bugs escaped to production." },
+      { sprint: sprint, type: "well", text: "Code review coverage stayed high on the working branches." },
+      { sprint: sprint, type: "improve", text: "Some stories were pulled in without Story Points — estimate before committing." },
+      { sprint: sprint, type: "improve", text: "Scope was added mid-sprint; protect the commitment or renegotiate explicitly." },
+      { sprint: sprint, type: "action", text: "Add a definition-of-ready check before a story enters In Development.", owner: "Team", status: "Open" },
+      { sprint: sprint, type: "action", text: "Split stories larger than 5 SP into thinner slices at planning.", owner: "PO", status: "Open" }
+    ];
+  }
+  function renderRetro(sprint, m) {
+    if (!el("retroGrid")) return;
+    var usePts = m.usePts;
+    var committed = usePts ? m.committedSP : m.planned;
+    var delivered = usePts ? m.deliveredSP : m.completed;
+    var unit = usePts ? "SP" : "items";
+    var carry = Math.max(0, committed - delivered);
+    var carriedItems = Math.max(0, m.planned - m.completed);
+    var comp = m.progress;
+    var compHex = comp == null ? "#0f8b8d" : comp >= 0.85 ? "#2e7d32" : comp >= 0.6 ? "#b9820a" : "#c62828";
+
+    el("retroSprint").textContent = sprint || "—";
+    el("retroGrid").innerHTML =
+      card("Committed", committed + " " + unit, { icon: "🎯", accent: "#1f6feb", tip: "Scope committed for this sprint (still-ideating columns excluded)." }) +
+      card("Delivered", delivered + " " + unit, { icon: "✅", accent: "#2e7d32", tip: "Completed and released work this sprint." }) +
+      card("Completion", pct(comp), { icon: "📈", accent: compHex, tip: "Delivered ÷ committed." }) +
+      card("Carryover", carriedItems + ' <span style="font-size:13px;color:var(--muted,#5b6577)">items · ' + carry + " " + unit + "</span>", { icon: "↪️", accent: carriedItems ? "#b9820a" : "#2e7d32", tip: "Committed work not finished this sprint." }) +
+      card("Velocity", m.velocity + " " + m.velocityUnit, { icon: "⚡", accent: "#0f8b8d", tip: "Throughput delivered this sprint." }) +
+      card("Bugs Closed", m.bugsClosed + " / " + m.bugs, { icon: "🐞", accent: "#7c5cd6", tip: "Bugs resolved out of bugs in the sprint." }) +
+      card("Rework", m.reopenedPct == null ? "--" : pct(m.reopenedPct), { icon: "🔁", accent: (m.reopenedPct || 0) <= 0.1 ? "#2e7d32" : (m.reopenedPct || 0) <= 0.25 ? "#b9820a" : "#c62828", tip: "Delivered items that were reopened at least once." });
+
+    var ins = [];
+    if (comp != null) ins.push({ k: comp >= 0.85 ? "good" : comp >= 0.6 ? "watch" : "bad", t: "Delivered " + delivered + " of " + committed + " " + unit + " committed (" + pct(comp) + ")." });
+    if (carriedItems > 0) ins.push({ k: carriedItems <= 2 ? "watch" : "bad", t: carriedItems + " item(s) · " + carry + " " + unit + " carried over to the next sprint." });
+    else ins.push({ k: "good", t: "No carryover — everything committed was delivered." });
+    if (m.predictability != null) ins.push({ k: m.predictability >= 0.85 ? "good" : m.predictability >= 0.6 ? "watch" : "bad", t: "Predictability vs the original commitment: " + pct(m.predictability) + "." });
+    if (m.reopenedPct != null) ins.push({ k: m.reopenedPct <= 0.1 ? "good" : m.reopenedPct <= 0.25 ? "watch" : "bad", t: "Rework rate: " + pct(m.reopenedPct) + " of delivered items were reopened." });
+    if (m.pCritical > 0) ins.push({ k: "bad", t: m.pCritical + " P1/Critical bug(s) were in this sprint." });
+    if (m.defectEscape != null && m.defectEscape > 0) ins.push({ k: m.defectEscape <= 0.1 ? "watch" : "bad", t: pct(m.defectEscape) + " of bugs escaped to UAT/Prod." });
+    if (m.cycleDays != null) ins.push({ k: m.cycleDays <= 5 ? "good" : m.cycleDays <= 10 ? "watch" : "bad", t: "Average cycle time: " + (Math.round(m.cycleDays * 10) / 10) + " days." });
+    var insRows = ins.map(function (x) {
+      return '<div class="taskrow"><div class="tasktitle" style="display:flex;align-items:center;gap:10px">' + retroBadge(x.k) + "<span>" + esc(x.t) + "</span></div></div>";
+    }).join("");
+    el("retroInsights").innerHTML = listBlock("retroinsights", "What the data says &middot; " + ins.length, insRows || '<div class="muted">No sprint data.</div>');
+
+    var notes = (data.retro && data.retro.length ? data.retro : sampleRetro(sprint)).filter(function (r) { return String(r.sprint) === String(sprint); });
+    if (!notes.length) notes = sampleRetro(sprint);
+    function noteList(dom, type, title) {
+      var sel = notes.filter(function (r) { return r.type === type; });
+      var rows = sel.map(function (r) {
+        var meta = (r.owner || r.status) ? '<span class="muted" style="font-size:12px"> &middot; ' + esc([r.owner, r.status].filter(Boolean).join(" · ")) + "</span>" : "";
+        return '<div class="taskrow"><div class="tasktitle">' + esc(r.text) + meta + "</div></div>";
+      }).join("");
+      el(dom).innerHTML = listBlock("retro_" + type, title + " &middot; " + sel.length, rows || '<div class="muted">No notes yet.</div>');
+    }
+    noteList("retroWell", "well", "✅ What went well");
+    noteList("retroImprove", "improve", "🔧 What to improve");
+    noteList("retroActions", "action", "🎯 Action items");
+  }
+
   // ---------- render ----------
   function render(sprint) {
     var m = compute(sprint), rag = goalRag(m);
+    renderRetro(sprint, m);
     var goalHex = { green: "#2e7d32", amber: "#f29f05", red: "#c62828" }[rag[0]] || "#0f8b8d";
     el("healthGrid").innerHTML =
       '<div class="gauges">' +
@@ -1377,11 +1445,12 @@
       sbSelect("fact_reengagement_log").catch(function () { return []; }),
       sbSelect("fact_api_endpoints").catch(function () { return []; }),
       sbSelect("fact_api_requests").catch(function () { return []; }),
+      sbSelect("fact_retro").catch(function () { return []; }),
     ]).then(function (res) {
       data.items = res[0]; data.sprints = res[1]; data.flow = res[2]; data.risks = res[3];
       data.burndown = res[4]; data.repos = res[5]; data.vulns = res[6]; data.funnels = res[7]; data.paths = res[8];
       data.unreviewedPrs = res[9]; data.abandoned = res[10]; data.reengage = res[11];
-      data.apiEndpoints = res[12]; data.apiRequests = res[13];
+      data.apiEndpoints = res[12]; data.apiRequests = res[13]; data.retro = res[14];
       loadedOnce = true;
       var def = populateSprintSelect();
       var anySample = data.items.some(function (i) { return String(i.story_points_is_sample) === "1"; });
