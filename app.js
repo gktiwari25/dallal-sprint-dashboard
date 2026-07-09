@@ -142,6 +142,9 @@
     var bugs = its.filter(isBug);
     function statusIn(list) { return its.filter(function (i) { return list.indexOf(i.status) !== -1; }).length; }
     var reopened = its.filter(function (i) { return num(i.reopened_count) > 0; }).length;
+    // Defect-escape inputs: only bugs whose "Found In" is set count toward the rate.
+    var classifiedBugs = bugs.filter(function (i) { return ["Dev", "UAT", "Prod"].indexOf(i.found_in) !== -1; });
+    var prodBugs = bugs.filter(function (i) { return i.found_in === "Prod"; });
 
     var gids = {}; its.forEach(function (i) { gids[i.task_gid] = 1; });
     var fl = data.flow.filter(function (f) { return gids[f.task_gid]; });
@@ -170,7 +173,13 @@
       reopened: reopened,   // count of items reopened >=1x this sprint
       // Rework rate: delivered items that were reopened / delivered items (always <=100%).
       reopenedPct: completed ? its.filter(function (i) { return isDone(i) && num(i.reopened_count) > 0; }).length / completed : null,
-      defectEscape: bugs.length ? bugs.filter(function (i) { return i.found_in === "UAT" || i.found_in === "Prod"; }).length / bugs.length : null,
+      // Escape rate = Prod-found bugs / bugs that actually have a Found In value.
+      // Bugs with no Found In are EXCLUDED (not silently counted as "didn't escape").
+      defectEscape: classifiedBugs.length ? prodBugs.length / classifiedBugs.length : null,
+      bugsClassified: classifiedBugs.length,
+      escapeCoverage: bugs.length ? classifiedBugs.length / bugs.length : null,
+      // Only trust the rate when enough bugs are classified (>=3 and >=50% coverage).
+      escapeReliable: bugs.length ? (classifiedBugs.length >= 3 && classifiedBugs.length / bugs.length >= 0.5) : false,
       devDays: avg("dev_days"), qaDays: avg("qa_days"), cycleDays: avg("cycle_days"),
       blockedHours: fl.length ? fl.reduce(function (a, f) { return a + num(f.blocked_hours); }, 0) : null,
       hasFlow: fl.length > 0,
@@ -222,7 +231,8 @@
     if (m.predictability != null) ins.push({ k: m.predictability >= 0.85 ? "good" : m.predictability >= 0.6 ? "watch" : "bad", t: "Predictability vs the original commitment: " + pct(m.predictability) + "." });
     if (m.reopenedPct != null) ins.push({ k: m.reopenedPct <= 0.1 ? "good" : m.reopenedPct <= 0.25 ? "watch" : "bad", t: "Rework rate: " + pct(m.reopenedPct) + " of delivered items were reopened." });
     if (m.pCritical > 0) ins.push({ k: "bad", t: m.pCritical + " P1/Critical bug(s) were in this sprint." });
-    if (m.defectEscape != null && m.defectEscape > 0) ins.push({ k: m.defectEscape <= 0.1 ? "watch" : "bad", t: pct(m.defectEscape) + " of bugs escaped to UAT/Prod." });
+    if (m.bugs > 0 && !m.escapeReliable) ins.push({ k: "watch", t: "Defect escape not reported — 'Found In' is set for only " + m.bugsClassified + " of " + m.bugs + " bug(s)." });
+    else if (m.escapeReliable && m.defectEscape > 0) ins.push({ k: m.defectEscape <= 0.1 ? "watch" : "bad", t: pct(m.defectEscape) + " of classified bugs escaped to Prod (" + m.bugsClassified + " of " + m.bugs + " bugs classified)." });
     if (m.cycleDays != null) ins.push({ k: m.cycleDays <= 5 ? "good" : m.cycleDays <= 10 ? "watch" : "bad", t: "Average cycle time: " + (Math.round(m.cycleDays * 10) / 10) + " days." });
     var insRows = ins.map(function (x) {
       return '<div class="taskrow"><div class="tasktitle" style="display:flex;align-items:center;gap:10px">' + retroBadge(x.k) + "<span>" + esc(x.t) + "</span></div></div>";
@@ -300,7 +310,7 @@
       card("Critical (P1)", m.pCritical, { icon: "🔴", accent: "#c62828", tip: "Bug tickets with task Priority = P1 Critical." }) +
       card("High (P2)", m.pHigh, { icon: "🟠", accent: "#f29f05", tip: "Bug tickets with task Priority = P2 High." }) +
       card("Reopened", m.reopened, { icon: "🔁", tip: "Count of items sent back for rework at least once this sprint (bounced to Raised by QA / Reopen / UAT Failed) — derived from Status history, refreshed on the daily flow sync. Rework rate of delivered items: " + pct(m.reopenedPct) + "." }) +
-      card("Defect Escape", pct(m.defectEscape), { icon: "🪲", tip: "Share of bugs found in UAT or Prod (vs Dev). Needs the 'Found In' field filled in Asana." });
+      card("Defect Escape", (m.escapeReliable ? pct(m.defectEscape) : "--") + ' <span style="font-size:13px;color:var(--muted,#5b6577)">' + m.bugsClassified + "/" + m.bugs + " classified</span>", { icon: "🪲", accent: m.escapeReliable ? undefined : "#5b6577", tip: "Share of bugs found in Prod, out of bugs that have a 'Found In' value (Dev/UAT/Prod). Bugs with no 'Found In' are excluded, and the rate shows '—' until at least 3 bugs and 50% of the sprint's bugs are classified in Asana." });
     mkChart("qualityChart", { type: "doughnut",
       data: { labels: ["Critical", "High", "Medium", "Other"],
         datasets: [{ data: [m.pCritical, m.pHigh, m.pMedium, Math.max(0, m.bugs - m.pCritical - m.pHigh - m.pMedium)],
@@ -683,12 +693,13 @@
   }
 
   function showTab(which) {
-    var isDel = which === "delivery", isEng = which === "eng", isFun = which === "funnels", isMkt = which === "marketing", isFlow = which === "flow", isApi = which === "api";
+    var isDel = which === "delivery", isEng = which === "eng", isFun = which === "funnels", isMkt = which === "marketing", isFlow = which === "flow", isCrm = which === "crm", isApi = which === "api";
     el("sprintView").classList.toggle("hidden", !isDel);
     el("engView").classList.toggle("hidden", !isEng);
     el("funnelView").classList.toggle("hidden", !isFun);
     el("marketingView").classList.toggle("hidden", !isMkt);
     el("flowView").classList.toggle("hidden", !isFlow);
+    el("crmView").classList.toggle("hidden", !isCrm);
     el("apiView").classList.toggle("hidden", !isApi);
     el("sprintSel").classList.toggle("hidden", !isDel);
     el("sprintLbl").classList.toggle("hidden", !isDel);
@@ -697,6 +708,7 @@
     el("tabFunnels").classList.toggle("active", isFun);
     el("tabMarketing").classList.toggle("active", isMkt);
     el("tabFlow").classList.toggle("active", isFlow);
+    el("tabCrm").classList.toggle("active", isCrm);
     el("tabApi").classList.toggle("active", isApi);
     if (isEng) renderEng();
     if (isFun) renderFunnels();
@@ -1559,6 +1571,7 @@
     el("tabFunnels").addEventListener("click", function () { showTab("funnels"); });
     el("tabMarketing").addEventListener("click", function () { showTab("marketing"); });
     el("tabFlow").addEventListener("click", function () { showTab("flow"); });
+    el("tabCrm").addEventListener("click", function () { showTab("crm"); });
     el("tabApi").addEventListener("click", function () { showTab("api"); });
     el("exportApi").addEventListener("click", exportApi);
     (function () {
