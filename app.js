@@ -78,8 +78,8 @@
     if (sec === "Blocked") return "blocked";
     if (/Released/i.test(sec)) return "released";
     if (/UAT Passed|Ready for Production/i.test(sec)) return "ready";
-    if (/QA on Dev|Ready for UAT|In UAT/i.test(sec)) return "qa";
-    if (/In Development|Code Review|Merged to Develop|Sub-tasks/i.test(sec)) return "dev";
+    if (/QA on Dev|QA on UAT|Ready for UAT|In UAT/i.test(sec)) return "qa";
+    if (/In Development|Code Review|Merged to Develop|Sub-tasks|Reopen/i.test(sec)) return "dev";
     if (/Backlog|Ready for Development|Sprint Planned|Refinement|Design/i.test(sec)) return "planned";
     return "other";
   }
@@ -231,8 +231,7 @@
     if (m.predictability != null) ins.push({ k: m.predictability >= 0.85 ? "good" : m.predictability >= 0.6 ? "watch" : "bad", t: "Predictability vs the original commitment: " + pct(m.predictability) + "." });
     if (m.reopenedPct != null) ins.push({ k: m.reopenedPct <= 0.1 ? "good" : m.reopenedPct <= 0.25 ? "watch" : "bad", t: "Rework rate: " + pct(m.reopenedPct) + " of delivered items were reopened." });
     if (m.pCritical > 0) ins.push({ k: "bad", t: m.pCritical + " P1/Critical bug(s) were in this sprint." });
-    if (m.bugs > 0 && !m.escapeReliable) ins.push({ k: "watch", t: "Defect escape not reported — 'Found In' is set for only " + m.bugsClassified + " of " + m.bugs + " bug(s)." });
-    else if (m.escapeReliable && m.defectEscape > 0) ins.push({ k: m.defectEscape <= 0.1 ? "watch" : "bad", t: pct(m.defectEscape) + " of classified bugs escaped to Prod (" + m.bugsClassified + " of " + m.bugs + " bugs classified)." });
+    if (m.escapeReliable && m.defectEscape > 0) ins.push({ k: m.defectEscape <= 0.1 ? "watch" : "bad", t: pct(m.defectEscape) + " of classified bugs escaped to Prod (" + m.bugsClassified + " of " + m.bugs + " bugs classified)." });
     if (m.cycleDays != null) ins.push({ k: m.cycleDays <= 5 ? "good" : m.cycleDays <= 10 ? "watch" : "bad", t: "Average cycle time: " + (Math.round(m.cycleDays * 10) / 10) + " days." });
     var insRows = ins.map(function (x) {
       return '<div class="taskrow"><div class="tasktitle" style="display:flex;align-items:center;gap:10px">' + retroBadge(x.k) + "<span>" + esc(x.t) + "</span></div></div>";
