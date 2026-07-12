@@ -131,6 +131,17 @@
     var committedSP = its.reduce(function (a, i) { return a + num(i.story_points); }, 0);
     var delivered = its.filter(isDone);
     var deliveredSP = delivered.reduce(function (a, i) { return a + num(i.story_points); }, 0);
+    // Carry-forward reflects ONLY work that never reached testing. Anything that
+    // moved into the QA/UAT pipeline or beyond (QA on Dev, Ready for UAT, QA on
+    // UAT, In UAT, UAT Passed, Ready for Production, Released) is treated as
+    // delivered here — dev is done, so it is NOT carried over. Only committed
+    // items still In Development / Reopen / not-yet-started / Blocked carry to the
+    // next sprint. (Distinct from "Delivered"/"Completion", which credit only
+    // truly-shipped work: Released + UAT Passed.)
+    function reachedTest(i) { var s = sectionStage(i.section); return s === "qa" || s === "ready" || s === "released" || String(i.is_delivered) === "1"; }
+    var carriedFwd = its.filter(function (i) { return !reachedTest(i); });
+    var carryFwdSP = carriedFwd.reduce(function (a, i) { return a + num(i.story_points); }, 0);
+    var carryFwdItems = carriedFwd.length;
     var commitmentSP = num(dim.commitment_sp) || committedSP;
     var completed = delivered.length, planned = its.length;
     // Fallback: if no Story Points are set for this sprint, drive Sprint Health
@@ -157,7 +168,8 @@
       usePts: usePts, velocity: hDeliver, velocityUnit: usePts ? "SP" : "items",
       progress: hCommit ? hDeliver / hCommit : null,
       predictability: hCommitment ? hDeliver / hCommitment : null,
-      carryFwd: hCommit ? (hCommit - hDeliver) / hCommit : null,
+      carryFwd: hCommit ? (usePts ? carryFwdSP : carryFwdItems) / hCommit : null,
+      carryFwdSP: carryFwdSP, carryFwdItems: carryFwdItems,
       planned: planned, completed: completed,
       inDev: its.filter(function (i) { return sectionStage(i.section) === "dev"; }).length,
       inQA: its.filter(function (i) { return sectionStage(i.section) === "qa"; }).length,
@@ -209,8 +221,8 @@
     var committed = usePts ? m.committedSP : m.planned;
     var delivered = usePts ? m.deliveredSP : m.completed;
     var unit = usePts ? "SP" : "items";
-    var carry = Math.max(0, committed - delivered);
-    var carriedItems = Math.max(0, m.planned - m.completed);
+    var carry = usePts ? m.carryFwdSP : m.carryFwdItems;
+    var carriedItems = m.carryFwdItems;
     var comp = m.progress;
     var compHex = comp == null ? "#0f8b8d" : comp >= 0.85 ? "#2e7d32" : comp >= 0.6 ? "#b9820a" : "#c62828";
 
@@ -219,7 +231,7 @@
       card("Committed", committed + " " + unit, { icon: "🎯", accent: "#1f6feb", tip: "Scope committed for this sprint (still-ideating columns excluded)." }) +
       card("Delivered", delivered + " " + unit, { icon: "✅", accent: "#2e7d32", tip: "Completed and released work this sprint." }) +
       card("Completion", pct(comp), { icon: "📈", accent: compHex, tip: "Delivered ÷ committed." }) +
-      card("Carryover", carriedItems + ' <span style="font-size:13px;color:var(--muted,#5b6577)">items · ' + carry + " " + unit + "</span>", { icon: "↪️", accent: carriedItems ? "#b9820a" : "#2e7d32", tip: "Committed work not finished this sprint." }) +
+      card("Carryover", carriedItems + ' <span style="font-size:13px;color:var(--muted,#5b6577)">items · ' + carry + " " + unit + "</span>", { icon: "↪️", accent: carriedItems ? "#b9820a" : "#2e7d32", tip: "Committed work still in development or not yet started at sprint end. Items already in the QA/UAT pipeline (Ready for UAT / QA on UAT / UAT Passed) count as delivered, not carried over." }) +
       card("Velocity", m.velocity + " " + m.velocityUnit, { icon: "⚡", accent: "#0f8b8d", tip: "Throughput delivered this sprint." }) +
       card("Bugs Closed", m.bugsClosed + " / " + m.bugs, { icon: "🐞", accent: "#7c5cd6", tip: "Bugs resolved out of bugs in the sprint." }) +
       card("Rework", m.reopenedPct == null ? "--" : pct(m.reopenedPct), { icon: "🔁", accent: (m.reopenedPct || 0) <= 0.1 ? "#2e7d32" : (m.reopenedPct || 0) <= 0.25 ? "#b9820a" : "#c62828", tip: "Delivered items that were reopened at least once." });
@@ -227,7 +239,7 @@
     var ins = [];
     if (comp != null) ins.push({ k: comp >= 0.85 ? "good" : comp >= 0.6 ? "watch" : "bad", t: "Delivered " + delivered + " of " + committed + " " + unit + " committed (" + pct(comp) + ")." });
     if (carriedItems > 0) ins.push({ k: carriedItems <= 2 ? "watch" : "bad", t: carriedItems + " item(s) · " + carry + " " + unit + " carried over to the next sprint." });
-    else ins.push({ k: "good", t: "No carryover — everything committed was delivered." });
+    else ins.push({ k: "good", t: "No carry-forward — all committed work reached the QA/UAT pipeline or shipped." });
     if (m.predictability != null) ins.push({ k: m.predictability >= 0.85 ? "good" : m.predictability >= 0.6 ? "watch" : "bad", t: "Predictability vs the original commitment: " + pct(m.predictability) + "." });
     if (m.reopenedPct != null) ins.push({ k: m.reopenedPct <= 0.1 ? "good" : m.reopenedPct <= 0.25 ? "watch" : "bad", t: "Rework rate: " + pct(m.reopenedPct) + " of delivered items were reopened." });
     if (m.pCritical > 0) ins.push({ k: "bad", t: m.pCritical + " P1/Critical bug(s) were in this sprint." });
@@ -289,7 +301,7 @@
     drawGauge("gPredict", m.predictability, "#1f6feb");
     drawGauge("gCarry", m.carryFwd, "#f29f05");
     el("healthNote").innerHTML = m.usePts
-      ? 'Progress, Predictability &amp; Carry-Forward are measured in <b>story points</b> — ' + Math.round(m.deliveredSP) + '/' + Math.round(m.committedSP) + ' SP delivered (' + pct(m.progress) + '), so Carry-Forward = ' + pct(m.carryFwd) + '. By <b>item count</b> it\'s ' + m.completed + '/' + m.planned + ' stories done (' + pct(m.planned ? m.completed / m.planned : 0) + '). The two differ when the completed stories are smaller — or unestimated — versus the ones still open.'
+      ? 'Progress &amp; Predictability are measured in <b>story points</b> — ' + Math.round(m.deliveredSP) + '/' + Math.round(m.committedSP) + ' SP shipped (' + pct(m.progress) + '), i.e. Released + UAT&nbsp;Passed. <b>Carry-Forward</b> counts only committed work still In&nbsp;Development or not yet started — ' + Math.round(m.carryFwdSP) + ' SP (' + pct(m.carryFwd) + '); work already in the QA/UAT pipeline is treated as delivered, so Carry-Forward is not simply 100% − Progress. By <b>item count</b> it\'s ' + m.completed + '/' + m.planned + ' stories done.'
       : "Story Points not set in Asana for this sprint — Sprint Health is showing item counts. It switches to SP automatically once tasks are estimated.";
 
     el("deliveryGrid").innerHTML =
@@ -490,7 +502,7 @@
     var bugItems = mm.its.filter(isBug);
     return {
       sprint: sn, committed: Math.round(committed), delivered: Math.round(delivered),
-      carry: Math.max(0, Math.round(committed - delivered)),
+      carry: Math.round(mm.usePts ? mm.carryFwdSP : mm.carryFwdItems),
       predict: mm.predictability != null ? Math.round(mm.predictability * 100) : null,
       dev: mm.devDays, qa: mm.qaDays, cycle: mm.cycleDays,
       bugsRaised: bugItems.length, bugsClosed: bugItems.filter(isDone).length,
