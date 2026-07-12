@@ -83,8 +83,13 @@
     if (/Backlog|Ready for Development|Sprint Planned|Refinement|Design/i.test(sec)) return "planned";
     return "other";
   }
-  // "Done" = in a Released / UAT-Passed column (board truth), or the Asana complete flag.
-  function isDone(i) { var s = sectionStage(i.section); return s === "released" || s === "ready" || String(i.is_delivered) === "1"; }
+  // "Done" / Delivered = dev is complete and the story has reached the UAT pipeline
+  // or beyond — Ready for UAT, QA on UAT, In UAT, UAT Passed, Ready for Production,
+  // Released — or the Asana complete flag. Work still In Development / QA on Dev /
+  // Reopen / not-yet-started (Ready for Development) / Blocked is NOT delivered; it
+  // is what carries forward. (The "Released" card below still counts only the
+  // Released column — actually shipped to production.)
+  function isDone(i) { return /Ready for UAT|QA on UAT|In UAT|UAT Passed|Ready for Production|Released/i.test(i.section || "") || String(i.is_delivered) === "1"; }
   // Risks tied to repos/security live on the Engineering tab, not the delivery Risks list.
   function isEngRisk(r) { return (r.category || "") === "Security"; }
   var ASANA_TASK = "https://app.asana.com/0/1214388950902741/";
@@ -131,15 +136,11 @@
     var committedSP = its.reduce(function (a, i) { return a + num(i.story_points); }, 0);
     var delivered = its.filter(isDone);
     var deliveredSP = delivered.reduce(function (a, i) { return a + num(i.story_points); }, 0);
-    // Carry-forward reflects ONLY work that never reached testing. Anything that
-    // moved into the QA/UAT pipeline or beyond (QA on Dev, Ready for UAT, QA on
-    // UAT, In UAT, UAT Passed, Ready for Production, Released) is treated as
-    // delivered here — dev is done, so it is NOT carried over. Only committed
-    // items still In Development / Reopen / not-yet-started / Blocked carry to the
-    // next sprint. (Distinct from "Delivered"/"Completion", which credit only
-    // truly-shipped work: Released + UAT Passed.)
-    function reachedTest(i) { var s = sectionStage(i.section); return s === "qa" || s === "ready" || s === "released" || String(i.is_delivered) === "1"; }
-    var carriedFwd = its.filter(function (i) { return !reachedTest(i); });
+    // Carry-forward = committed work NOT delivered (see isDone) — i.e. still In
+    // Development / QA on Dev / Reopen / not-yet-started (Ready for Development) /
+    // Blocked. It is the exact complement of Delivered, so anything already in the
+    // UAT pipeline (Ready for UAT / QA on UAT / UAT Passed …) is NOT carried over.
+    var carriedFwd = its.filter(function (i) { return !isDone(i); });
     var carryFwdSP = carriedFwd.reduce(function (a, i) { return a + num(i.story_points); }, 0);
     var carryFwdItems = carriedFwd.length;
     var commitmentSP = num(dim.commitment_sp) || committedSP;
@@ -229,7 +230,7 @@
     el("retroSprint").textContent = sprint || "—";
     el("retroGrid").innerHTML =
       card("Committed", committed + " " + unit, { icon: "🎯", accent: "#1f6feb", tip: "Scope committed for this sprint (still-ideating columns excluded)." }) +
-      card("Delivered", delivered + " " + unit, { icon: "✅", accent: "#2e7d32", tip: "Completed and released work this sprint." }) +
+      card("Delivered", delivered + " " + unit, { icon: "✅", accent: "#2e7d32", tip: "Work that reached the UAT pipeline or shipped this sprint (Ready for UAT / QA on UAT / UAT Passed / Released)." }) +
       card("Completion", pct(comp), { icon: "📈", accent: compHex, tip: "Delivered ÷ committed." }) +
       card("Carryover", carriedItems + ' <span style="font-size:13px;color:var(--muted,#5b6577)">items · ' + carry + " " + unit + "</span>", { icon: "↪️", accent: carriedItems ? "#b9820a" : "#2e7d32", tip: "Committed work still in development or not yet started at sprint end. Items already in the QA/UAT pipeline (Ready for UAT / QA on UAT / UAT Passed) count as delivered, not carried over." }) +
       card("Velocity", m.velocity + " " + m.velocityUnit, { icon: "⚡", accent: "#0f8b8d", tip: "Throughput delivered this sprint." }) +
@@ -301,16 +302,16 @@
     drawGauge("gPredict", m.predictability, "#1f6feb");
     drawGauge("gCarry", m.carryFwd, "#f29f05");
     el("healthNote").innerHTML = m.usePts
-      ? 'Progress &amp; Predictability are measured in <b>story points</b> — ' + Math.round(m.deliveredSP) + '/' + Math.round(m.committedSP) + ' SP shipped (' + pct(m.progress) + '), i.e. Released + UAT&nbsp;Passed. <b>Carry-Forward</b> counts only committed work still In&nbsp;Development or not yet started — ' + Math.round(m.carryFwdSP) + ' SP (' + pct(m.carryFwd) + '); work already in the QA/UAT pipeline is treated as delivered, so Carry-Forward is not simply 100% − Progress. By <b>item count</b> it\'s ' + m.completed + '/' + m.planned + ' stories done.'
+      ? 'Progress, Predictability &amp; Carry-Forward are measured in <b>story points</b>. <b>Delivered</b> = work that has reached the UAT pipeline or shipped (Ready&nbsp;for&nbsp;UAT → Released) — ' + Math.round(m.deliveredSP) + '/' + Math.round(m.committedSP) + ' SP (' + pct(m.progress) + '). <b>Carry-Forward</b> = ' + Math.round(m.carryFwdSP) + ' SP (' + pct(m.carryFwd) + '), the committed work still In&nbsp;Development or not yet started. By <b>item count</b> it\'s ' + m.completed + '/' + m.planned + ' stories delivered.'
       : "Story Points not set in Asana for this sprint — Sprint Health is showing item counts. It switches to SP automatically once tasks are estimated.";
 
     el("deliveryGrid").innerHTML =
       card("Stories Planned", m.planned, { icon: "📋", accent: "#163a5f" }) +
       card("In Development", m.inDev, { icon: "🛠️", accent: "#7b61ff", tip: "Stories in the 'In Development' / Code Review board column (based on the board section, not the stale Status field)." }) +
-      card("In QA", m.inQA, { icon: "🧪", accent: "#1f6feb", tip: "Stories in a testing column: QA on Dev / Ready for UAT / In UAT." }) +
+      card("In QA", m.inQA, { icon: "🧪", accent: "#1f6feb", tip: "Stories in a testing column: QA on Dev / Ready for UAT / QA on UAT / In UAT." }) +
       card("Completed", m.completed, { icon: "✅", accent: "#2e7d32" }) +
       card("Blocked", m.blocked, { icon: "⛔", accent: "#c62828" }) +
-      card("Released", m.released, { icon: "🚀", accent: "#0f8b8d", tip: "Stories in the 'Released' board column in Asana (shipped to production). 'Completed' above is the total of all done states (Released + UAT Passed + Ready for Production)." });
+      card("Released", m.released, { icon: "🚀", accent: "#0f8b8d", tip: "Stories in the 'Released' board column in Asana (shipped to production). 'Completed' above counts every delivered state — reached UAT or beyond (Ready for UAT / QA on UAT / In UAT / UAT Passed / Ready for Production / Released)." });
     var openItems = m.its.filter(function (i) { return !isDone(i); });
     el("openList").innerHTML = listBlock("open", "Not yet completed &middot; " + openItems.length + " of " + m.planned + " stories",
       (openItems.length ? openItems.map(taskRow).join("") : '<div class="muted">All committed stories completed. 🎉</div>'));
