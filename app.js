@@ -705,13 +705,14 @@
   }
 
   function showTab(which) {
-    var isDel = which === "delivery", isEng = which === "eng", isFun = which === "funnels", isMkt = which === "marketing", isFlow = which === "flow", isCrm = which === "crm", isApi = which === "api";
+    var isDel = which === "delivery", isEng = which === "eng", isFun = which === "funnels", isMkt = which === "marketing", isFlow = which === "flow", isCrm = which === "crm", isApi = which === "api", isJourney = which === "journey";
     el("sprintView").classList.toggle("hidden", !isDel);
     el("engView").classList.toggle("hidden", !isEng);
     el("funnelView").classList.toggle("hidden", !isFun);
     el("marketingView").classList.toggle("hidden", !isMkt);
     el("flowView").classList.toggle("hidden", !isFlow);
     el("crmView").classList.toggle("hidden", !isCrm);
+    el("journeyView").classList.toggle("hidden", !isJourney);
     el("apiView").classList.toggle("hidden", !isApi);
     el("sprintSel").classList.toggle("hidden", !isDel);
     el("sprintLbl").classList.toggle("hidden", !isDel);
@@ -721,6 +722,7 @@
     el("tabMarketing").classList.toggle("active", isMkt);
     el("tabFlow").classList.toggle("active", isFlow);
     el("tabCrm").classList.toggle("active", isCrm);
+    el("tabJourney").classList.toggle("active", isJourney);
     el("tabApi").classList.toggle("active", isApi);
     if (isEng) renderEng();
     if (isFun) renderFunnels();
@@ -1584,6 +1586,7 @@
     el("tabMarketing").addEventListener("click", function () { showTab("marketing"); });
     el("tabFlow").addEventListener("click", function () { showTab("flow"); });
     el("tabCrm").addEventListener("click", function () { showTab("crm"); });
+    el("tabJourney").addEventListener("click", function () { showTab("journey"); });
     el("tabApi").addEventListener("click", function () { showTab("api"); });
     el("exportApi").addEventListener("click", exportApi);
     (function () {
@@ -1604,6 +1607,9 @@
     window.addEventListener("message", function (ev) {
       if (ev && ev.data && typeof ev.data.flowHeight === "number") {
         var f = el("flowFrame"); if (f) f.style.height = (ev.data.flowHeight + 4) + "px";
+      }
+      if (ev && ev.data && typeof ev.data.journeyHeight === "number") {
+        var j = el("journeyFrame"); if (j) j.style.height = (ev.data.journeyHeight + 4) + "px";
       }
     });
     el("exportRepoHealth").addEventListener("click", exportRepoHealth);

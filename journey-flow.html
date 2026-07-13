@@ -1,0 +1,249 @@
+<!doctype html>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Unified Journey — Data &amp; Activation Flow</title>
+<style>
+  :root{
+    --page:#f4f6fa; --canvas:#ffffff; --ink:#1c2536; --muted:#5b6577;
+    --arrow:#3f4a5f; --arrow2:#93a0b6; --line:#e2e7f0;
+    --blue-bg:#eaf2ff; --blue-bd:#b6cdf2; --blue-hd:#2b5fd0;
+    --green-bg:#e9f7ef; --green-bd:#aeddc0; --green-hd:#2f8f4e;
+    --purple-bg:#f1ecfb; --purple-bd:#d0c1ee; --purple-hd:#6b4bc0;
+    --cream-bg:#fdf5e1; --cream-bd:#ecd6a0; --cream-hd:#b07d0a;
+    --teal-bg:#e5f6f5; --teal-bd:#aadfdb; --teal-hd:#0f8b8d;
+    --red-bg:#fdebec; --red-bd:#f2bfc2; --red-hd:#d0424a;
+    --chk:#2f8f4e;
+    --shadow:0 1px 2px rgba(20,30,60,.05),0 10px 26px -18px rgba(20,30,60,.35);
+    --sans:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root{
+      --page:#0d1220; --canvas:#131b2b; --ink:#e7ecf6; --muted:#95a1b8;
+      --arrow:#8493ad; --arrow2:#55617a; --line:#243049;
+      --blue-bg:#16233c; --blue-bd:#31486f; --blue-hd:#89a7f2;
+      --green-bg:#132a1f; --green-bd:#2f5a3f; --green-hd:#5cc27e;
+      --purple-bg:#211b39; --purple-bd:#453a6b; --purple-hd:#b7a2f2;
+      --cream-bg:#2b2410; --cream-bd:#5a4a1e; --cream-hd:#e0b24a;
+      --teal-bg:#0f2a2a; --teal-bd:#245650; --teal-hd:#3bbfbf;
+      --red-bg:#2e1618; --red-bd:#5f2f33; --red-hd:#f07b82;
+      --chk:#5cc27e;
+      --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -18px rgba(0,0,0,.7);
+    }
+  }
+  :root[data-theme="light"]{
+    --page:#f4f6fa; --canvas:#ffffff; --ink:#1c2536; --muted:#5b6577;
+    --arrow:#3f4a5f; --arrow2:#93a0b6; --line:#e2e7f0;
+    --blue-bg:#eaf2ff; --blue-bd:#b6cdf2; --blue-hd:#2b5fd0;
+    --green-bg:#e9f7ef; --green-bd:#aeddc0; --green-hd:#2f8f4e;
+    --purple-bg:#f1ecfb; --purple-bd:#d0c1ee; --purple-hd:#6b4bc0;
+    --cream-bg:#fdf5e1; --cream-bd:#ecd6a0; --cream-hd:#b07d0a;
+    --teal-bg:#e5f6f5; --teal-bd:#aadfdb; --teal-hd:#0f8b8d;
+    --red-bg:#fdebec; --red-bd:#f2bfc2; --red-hd:#d0424a;
+    --chk:#2f8f4e;
+    --shadow:0 1px 2px rgba(20,30,60,.05),0 10px 26px -18px rgba(20,30,60,.35);
+  }
+  :root[data-theme="dark"]{
+    --page:#0d1220; --canvas:#131b2b; --ink:#e7ecf6; --muted:#95a1b8;
+    --arrow:#8493ad; --arrow2:#55617a; --line:#243049;
+    --blue-bg:#16233c; --blue-bd:#31486f; --blue-hd:#89a7f2;
+    --green-bg:#132a1f; --green-bd:#2f5a3f; --green-hd:#5cc27e;
+    --purple-bg:#211b39; --purple-bd:#453a6b; --purple-hd:#b7a2f2;
+    --cream-bg:#2b2410; --cream-bd:#5a4a1e; --cream-hd:#e0b24a;
+    --teal-bg:#0f2a2a; --teal-bd:#245650; --teal-hd:#3bbfbf;
+    --red-bg:#2e1618; --red-bd:#5f2f33; --red-hd:#f07b82;
+    --chk:#5cc27e;
+    --shadow:0 1px 2px rgba(0,0,0,.3),0 12px 30px -18px rgba(0,0,0,.7);
+  }
+
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--page);color:var(--ink);font-family:var(--sans);-webkit-font-smoothing:antialiased}
+  .head{max-width:960px;margin:0 auto;padding:24px 20px 4px;text-align:center}
+  .head h1{margin:0;font-size:clamp(20px,3vw,29px);letter-spacing:-.02em;font-weight:800}
+  .head p{margin:6px 0 0;color:var(--muted);font-size:clamp(13px,1.6vw,15.5px)}
+
+  .flow{max-width:760px;margin:0 auto;padding:14px 20px 6px;display:flex;flex-direction:column}
+
+  .enter{align-self:center;background:var(--ink);color:var(--page);font-weight:700;font-size:13px;
+    padding:9px 18px;border-radius:999px;box-shadow:var(--shadow)}
+
+  .arrow{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0;color:var(--arrow2)}
+  .arrow .ln2{width:2px;height:15px;background:var(--arrow2)}
+  .arrow .cap{font-size:12px;font-weight:600;color:var(--muted);text-align:center;max-width:60ch}
+  .arrow .tri{font-size:12px;line-height:1;margin-top:-2px}
+  .arrow .tri::before{content:"\25BC"}
+
+  .box{border:1.6px solid var(--line);border-radius:14px;padding:13px 16px;background:var(--canvas);
+    box-shadow:var(--shadow);font-size:13px;line-height:1.42}
+  .box h3{margin:0;font-size:15.5px;line-height:1.18;color:var(--hd,var(--ink));font-weight:800}
+  .bh{display:flex;align-items:center;gap:9px;margin-bottom:7px}
+  .ic{font-size:19px;line-height:1}
+  .sub{font-weight:700;font-size:12.5px;margin:0 0 6px;color:var(--muted)}
+  ul.bl{margin:4px 0 0;padding-left:17px}
+  ul.bl li{margin:3px 0}
+  ul.bl li b{color:var(--hd)}
+  .inset{margin-top:10px;border-radius:9px;padding:8px 11px;font-size:12px;
+    background:color-mix(in srgb,var(--green-bd) 24%,transparent);border:1px solid var(--green-bd)}
+  .inset b{color:var(--hd)}.inset span{color:var(--muted)}
+
+  .mini{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-top:2px}
+  .mini .m{background:color-mix(in srgb,var(--hd) 9%,var(--canvas));border:1.4px solid var(--line);
+    border-radius:9px;padding:7px 11px;font-weight:700;font-size:12.5px;color:var(--ink)}
+  .mini .ar{color:var(--arrow2);font-weight:800;font-size:15px}
+
+  .hub{border-width:2.4px;border-color:var(--teal-hd);box-shadow:0 2px 4px rgba(15,139,141,.18),0 14px 30px -18px rgba(15,139,141,.6)}
+  .hubtext{font-size:13.5px;color:var(--ink);line-height:1.5}
+  .hubtext b{color:var(--hd)}
+
+  .row3{display:grid;grid-template-columns:repeat(3,1fr);gap:13px}
+  @media(max-width:640px){.row3{grid-template-columns:1fr}}
+  .row3 .box{margin:0}
+  .row3 .sub{margin:0}
+
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin-top:3px}
+  .chips .c{font-weight:700;font-size:12.5px;padding:6px 11px;border-radius:8px;
+    background:color-mix(in srgb,var(--hd) 13%,transparent);color:var(--hd)}
+
+  .feedback{align-self:center;margin-top:12px;display:flex;align-items:center;gap:9px;
+    border:1.5px dashed var(--teal-bd);background:color-mix(in srgb,var(--teal-bd) 12%,transparent);
+    color:var(--teal-hd);font-weight:700;font-size:12.5px;padding:8px 15px;border-radius:999px}
+  .feedback::before{content:"\21ba";font-size:15px}
+
+  .key{max-width:760px;margin:16px auto 0;padding:0 20px}
+  .keybox{border:1.6px solid var(--line);border-radius:14px;background:var(--canvas);box-shadow:var(--shadow);
+    padding:12px 16px;display:flex;flex-wrap:wrap;gap:9px 20px;align-items:center}
+  .keybox .kt{font-weight:800;font-size:13px;margin-right:4px}
+  .krow{display:flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink)}
+  .krow .sw{width:13px;height:13px;border-radius:4px;border:1.4px solid var(--line)}
+
+  .note{max-width:760px;margin:12px auto 0;padding:0 20px 34px;color:var(--muted);font-size:12.5px;text-align:center}
+  .note code{font-family:var(--mono);background:var(--canvas);border:1px solid var(--line);padding:1px 6px;border-radius:5px}
+</style>
+
+<div class="head">
+  <h1>Unified Journey — Data &amp; Activation Flow</h1>
+  <p>Instagram ad → App / Web → Amplitude → Leadnics CRM + Braze re-engagement → Analytics</p>
+</div>
+
+<div class="flow">
+
+  <div class="enter">User taps an Instagram / Meta ad</div>
+  <div class="arrow"><div class="ln2"></div><div class="cap">tagged with UTM + deep link</div><div class="tri"></div></div>
+
+  <!-- 1 Acquisition -->
+  <div class="box blue" style="--hd:var(--blue-hd);background:var(--blue-bg);border-color:var(--blue-bd)">
+    <div class="bh"><span class="ic">📣</span><h3>Acquisition</h3></div>
+    <div class="sub">Ad → Store</div>
+    <ul class="bl">
+      <li><b>Meta / Instagram Ads</b> — campaign · ad set · creative</li>
+      <li><b>UTM campaign link</b> — source · medium · term</li>
+      <li><b>App Store · Google Play</b> — install</li>
+    </ul>
+  </div>
+  <div class="arrow"><div class="ln2"></div><div class="cap">install + first open · attribution matched (AppsFlyer / Branch)</div><div class="tri"></div></div>
+
+  <!-- 2 App / Web / SDKs -->
+  <div class="box blue" style="--hd:var(--blue-hd);background:var(--blue-bg);border-color:var(--blue-bd)">
+    <div class="bh"><span class="ic">📱</span><h3>App, Web &amp; SDKs</h3></div>
+    <div class="sub">Capture</div>
+    <ul class="bl">
+      <li><b>iOS · Android · Website</b> — Braze SDK</li>
+      <li><b>AppsFlyer / Branch</b> — deferred deep link</li>
+      <li><b>Firebase FCM · APNs</b> — push transport</li>
+    </ul>
+  </div>
+  <div class="arrow"><div class="ln2"></div><div class="cap">anonymous behavior tracked from first open</div><div class="tri"></div></div>
+
+  <!-- 3 Identity -->
+  <div class="box green" style="--hd:var(--green-hd);background:var(--green-bg);border-color:var(--green-bd)">
+    <div class="bh"><span class="ic">🧩</span><h3>Identity Resolution</h3></div>
+    <div class="mini">
+      <span class="m">Anonymous profile</span><span class="ar">→</span>
+      <span class="m">changeUser(external_id)</span><span class="ar">→</span>
+      <span class="m">Unified profile</span>
+    </div>
+    <div class="inset"><b>One external_id</b> <span>— anonymous history merges onto the registered user; one record per person.</span></div>
+  </div>
+  <div class="arrow"><div class="ln2"></div><div class="cap">every event flows to the hub</div><div class="tri"></div></div>
+
+  <!-- 4 Amplitude hub -->
+  <div class="box teal hub" style="--hd:var(--teal-hd);background:var(--teal-bg)">
+    <div class="bh"><span class="ic">📈</span><h3>Amplitude — Event Hub</h3></div>
+    <div class="sub">Collect &amp; route</div>
+    <div class="hubtext">All App + Web events land here → <b>funnels · retention · AI cohorts</b> → routed onward in near real time.</div>
+  </div>
+  <div class="arrow"><div class="ln2"></div><div class="cap">fans out to three destinations</div><div class="tri"></div></div>
+
+  <!-- 5 Fan-out -->
+  <div class="row3">
+    <div class="box green" style="--hd:var(--green-hd);background:var(--green-bg);border-color:var(--green-bd)">
+      <div class="bh"><span class="ic">🗄️</span><h3>Leadnics CRM</h3></div>
+      <div class="sub">Qualified leads + journey timeline</div>
+    </div>
+    <div class="box purple" style="--hd:var(--purple-hd);background:var(--purple-bg);border-color:var(--purple-bd)">
+      <div class="bh"><span class="ic">🔔</span><h3>Braze</h3></div>
+      <div class="sub">Cohorts + events → messaging</div>
+    </div>
+    <div class="box teal" style="--hd:var(--teal-hd);background:var(--teal-bg);border-color:var(--teal-bd)">
+      <div class="bh"><span class="ic">🧮</span><h3>Data Warehouse</h3></div>
+      <div class="sub">Lead score · LTV · AI segments</div>
+    </div>
+  </div>
+  <div class="arrow"><div class="ln2"></div><div class="cap">Braze re-engages at each step</div><div class="tri"></div></div>
+
+  <!-- 6 Re-engagement -->
+  <div class="box purple" style="--hd:var(--purple-hd);background:var(--purple-bg);border-color:var(--purple-bd)">
+    <div class="bh"><span class="ic">💬</span><h3>Re-engagement · Braze</h3></div>
+    <div class="sub">Canvas journeys</div>
+    <div class="chips"><span class="c">Push &amp; In-app</span><span class="c">Email</span><span class="c">WhatsApp</span><span class="c">Content Cards</span></div>
+  </div>
+  <div class="arrow"><div class="ln2"></div><div class="cap">no response → hand to humans</div><div class="tri"></div></div>
+
+  <!-- 7 Recovery CRM -->
+  <div class="box teal" style="--hd:var(--teal-hd);background:var(--teal-bg);border-color:var(--teal-bd)">
+    <div class="bh"><span class="ic">📞</span><h3>Recovery CRM · Leadnics</h3></div>
+    <div class="mini">
+      <span class="m">Create lead → assign rep</span><span class="ar">→</span>
+      <span class="m">Care call</span><span class="ar">→</span>
+      <span class="m">Sales follow-up</span>
+    </div>
+    <div class="inset" style="background:color-mix(in srgb,var(--teal-bd) 22%,transparent);border-color:var(--teal-bd)"><b>Journey context attached</b> <span>— viewed, saved &amp; drop-off point; call outcome writes back to the profile.</span></div>
+  </div>
+  <div class="arrow"><div class="ln2"></div><div class="cap">outcomes measured</div><div class="tri"></div></div>
+
+  <!-- 8 Analytics -->
+  <div class="box blue" style="--hd:var(--blue-hd);background:var(--blue-bg);border-color:var(--blue-bd)">
+    <div class="bh"><span class="ic">📊</span><h3>Analytics Dashboard</h3></div>
+    <ul class="bl">
+      <li>Attribution &amp; ROI &middot; Registration funnel</li>
+      <li>LTV &amp; retention &middot; Re-engagement lift</li>
+    </ul>
+  </div>
+
+  <div class="feedback">Braze &amp; Leadnics engagement + outcomes flow back into Amplitude &amp; the profile</div>
+</div>
+
+<div class="key">
+  <div class="keybox">
+    <span class="kt">Key</span>
+    <span class="krow"><span class="sw" style="background:var(--blue-bg);border-color:var(--blue-bd)"></span>Acquisition · App · Analytics</span>
+    <span class="krow"><span class="sw" style="background:var(--green-bg);border-color:var(--green-bd)"></span>Identity · CRM</span>
+    <span class="krow"><span class="sw" style="background:var(--teal-bg);border-color:var(--teal-bd)"></span>Amplitude hub · Warehouse · Recovery</span>
+    <span class="krow"><span class="sw" style="background:var(--purple-bg);border-color:var(--purple-bd)"></span>Braze &amp; messaging</span>
+  </div>
+</div>
+
+<p class="note">One <code>external_id</code> ties every stage together · Amplitude routes · Braze re-engages · Leadnics recovers · same system, one profile.</p>
+
+<script>
+  (function(){
+    function report(){
+      try{ if(window.parent && window.parent!==window){
+        window.parent.postMessage({journeyHeight: Math.ceil(document.documentElement.scrollHeight)}, '*');
+      } }catch(e){}
+    }
+    window.addEventListener('resize', report);
+    window.addEventListener('load', report);
+    report(); setTimeout(report,80); setTimeout(report,300);
+  })();
+</script>
