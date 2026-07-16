@@ -295,7 +295,7 @@
       '<div class="grid">' +
         card("Velocity", m.velocity + ' <small>' + m.velocityUnit + "</small>", { icon: "⚡", accent: "#0f8b8d" }) +
         card("Sprint Goal", "", { rag: rag[0], ragText: rag[1], icon: "🎯" }) +
-        card("Committed", (m.usePts ? Math.round(m.committedSP) + " SP" : m.planned + " items"), { icon: "📌", accent: "#163a5f" }) +
+        card("Committed", (m.usePts ? Math.round(m.committedSP) + " SP" : m.planned + " items"), { icon: "📌", accent: "#3f7fce" }) +
         card("Delivered", (m.usePts ? Math.round(m.deliveredSP) + " SP" : m.completed + " items"), { icon: "✅", accent: "#2e7d32" }) +
       "</div>";
     drawGauge("gProgress", m.progress, goalHex);
@@ -306,7 +306,7 @@
       : "Story Points not set in Asana for this sprint — Sprint Health is showing item counts. It switches to SP automatically once tasks are estimated.";
 
     el("deliveryGrid").innerHTML =
-      card("Stories Planned", m.planned, { icon: "📋", accent: "#163a5f" }) +
+      card("Stories Planned", m.planned, { icon: "📋", accent: "#3f7fce" }) +
       card("In Development", m.inDev, { icon: "🛠️", accent: "#7b61ff", tip: "Stories in the 'In Development' / Code Review board column (based on the board section, not the stale Status field)." }) +
       card("In QA", m.inQA, { icon: "🧪", accent: "#1f6feb", tip: "Stories in a testing column: QA on Dev / Ready for UAT / QA on UAT / In UAT." }) +
       card("Completed", m.completed, { icon: "✅", accent: "#2e7d32" }) +
@@ -335,7 +335,7 @@
     if (m.hasFlow) {
       el("flowGrid").innerHTML =
         card("Avg Dev Time", (m.devDays != null ? m.devDays.toFixed(1) : "--") + ' <small>days</small>',
-          { icon: "🛠️", accent: "#163a5f", tip: "Average time a task spends being built — from entering 'In Development' to reaching the first testing stage (QA on Dev / Ready for UAT / In UAT). Derived from board section moves." }) +
+          { icon: "🛠️", accent: "#3f7fce", tip: "Average time a task spends being built — from entering 'In Development' to reaching the first testing stage (QA on Dev / Ready for UAT / In UAT). Derived from board section moves." }) +
         card("Avg QA Time", (m.qaDays != null ? m.qaDays.toFixed(1) : "--") + ' <small>days</small>',
           { icon: "🔍", accent: "#1f6feb", tip: "Average time in testing — from the first testing stage to Done (UAT Passed / Released, or task completion)." }) +
         card("Cycle Time", (m.cycleDays != null ? m.cycleDays.toFixed(1) : "--") + ' <small>days</small>',
@@ -345,7 +345,7 @@
       mkChart("flowChart", { type: "bar",
         data: { labels: ["Avg Dev", "Avg QA", "Cycle"],
           datasets: [{ data: [m.devDays || 0, m.qaDays || 0, m.cycleDays || 0],
-            backgroundColor: ["#163a5f", "#1f6feb", "#0f8b8d"], borderRadius: 6, barThickness: 28 }] },
+            backgroundColor: ["#3f7fce", "#1f6feb", "#0f8b8d"], borderRadius: 6, barThickness: 28 }] },
         options: { indexAxis: "y", responsive: true, plugins: { legend: { display: false } },
           scales: { x: { beginAtZero: true, title: { display: true, text: "days" } } } } });
     } else {
@@ -392,7 +392,7 @@
     var creepPct = baseCount > 0 ? addCount / baseCount : null;
     var creepTip = "Non-bug stories added after the sprint start date (approximated by ticket creation date vs sprint start). Bugs are excluded — they're raised while testing delivered work, not scope creep. High = lots of unplanned work entered the sprint.";
     el("scopeGrid").innerHTML =
-      card("Baseline scope", baseCount + ' <small>stories</small>', { icon: "📌", accent: "#163a5f", tip: "Stories committed at sprint start (created on/before the start date, bugs excluded). ≈ " + Math.round(baseSP) + " SP." }) +
+      card("Baseline scope", baseCount + ' <small>stories</small>', { icon: "📌", accent: "#3f7fce", tip: "Stories committed at sprint start (created on/before the start date, bugs excluded). ≈ " + Math.round(baseSP) + " SP." }) +
       card("Added mid-sprint", "+" + addCount + ' <small>tickets</small>', { icon: "➕", accent: "#f29f05", tip: creepTip }) +
       card("Scope Creep", creepPct == null ? "--" : "+" + Math.round(creepPct * 100) + "%", { icon: "📈", accent: (creepPct && creepPct > 0.1) ? "#c62828" : "#2e7d32", tip: "Added tickets ÷ baseline tickets." }) +
       card("Added story points", "+" + Math.round(addSP) + ' <small>SP</small>', { icon: "🔢", tip: "Story points of the added tickets — 0 if they aren't estimated yet." });
@@ -545,7 +545,7 @@
     mkChart("cycleTrendChart", { type: "line",
       data: { labels: labels, datasets: [
         { label: "Cycle", data: agg.map(function (a) { return a.cycle; }), borderColor: "#0f8b8d", backgroundColor: "transparent", tension: .3 },
-        { label: "Dev", data: agg.map(function (a) { return a.dev; }), borderColor: "#163a5f", backgroundColor: "transparent", tension: .3 },
+        { label: "Dev", data: agg.map(function (a) { return a.dev; }), borderColor: "#3f7fce", backgroundColor: "transparent", tension: .3 },
         { label: "QA", data: agg.map(function (a) { return a.qa; }), borderColor: "#7b61ff", backgroundColor: "transparent", tension: .3 } ] },
       options: { responsive: true, plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true, title: { display: true, text: "days" } } } } });
 
@@ -955,7 +955,7 @@
     var h = '<div class="funnelcard" style="margin-top:14px"><div class="fh"><span class="fname">📊 Product Health</span>' +
       '<span class="ftag">last 30 days · Dallal ' + esc(env) + '</span></div>';
     if (sd.length) h += '<div class="fwhat" style="margin-bottom:6px"><b>Supply &amp; Demand</b> — the marketplace\'s inputs (listings) and demand signals (searches, leads).</div><div class="grid">' +
-      sd.map(function (s) { var ic = s.name.indexOf("Publish") >= 0 ? "🏠" : s.name.indexOf("Delet") >= 0 ? "🗑️" : s.name.indexOf("Search") >= 0 ? "🔎" : "💬"; return card(s.name, s.users, { icon: ic, accent: "#163a5f" }); }).join("") + "</div>";
+      sd.map(function (s) { var ic = s.name.indexOf("Publish") >= 0 ? "🏠" : s.name.indexOf("Delet") >= 0 ? "🗑️" : s.name.indexOf("Search") >= 0 ? "🔎" : "💬"; return card(s.name, s.users, { icon: ic, accent: "#3f7fce" }); }).join("") + "</div>";
     if (eng.length) h += '<div class="fwhat" style="margin:12px 0 6px"><b>Engagement</b> — active users and <b>stickiness</b> (DAU÷MAU: how often people come back).</div><div class="grid">' +
       eng.map(function (s) { var st = s.name.indexOf("Stick") >= 0; return card(s.name, s.users + (st ? "%" : ""), { icon: st ? "🧲" : "👥", accent: "#0f8b8d" }); }).join("") + "</div>";
     if (tt.length) h += '<div class="fwhat" style="margin:12px 0 6px"><b>Time to reach each step</b> — median time from starting a listing; the slowest step is where users linger.</div><div class="grid">' +
@@ -1124,7 +1124,7 @@
 
     el("mktKpis").innerHTML =
       card("Abandoned (filtered)", rows.length, { icon: "🚪", accent: "#c0392b" }) +
-      card("Reachable", reachable, { icon: "📇", accent: "#163a5f", tip: "Has an email and/or phone on file." }) +
+      card("Reachable", reachable, { icon: "📇", accent: "#3f7fce", tip: "Has an email and/or phone on file." }) +
       card("With email", withEmail, { icon: "✉️", accent: "#0f8b8d" }) +
       card("With phone", withPhone, { icon: "📱", accent: "#7b61ff" });
 
@@ -1139,7 +1139,7 @@
       options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } } });
     var srcLabels = Object.keys(bySource).sort(function (a, b) { return bySource[b] - bySource[a]; });
     mkChart("mktSourceChart", { type: "bar",
-      data: { labels: srcLabels, datasets: [{ label: "Users", data: srcLabels.map(function (s) { return bySource[s]; }), backgroundColor: "#163a5f" }] },
+      data: { labels: srcLabels, datasets: [{ label: "Users", data: srcLabels.map(function (s) { return bySource[s]; }), backgroundColor: "#3f7fce" }] },
       options: { indexAxis: "y", responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, ticks: { precision: 0 } } } } });
 
     // campaign KPIs + log
@@ -1147,7 +1147,7 @@
       card("Messaged (dry-run + sent)", messagedN, { icon: "📨", accent: "#7b61ff", tip: "Distinct users a campaign has composed for (dry-run logged locally, plus any server-side sends)." }) +
       card("Recovered", recovered, { icon: "✅", accent: "#2e7d32", tip: "Messaged users who are no longer in the abandoned set (they published)." }) +
       card("Recovery rate", recRate == null ? "--" : recRate + "%", { icon: "📈", accent: "#2e7d32", bar: recRate || 0, barColor: "#2e7d32" }) +
-      card("Last dry-run", dry.length ? (dry[0].at || "").replace("T", " ").slice(0, 16) : "—", { icon: "🕓", accent: "#163a5f" });
+      card("Last dry-run", dry.length ? (dry[0].at || "").replace("T", " ").slice(0, 16) : "—", { icon: "🕓", accent: "#3f7fce" });
 
     renderMktCampaignLog(env, dry);
     renderMktList(rows);
@@ -1343,7 +1343,7 @@
   function apiCaptureHtml(method, endpoint, status) {
     var cap = apiSample(method, endpoint, status);
     var box = "font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.55";
-    var hd = "font:700 11px system-ui,sans-serif;text-transform:uppercase;letter-spacing:.05em;color:#5b6577;margin:0 0 5px";
+    var hd = "font:700 11px system-ui,sans-serif;text-transform:uppercase;letter-spacing:.05em;color:var(--muted,#5b6577);margin:0 0 5px";
     return '<div style="' + box + '">' +
       '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:16px">' +
         '<div><div style="' + hd + '">Request &middot; ' + esc(String(method).toUpperCase()) + " " + esc(endpoint) + "</div>" + apiHeaderLines(cap.reqHeaders) + "</div>" +
