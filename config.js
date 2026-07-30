@@ -8,9 +8,15 @@ window.DALLAL_CONFIG = {
   // Which sprints appear in the dropdown / trend.
   // CURRENT_SPRINT: null = auto-detect (latest sprint with delivered work, +1).
   //                 Set a number to pin it, e.g. 11.
-  // Window shown = [CURRENT_SPRINT - SPRINT_BACK  ..  CURRENT_SPRINT + 2].
+  // The upper end stays dynamic: window ends at CURRENT_SPRINT + 2 so new sprints
+  // appear automatically as work is delivered.
+  // The lower end is anchored by MIN_SPRINT (a fixed floor): the list always
+  // starts at MIN_SPRINT and never rolls off the bottom. Set MIN_SPRINT: null to
+  // fall back to the old rolling floor of CURRENT_SPRINT - SPRINT_BACK.
+  // Window shown = [ MIN_SPRINT (or CURRENT_SPRINT - SPRINT_BACK)  ..  CURRENT_SPRINT + 2 ].
   CURRENT_SPRINT: null,
-  SPRINT_BACK: 2,
+  MIN_SPRINT: 10,       // fixed floor — always show from Sprint 10 upward
+  SPRINT_BACK: 2,       // rolling floor, used only when MIN_SPRINT is null
   DEFAULT_SPRINT: 10,   // sprint selected on load (falls back to newest in-window)
 
   REQUIRE_AUTH: true,   // set false only if you intentionally want a public link

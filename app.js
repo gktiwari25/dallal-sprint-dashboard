@@ -12,6 +12,7 @@
   var KEY_ = cfg.SUPABASE_ANON_KEY || "";
   var DEFAULT_SPRINT = cfg.DEFAULT_SPRINT || null;
   var SPRINT_BACK = (cfg.SPRINT_BACK != null) ? cfg.SPRINT_BACK : 2;
+  var MIN_SPRINT = (cfg.MIN_SPRINT != null) ? Number(cfg.MIN_SPRINT) : null;
   var REQUIRE_AUTH = cfg.REQUIRE_AUTH !== false;
 
   var data = { items: [], sprints: [], flow: [], risks: [], burndown: [], repos: [], vulns: [], funnels: [], abandoned: [], reengage: [] };
@@ -1256,8 +1257,12 @@
   }
   function inWindow(n) {
     var c = currentSprint();
-    if (!c) return true;
-    return n >= (c - SPRINT_BACK) && n <= (c + 2);
+    // Lower bound: a fixed floor (MIN_SPRINT) when set, else the rolling
+    // CURRENT_SPRINT - SPRINT_BACK. Upper bound stays dynamic at CURRENT_SPRINT + 2.
+    var lo = (MIN_SPRINT != null) ? MIN_SPRINT : (c != null ? c - SPRINT_BACK : null);
+    if (lo != null && n < lo) return false;   // never show sprints below the floor
+    if (c != null && n > c + 2) return false;  // hide far-future sprints
+    return true;
   }
   function windowSprints() {
     return data.sprints.map(function (s) { return num(s.sprint); })
