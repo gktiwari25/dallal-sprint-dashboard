@@ -1526,8 +1526,19 @@
   function showAppUI() { hide("booting"); hide("login"); show("app"); show("signOut"); show("topbar"); }
   function showLoginUI() { hide("booting"); show("login"); hide("app"); hide("signOut"); hide("topbar"); }
 
+  // A clean, fragment-free redirect target. Using window.location.href would
+  // carry a stale '#...' (e.g. from the href="#" password toggle or a previous
+  // OAuth round-trip) into redirectTo, so the provider returns '##access_token='
+  // which supabase-js cannot parse — the login then loops forever.
+  function cleanRedirectURL() { return window.location.origin + window.location.pathname; }
+
   function onAuth(session) {
     if (session) {
+      // Session established — strip auth tokens from the address bar so they
+      // don't linger in history and can't be recycled into a later redirectTo.
+      if (window.location.hash && window.location.hash.indexOf("access_token") !== -1) {
+        try { history.replaceState(null, "", window.location.pathname + window.location.search); } catch (e) {}
+      }
       showAppUI();
       // Defer out of the onAuthStateChange callback: calling Supabase queries
       // synchronously inside it can deadlock on the auth lock (queries never
@@ -1544,7 +1555,7 @@
     if (!email) { loginError("Enter your work email first."); return; }
     el("magicBtn").disabled = true;
     // emailRedirectTo must be in Supabase > Auth > URL Configuration > Redirect URLs
-    sbc.auth.signInWithOtp({ email: email, options: { emailRedirectTo: window.location.href } })
+    sbc.auth.signInWithOtp({ email: email, options: { emailRedirectTo: cleanRedirectURL() } })
       .then(function (r) {
         el("magicBtn").disabled = false;
         if (r.error) { loginError(r.error.message); return; }
@@ -1556,7 +1567,7 @@
   function doGoogle() {
     hide("loginErr");
     // Requires the Google provider enabled in Supabase > Auth > Providers.
-    sbc.auth.signInWithOAuth({ provider: "google", options: { redirectTo: window.location.href } })
+    sbc.auth.signInWithOAuth({ provider: "google", options: { redirectTo: cleanRedirectURL() } })
       .then(function (r) { if (r.error) loginError(r.error.message); });
     // On success the browser redirects to Google and back; supabase-js
     // (detectSessionInUrl) restores the session and onAuthStateChange fires.
@@ -1644,7 +1655,30 @@
       hide("booting"); show("app"); el("error").textContent = "Supabase not configured. Fill web/config.js."; show("error"); return;
     }
     if (!window.supabase) { hide("booting"); show("app"); el("error").textContent = "Auth library failed to load (check network/CDN)."; show("error"); return; }
-    sbc = window.supabase.createClient(URL_, KEY_);
+
+    // Repair a malformed auth fragment BEFORE the client parses it. A stale
+    // redirect can accumulate hashes ('##access_token=' or two token bundles);
+    // keep only the last (freshest) bundle so detectSessionInUrl can read it.
+    try {
+      var _h = window.location.hash || "";
+      if (_h.indexOf("access_token") !== -1 && /#[^#]*#/.test(_h)) {
+        var _last = _h.substring(_h.lastIndexOf("#") + 1);
+        history.replaceState(null, "", window.location.pathname + window.location.search + "#" + _last);
+      }
+    } catch (e) {}
+
+    // Pin auth behaviour explicitly: implicit flow (tokens arrive in the URL
+    // hash), detect them on load, and persist + auto-refresh the session. This
+    // also guards against a future supabase-js defaulting to PKCE, which would
+    // break this hash-based redirect flow (no exchangeCodeForSession call here).
+    sbc = window.supabase.createClient(URL_, KEY_, {
+      auth: {
+        flowType: "implicit",
+        detectSessionInUrl: true,
+        persistSession: true,
+        autoRefreshToken: true
+      }
+    });
 
     if (!REQUIRE_AUTH) { showAppUI(); loadAll(); return; }   // intentional public mode
     // #app/#topbar start hidden in the HTML; reveal only after the session check
