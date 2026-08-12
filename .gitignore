@@ -1,0 +1,21 @@
+# --- Secrets: NEVER commit these (this repo is public via GitHub Pages) ---
+.env
+.env.*
+!.env.example
+secrets/
+*.p8              # App Store Connect private keys
+*.pem
+*.key
+service_role*.txt
+
+# --- Python ETL ---
+.venv/
+venv/
+__pycache__/
+*.pyc
+
+# --- Local logs / OS cruft ---
+logs/*.log
+logs/*.err
+logs/*.out
+.DS_Store

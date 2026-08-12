@@ -1,0 +1,64 @@
+#!/usr/bin/env bash
+# ---------------------------------------------------------------------------
+# run_sync.sh — hourly Dallal dashboard sync (called by launchd:
+#   ~/Library/LaunchAgents/com.dallal.sprintsync.plist)
+#
+# Loads secrets from .env (gitignored), then runs each ETL step. Steps are
+# independent: one failing does not stop the others, so a missing credential
+# for one source never blocks the rest.
+#
+# NOTE: only the App Store ETL is wired here. The original Asana / Amplitude /
+#       GitHub ETL scripts are not on this machine — restore them and add a
+#       line in the "OTHER ETLs" block below when available.
+# ---------------------------------------------------------------------------
+set -uo pipefail
+
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$DIR"
+
+mkdir -p logs
+LOG="logs/sync.log"
+ts() { date "+%Y-%m-%d %H:%M:%S"; }
+log() { echo "[$(ts)] $*" | tee -a "$LOG"; }
+
+# --- load secrets ----------------------------------------------------------
+if [ -f "$DIR/.env" ]; then
+  set -a; . "$DIR/.env"; set +a
+else
+  log "WARN: no .env file found at $DIR/.env — ETLs needing credentials will skip."
+fi
+
+# --- pick the venv python if present, else system python3 ------------------
+if [ -x "$DIR/.venv/bin/python" ]; then
+  PY="$DIR/.venv/bin/python"
+else
+  PY="$(command -v python3 || true)"
+fi
+[ -z "${PY:-}" ] && { log "ERROR: no python found"; exit 1; }
+
+run_step() {
+  local name="$1"; shift
+  log "START $name"
+  if "$@" >>"$LOG" 2>&1; then
+    log "OK    $name"
+  else
+    log "FAIL  $name (exit $?) — continuing"
+  fi
+}
+
+log "==== sync run start (py=$PY) ===="
+
+# --- App Store Connect analytics -> Supabase fact_appstore_metrics ---------
+# Skips cleanly if the App Store Connect credentials are not set in .env.
+if [ -n "${ASC_ISSUER_ID:-}" ] && [ -n "${ASC_APP_ID:-}" ]; then
+  run_step "appstore" "$PY" "$DIR/etl_appstore.py" --days "${ASC_BACKFILL_DAYS:-3}"
+else
+  log "SKIP  appstore — ASC_ISSUER_ID / ASC_APP_ID not set in .env"
+fi
+
+# --- OTHER ETLs (restore when the scripts are back on this machine) --------
+# run_step "asana"     "$PY" "$DIR/etl_asana.py"
+# run_step "amplitude" "$PY" "$DIR/etl_amplitude.py"
+# run_step "github"    "$PY" "$DIR/etl_github.py"
+
+log "==== sync run done ===="
