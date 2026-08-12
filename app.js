@@ -15,7 +15,7 @@
   var MIN_SPRINT = (cfg.MIN_SPRINT != null) ? Number(cfg.MIN_SPRINT) : null;
   var REQUIRE_AUTH = cfg.REQUIRE_AUTH !== false;
 
-  var data = { items: [], sprints: [], flow: [], risks: [], burndown: [], repos: [], vulns: [], funnels: [], abandoned: [], reengage: [] };
+  var data = { items: [], sprints: [], flow: [], risks: [], burndown: [], repos: [], vulns: [], funnels: [], abandoned: [], reengage: [], appstore: [] };
   var velChart, statusChart, burnChart, vulnChart, sbc = null, loadedOnce = false, selectedSprint = null, _collapse = {};
 
   // ---------- helpers ----------
@@ -706,7 +706,7 @@
   }
 
   function showTab(which) {
-    var isDel = which === "delivery", isEng = which === "eng", isFun = which === "funnels", isMkt = which === "marketing", isFlow = which === "flow", isCrm = which === "crm", isApi = which === "api", isJourney = which === "journey";
+    var isDel = which === "delivery", isEng = which === "eng", isFun = which === "funnels", isMkt = which === "marketing", isFlow = which === "flow", isCrm = which === "crm", isApi = which === "api", isJourney = which === "journey", isAppStore = which === "appstore";
     el("sprintView").classList.toggle("hidden", !isDel);
     el("engView").classList.toggle("hidden", !isEng);
     el("funnelView").classList.toggle("hidden", !isFun);
@@ -715,6 +715,7 @@
     el("crmView").classList.toggle("hidden", !isCrm);
     el("journeyView").classList.toggle("hidden", !isJourney);
     el("apiView").classList.toggle("hidden", !isApi);
+    el("appstoreView").classList.toggle("hidden", !isAppStore);
     el("sprintSel").classList.toggle("hidden", !isDel);
     el("sprintLbl").classList.toggle("hidden", !isDel);
     el("tabDelivery").classList.toggle("active", isDel);
@@ -725,10 +726,12 @@
     el("tabCrm").classList.toggle("active", isCrm);
     el("tabJourney").classList.toggle("active", isJourney);
     el("tabApi").classList.toggle("active", isApi);
+    el("tabAppStore").classList.toggle("active", isAppStore);
     if (isEng) renderEng();
     if (isFun) renderFunnels();
     if (isMkt) renderMarketing();
     if (isApi) renderApi();
+    if (isAppStore) renderAppStore();
   }
 
   // ---------- funnels page ----------
@@ -1469,6 +1472,184 @@
     ]));
   }
 
+  // ---------- App Store page (Apple App Store Connect analytics) ----------
+  // Live rows come from Supabase table `fact_appstore_metrics`, a tidy/long table:
+  //   { date:'YYYY-MM-DD', metric:'downloads'|'redownloads'|'impressions'|
+  //     'product_page_views'|'sessions'|'active_devices'|'crashes',
+  //     value:number, territory:'WW'|ISO2, platform:'ios', app_version:text }
+  // Populated by etl_appstore.py. Until that runs we show a clearly-labelled
+  // sample so the tab renders (same pattern as the Production API tab).
+  var asRange = 30;
+  var _sampleAppStore = null;
+  var AS_TERRITORIES = [
+    { code: "KW", name: "🇰🇼 Kuwait", w: 0.42 }, { code: "SA", name: "🇸🇦 Saudi Arabia", w: 0.18 },
+    { code: "AE", name: "🇦🇪 UAE", w: 0.12 }, { code: "EG", name: "🇪🇬 Egypt", w: 0.10 },
+    { code: "QA", name: "🇶🇦 Qatar", w: 0.06 }, { code: "US", name: "🇺🇸 United States", w: 0.05 },
+    { code: "BH", name: "🇧🇭 Bahrain", w: 0.04 }, { code: "OM", name: "🇴🇲 Oman", w: 0.03 }
+  ];
+
+  function sampleAppStore() {
+    if (_sampleAppStore) return _sampleAppStore;
+    var rows = [];
+    var today = new Date();
+    for (var d = 29; d >= 0; d--) {
+      var dt = new Date(today.getTime() - d * 86400000);
+      var iso = dt.toISOString().slice(0, 10);
+      var dow = dt.getDay();                       // weekly seasonality (weekend dip)
+      var seasonal = (dow === 5 || dow === 6) ? 0.82 : 1;
+      var base = Math.round((360 + (29 - d) * 6) * seasonal * (0.9 + Math.random() * 0.2)); // gentle uptrend
+      // downloads split by territory
+      AS_TERRITORIES.forEach(function (t) {
+        rows.push({ date: iso, metric: "downloads", value: Math.round(base * t.w), territory: t.code, platform: "ios", app_version: "1.19" });
+      });
+      var pageViews = Math.round(base * (2.4 + Math.random() * 0.5));
+      var impressions = Math.round(base * (19 + Math.random() * 5));
+      var sessions = Math.round(base * (7 + Math.random() * 2));
+      var active = Math.round(base * (5.5 + Math.random() * 1.5) + (29 - d) * 40);
+      var redl = Math.round(base * (0.25 + Math.random() * 0.1));
+      var crashes = Math.round(2 + Math.random() * 4);
+      if (iso === "2026-08-11") crashes += 34;      // watchdog OOM spike (DALLAL-RN-3Q)
+      rows.push({ date: iso, metric: "product_page_views", value: pageViews, territory: "WW", platform: "ios", app_version: "1.19" });
+      rows.push({ date: iso, metric: "impressions", value: impressions, territory: "WW", platform: "ios", app_version: "1.19" });
+      rows.push({ date: iso, metric: "sessions", value: sessions, territory: "WW", platform: "ios", app_version: "1.19" });
+      rows.push({ date: iso, metric: "active_devices", value: active, territory: "WW", platform: "ios", app_version: "1.19" });
+      rows.push({ date: iso, metric: "redownloads", value: redl, territory: "WW", platform: "ios", app_version: "1.19" });
+      rows.push({ date: iso, metric: "crashes", value: crashes, territory: "WW", platform: "ios", app_version: "1.19" });
+    }
+    _sampleAppStore = rows;
+    return rows;
+  }
+
+  function populateAppstoreRange() {
+    var sel = el("appstoreRange"); if (!sel || sel.options.length) return;
+    [[7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"]].forEach(function (o) {
+      var opt = document.createElement("option"); opt.value = o[0]; opt.textContent = o[1];
+      if (o[0] === asRange) opt.selected = true; sel.appendChild(opt);
+    });
+    sel.addEventListener("change", function () { asRange = parseInt(sel.value, 10) || 30; renderAppStore(); });
+  }
+
+  // sum a metric per date across territories -> { 'YYYY-MM-DD': total }
+  function asByDate(rows, metric) {
+    var m = {};
+    rows.forEach(function (r) { if ((r.metric || "") === metric) m[r.date] = (m[r.date] || 0) + num(r.value); });
+    return m;
+  }
+  function asDatesInWindow(rows, days) {
+    var set = {}; rows.forEach(function (r) { if (r.date) set[r.date] = 1; });
+    return Object.keys(set).sort().slice(-days);
+  }
+  function asSeries(byDate, dates) { return dates.map(function (d) { return byDate[d] || 0; }); }
+  function asSum(arr) { return arr.reduce(function (a, b) { return a + b; }, 0); }
+  var AS_TEAL = "#0f8b8d", AS_BLUE = "#1f6feb", AS_PURPLE = "#7c5cbf", AS_RED = "#c62828", AS_AMBER = "#b9820a";
+
+  function asLineChart(id, dates, series, opts) {
+    opts = opts || {};
+    var labels = dates.map(function (d) { return d.slice(5); });   // MM-DD
+    mkChart(id, {
+      type: "line",
+      data: { labels: labels, datasets: series.map(function (s) {
+        return { label: s.label, data: s.data, borderColor: s.color, backgroundColor: (s.fill ? s.color + "22" : "transparent"),
+          fill: !!s.fill, tension: 0.32, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, yAxisID: s.axis || "y" };
+      }) },
+      options: {
+        responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+        plugins: { legend: { display: series.length > 1, labels: { boxWidth: 12, usePointStyle: true, font: { size: 11 } } },
+          tooltip: { callbacks: { label: function (c) { return c.dataset.label + ": " + (opts.pct ? (Math.round(c.parsed.y * 10) / 10 + "%") : fmtInt(c.parsed.y)); } } } },
+        scales: Object.assign({
+          x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8, font: { size: 10 } } },
+          y: { beginAtZero: true, ticks: { font: { size: 10 }, callback: function (v) { return opts.pct ? v + "%" : fmtInt(v); } }, grid: { color: "#eef1f5" } }
+        }, opts.y2 ? { y2: { position: "right", beginAtZero: true, grid: { drawOnChartArea: false }, ticks: { font: { size: 10 }, callback: function (v) { return fmtInt(v); } } } } : {})
+      }
+    });
+  }
+
+  function renderAppStore() {
+    populateAppstoreRange();
+    var live = (data.appstore && data.appstore.length);
+    var rows = live ? data.appstore : sampleAppStore();
+    el("appstoreWindow").textContent = live
+      ? "Live · App Store Connect · com.app.dalal (iOS)"
+      : "Sample data — this is how it will look once the App Store Connect API key is wired up";
+
+    var dates = asDatesInWindow(rows, asRange);
+    var last = dates.length ? dates[dates.length - 1] : "";
+
+    var dl = asByDate(rows, "downloads"), redl = asByDate(rows, "redownloads"),
+        imp = asByDate(rows, "impressions"), pv = asByDate(rows, "product_page_views"),
+        ses = asByDate(rows, "sessions"), act = asByDate(rows, "active_devices"),
+        cr = asByDate(rows, "crashes");
+
+    var sDl = asSeries(dl, dates), sRe = asSeries(redl, dates), sImp = asSeries(imp, dates),
+        sPv = asSeries(pv, dates), sSes = asSeries(ses, dates), sAct = asSeries(act, dates),
+        sCr = asSeries(cr, dates);
+
+    var totDl = asSum(sDl), totRe = asSum(sRe), totImp = asSum(sImp), totPv = asSum(sPv),
+        totSes = asSum(sSes), totCr = asSum(sCr);
+    var conv = totPv ? totDl / totPv : 0;
+    var avgAct = dates.length ? Math.round(asSum(sAct) / dates.length) : 0;
+
+    el("appstoreKpis").innerHTML =
+      card("Downloads", fmtInt(totDl), { icon: "⬇️", accent: AS_TEAL, tip: "First-time downloads in the selected window (all territories)." }) +
+      card("Redownloads", fmtInt(totRe), { icon: "🔁", accent: AS_BLUE, tip: "Re-installs by users who previously downloaded the app." }) +
+      card("Impressions", fmtInt(totImp), { icon: "👁️", accent: AS_BLUE, tip: "Times the app appeared in the App Store (search, browse, referrals)." }) +
+      card("Product Page Views", fmtInt(totPv), { icon: "📄", accent: AS_PURPLE, tip: "Views of the app's App Store product page." }) +
+      card("Conversion Rate", (Math.round(conv * 1000) / 10) + "%", { icon: "🎯", accent: conv >= 0.35 ? "#2e7d32" : conv >= 0.2 ? AS_AMBER : AS_RED, tip: "Downloads ÷ product page views." }) +
+      card("Sessions", fmtInt(totSes), { icon: "📲", accent: AS_TEAL, tip: "App sessions recorded by App Analytics in the window." }) +
+      card("Active Devices / day", fmtInt(avgAct), { icon: "📱", accent: AS_BLUE, tip: "Average distinct devices active per day over the window." }) +
+      card("Crashes", fmtInt(totCr), { icon: "💥", accent: totCr > 100 ? AS_RED : totCr > 30 ? AS_AMBER : "#2e7d32", tip: "Crash count from App Analytics. Spikes here correlate with Sentry crash issues (e.g. DALLAL-RN-3Q)." });
+
+    asLineChart("asDownloadsChart", dates, [
+      { label: "Downloads", data: sDl, color: AS_TEAL, fill: true },
+      { label: "Redownloads", data: sRe, color: AS_BLUE }
+    ]);
+    asLineChart("asImpressionsChart", dates, [
+      { label: "Impressions", data: sImp, color: AS_BLUE, fill: true },
+      { label: "Page views", data: sPv, color: AS_PURPLE, axis: "y2" }
+    ], { y2: true });
+    asLineChart("asSessionsChart", dates, [
+      { label: "Sessions", data: sSes, color: AS_TEAL, fill: true },
+      { label: "Active devices", data: sAct, color: AS_BLUE, axis: "y2" }
+    ], { y2: true });
+    var convSeries = dates.map(function (d) { return (pv[d] ? (dl[d] || 0) / pv[d] : 0) * 100; });
+    asLineChart("asConversionChart", dates, [{ label: "Conversion %", data: convSeries, color: "#2e7d32", fill: true }], { pct: true });
+    asLineChart("asCrashChart", dates, [{ label: "Crashes", data: sCr, color: AS_RED, fill: true }]);
+
+    // Top territories by downloads over the window
+    var inWin = {}; dates.forEach(function (d) { inWin[d] = 1; });
+    var terr = {};
+    rows.forEach(function (r) {
+      if ((r.metric || "") === "downloads" && inWin[r.date] && r.territory && r.territory !== "WW") {
+        terr[r.territory] = (terr[r.territory] || 0) + num(r.value);
+      }
+    });
+    var tArr = Object.keys(terr).map(function (k) { return { code: k, v: terr[k] }; }).sort(function (a, b) { return b.v - a.v; });
+    var maxT = tArr.length ? tArr[0].v : 0;
+    var nameOf = {}; AS_TERRITORIES.forEach(function (t) { nameOf[t.code] = t.name; });
+    var tRows = tArr.slice(0, 10).map(function (t) {
+      var w = maxT ? Math.round(t.v / maxT * 100) : 0;
+      var share = totDl ? (Math.round(t.v / totDl * 1000) / 10) : 0;
+      return '<div class="taskrow"><div class="tasktitle" style="width:100%">' +
+        '<span>' + esc(nameOf[t.code] || t.code) + '</span>' +
+        '<span class="muted" style="float:right">' + fmtInt(t.v) + " · " + share + "%</span>" +
+        '<div class="bar" style="margin-top:6px"><span style="width:' + w + '%;background:var(--teal)"></span></div>' +
+        "</div></div>";
+    }).join("");
+    el("asTerritories").innerHTML = listBlock("asterr", "Downloads by territory &middot; last " + asRange + " days",
+      tRows || '<div class="muted">No territory data.</div>');
+  }
+
+  function exportAppStore() {
+    var live = (data.appstore && data.appstore.length);
+    var rows = live ? data.appstore : sampleAppStore();
+    var dates = {}; asDatesInWindow(rows, asRange).forEach(function (d) { dates[d] = 1; });
+    var out = rows.filter(function (r) { return dates[r.date]; });
+    downloadCSV("dallal-appstore-" + asRange + "d-" + csvStamp() + ".csv", toCSV(out, [
+      { key: "date", label: "Date" }, { key: "metric", label: "Metric" }, { key: "value", label: "Value" },
+      { key: "territory", label: "Territory" }, { key: "platform", label: "Platform" }, { key: "app_version", label: "App Version" }
+    ]));
+  }
+
   function sbSelect(table) {
     return sbc.from(table).select("*").limit(5000).then(function (r) {
       if (r.error) throw new Error(table + ": " + r.error.message);
@@ -1494,11 +1675,12 @@
       sbSelect("fact_api_endpoints").catch(function () { return []; }),
       sbSelect("fact_api_requests").catch(function () { return []; }),
       sbSelect("fact_retro").catch(function () { return []; }),
+      sbSelect("fact_appstore_metrics").catch(function () { return []; }),
     ]).then(function (res) {
       data.items = res[0]; data.sprints = res[1]; data.flow = res[2]; data.risks = res[3];
       data.burndown = res[4]; data.repos = res[5]; data.vulns = res[6]; data.funnels = res[7]; data.paths = res[8];
       data.unreviewedPrs = res[9]; data.abandoned = res[10]; data.reengage = res[11];
-      data.apiEndpoints = res[12]; data.apiRequests = res[13]; data.retro = res[14];
+      data.apiEndpoints = res[12]; data.apiRequests = res[13]; data.retro = res[14]; data.appstore = res[15];
       loadedOnce = true;
       var def = populateSprintSelect();
       var anySample = data.items.some(function (i) { return String(i.story_points_is_sample) === "1"; });
@@ -1510,6 +1692,7 @@
       if (!el("funnelView").classList.contains("hidden")) renderFunnels();
       if (!el("marketingView").classList.contains("hidden")) renderMarketing();
       if (!el("apiView").classList.contains("hidden")) renderApi();
+      if (!el("appstoreView").classList.contains("hidden")) renderAppStore();
     }).catch(function (e) {
       el("error").textContent = "Could not load data: " + e.message +
         "  -  ensure web_read_policies.sql is applied and your account can read.";
@@ -1604,6 +1787,8 @@
     el("tabCrm").addEventListener("click", function () { showTab("crm"); });
     el("tabJourney").addEventListener("click", function () { showTab("journey"); });
     el("tabApi").addEventListener("click", function () { showTab("api"); });
+    el("tabAppStore").addEventListener("click", function () { showTab("appstore"); });
+    var _exAs = el("exportAppStore"); if (_exAs) _exAs.addEventListener("click", exportAppStore);
     el("exportApi").addEventListener("click", exportApi);
     (function () {
       var epc = el("apiEndpoints");
