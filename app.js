@@ -91,6 +91,9 @@
   // is what carries forward. (The "Released" card below still counts only the
   // Released column — actually shipped to production.)
   function isDone(i) { return /Ready for UAT|QA on UAT|In UAT|UAT Passed|Ready for Production|Released/i.test(i.section || "") || String(i.is_delivered) === "1"; }
+  // On-hold work is parked, not actively "not yet completed" — exclude it from the
+  // open/remaining list (status enum "On hold"; also matches a Blocked/On-hold section).
+  function isOnHold(i) { return /on\s*-?\s*hold/i.test(i.status || "") || /on\s*-?\s*hold/i.test(i.section || ""); }
   // Risks tied to repos/security live on the Engineering tab, not the delivery Risks list.
   function isEngRisk(r) { return (r.category || "") === "Security"; }
   var ASANA_TASK = "https://app.asana.com/0/1214388950902741/";
@@ -313,8 +316,10 @@
       card("Completed", m.completed, { icon: "✅", accent: "#2e7d32" }) +
       card("Blocked", m.blocked, { icon: "⛔", accent: "#c62828" }) +
       card("Released", m.released, { icon: "🚀", accent: "#0f8b8d", tip: "Stories in the 'Released' board column in Asana (shipped to production). 'Completed' above counts every delivered state — reached UAT or beyond (Ready for UAT / QA on UAT / In UAT / UAT Passed / Ready for Production / Released)." });
-    var openItems = m.its.filter(function (i) { return !isDone(i); });
-    el("openList").innerHTML = listBlock("open", "Not yet completed &middot; " + openItems.length + " of " + m.planned + " stories",
+    var openItems = m.its.filter(function (i) { return !isDone(i) && !isOnHold(i); });
+    var onHoldCount = m.its.filter(function (i) { return !isDone(i) && isOnHold(i); }).length;
+    el("openList").innerHTML = listBlock("open", "Not yet completed &middot; " + openItems.length + " of " + m.planned + " stories" +
+      (onHoldCount ? " <span class=\"muted\" style=\"font-weight:400\">(" + onHoldCount + " on hold, excluded)</span>" : ""),
       (openItems.length ? openItems.map(taskRow).join("") : '<div class="muted">All committed stories completed. 🎉</div>'));
 
     el("qualityGrid").innerHTML =
