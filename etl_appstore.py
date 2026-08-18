@@ -147,14 +147,50 @@ def fetch_sales_day(token, vendor_number, day):
 #    instances, then download CSV segments. Apple's report NAMES are account-specific,
 #    so we match on substrings. Adjust ANALYTICS_METRIC_MAP if your report names differ.
 # ------------------------------------------------------------------------------------
-ANALYTICS_METRIC_MAP = [
-    # (substring to find in the Apple analytics report name, our metric, csv column)
-    ("App Store Impressions", "impressions", "Impressions"),
-    ("Product Page Views", "product_page_views", "Product Page Views"),
-    ("Sessions", "sessions", "Sessions"),
-    ("Active Devices", "active_devices", "Active Devices"),
-    ("Crashes", "crashes", "Crashes"),
+# The Analytics feed powers the metrics that MATCH App Store Connect > Analytics
+# (First-Time Downloads, Redownloads, Impressions, Product Page Views, Sessions,
+# Active Devices, Crashes). Report + column names vary a little by account, so we
+# detect columns defensively. Run `python3 etl_appstore.py --debug-analytics` to
+# print each discovered report name + its CSV header, then tighten the lists below.
+DEBUG = False
+
+DATE_COLS = ["Date", "Day"]
+COUNT_COLS = ["Counts", "Count", "Value", "Unique Devices"]
+# Download-type dimension value -> our metric (mirrors the App Analytics cards)
+DLTYPE_COLS = ["Download Type", "Event", "Type"]
+DLTYPE_METRIC = {
+    "first-time download": "downloads_analytics",
+    "first time download": "downloads_analytics",
+    "redownload": "redownloads_analytics",
+    "auto-download": "redownloads_analytics",
+    "restore": "redownloads_analytics",
+    "total downloads": "total_downloads_analytics",
+}
+# Report-name substrings whose rows carry download-type-dimensioned install counts
+DOWNLOAD_REPORT_HINTS = ["install", "download", "acquisition"]
+# Single-metric reports: (report-name substring, our metric, value-column candidates)
+ANALYTICS_SINGLE = [
+    ("impress", "impressions", ["Impressions", "Impressions Unique Device", "Counts", "Value"]),
+    ("page view", "product_page_views", ["Product Page Views", "Counts", "Value"]),
+    ("session", "sessions", ["Sessions", "Counts", "Value"]),
+    ("active device", "active_devices", ["Active Devices", "Unique Devices", "Counts", "Value"]),
+    ("crash", "crashes", ["Crashes", "Counts", "Value"]),
 ]
+
+
+def _to_int(v):
+    try:
+        return int(float(str(v).replace(",", "").strip()))
+    except (ValueError, TypeError):
+        return None
+
+
+def _find_col(header, candidates):
+    low = {h.lower(): h for h in (header or [])}
+    for c in candidates:
+        if c.lower() in low:
+            return low[c.lower()]
+    return None
 
 
 def ensure_analytics_request(token, app_id):
@@ -189,24 +225,62 @@ def fetch_analytics(token, app_id, since_day):
     if not req_id:
         return []
 
-    rows = []
     reports = asc_get(token, f"/v1/analyticsReportRequests/{req_id}/reports",
                       params={"limit": 200})
     if reports.status_code != 200:
         print(f"  analytics reports list: HTTP {reports.status_code}")
         return []
 
+    raw = []
     for report in reports.json().get("data", []):
         name = report.get("attributes", {}).get("name", "")
-        match = next((m for m in ANALYTICS_METRIC_MAP if m[0].lower() in name.lower()), None)
-        if not match:
+        raw += _download_report_instances(token, report["id"], name, since_day)
+
+    # Analytics rows fan out by country/source/type — collapse to one value per
+    # (date, metric) so First-Time Downloads etc. are worldwide daily totals.
+    agg = {}
+    for r in raw:
+        agg[(r["date"], r["metric"])] = agg.get((r["date"], r["metric"]), 0) + r["value"]
+    return [dict(date=d, metric=m, value=v, territory="WW", platform="ios", app_version=None)
+            for (d, m), v in agg.items()]
+
+
+def _parse_segment(text, report_name, since_day):
+    """Parse one analytics CSV/TSV segment into tidy rows (defensive column detection)."""
+    first_line = text.split("\n", 1)[0]
+    delim = "\t" if "\t" in first_line else ","
+    reader = csv.DictReader(io.StringIO(text), delimiter=delim)
+    header = reader.fieldnames or []
+    if DEBUG:
+        print(f"    [debug] report={report_name!r} cols={header}")
+    date_col = _find_col(header, DATE_COLS)
+    if not date_col:
+        return []
+    name_l = report_name.lower()
+    is_dl = any(h in name_l for h in DOWNLOAD_REPORT_HINTS)
+    dltype_col = _find_col(header, DLTYPE_COLS) if is_dl else None
+    count_col = _find_col(header, COUNT_COLS)
+    single = next((s for s in ANALYTICS_SINGLE if s[0] in name_l), None)
+    single_col = _find_col(header, single[2]) if single else None
+
+    out = []
+    for row in reader:
+        day = (row.get(date_col) or "").strip()[:10]
+        if not day or day < since_day:
             continue
-        _, metric, col = match
-        rows += _download_report_instances(token, report["id"], metric, col, since_day)
-    return rows
+        if is_dl and dltype_col and count_col:
+            metric = DLTYPE_METRIC.get((row.get(dltype_col) or "").strip().lower())
+            v = _to_int(row.get(count_col))
+            if metric and v is not None:
+                out.append(dict(date=day, metric=metric, value=v))
+        elif single and single_col:
+            v = _to_int(row.get(single_col))
+            if v is not None:
+                out.append(dict(date=day, metric=single[1], value=v))
+    return out
 
 
-def _download_report_instances(token, report_id, metric, col, since_day):
+def _download_report_instances(token, report_id, report_name, since_day):
     out = []
     inst = asc_get(token, f"/v1/analyticsReports/{report_id}/instances",
                    params={"filter[granularity]": "DAILY", "limit": 200})
@@ -221,25 +295,14 @@ def _download_report_instances(token, report_id, metric, col, since_day):
             url = segment.get("attributes", {}).get("url")
             if not url:
                 continue
-            blob = requests.get(url, timeout=120)  # pre-signed S3-style URL, no auth header
+            blob = requests.get(url, timeout=120)  # pre-signed URL, no auth header
             if blob.status_code != 200:
                 continue
             try:
                 text = gzip.decompress(blob.content).decode("utf-8", "replace")
             except OSError:
                 text = blob.content.decode("utf-8", "replace")
-            reader = csv.DictReader(io.StringIO(text), delimiter="\t")
-            for row in reader:
-                day = (row.get("Date") or "").strip()[:10]
-                if not day or day < since_day:
-                    continue
-                val = row.get(col) or row.get("Value") or "0"
-                try:
-                    val = int(float(str(val).replace(",", "")))
-                except ValueError:
-                    continue
-                out.append(dict(date=day, metric=metric, value=val,
-                                territory="WW", platform="ios", app_version=None))
+            out += _parse_segment(text, report_name, since_day)
     return out
 
 
@@ -274,10 +337,14 @@ def upsert(rows):
 
 
 def main():
+    global DEBUG
     ap = argparse.ArgumentParser()
     ap.add_argument("--days", type=int, default=3,
                     help="how many trailing days of Sales reports to (re)fetch (default 3)")
+    ap.add_argument("--debug-analytics", action="store_true",
+                    help="print each analytics report name + CSV header, to verify/adjust the column mapping")
     args = ap.parse_args()
+    DEBUG = args.debug_analytics
 
     token = make_token()
     vendor = env("ASC_VENDOR_NUMBER")

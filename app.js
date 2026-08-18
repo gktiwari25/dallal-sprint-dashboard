@@ -1660,7 +1660,15 @@
     var dates = asWindowDates(rows);
     var last = dates.length ? dates[dates.length - 1] : "";
 
-    var dl = asByDate(rows, "downloads"), redl = asByDate(rows, "redownloads"),
+    // Prefer App Analytics figures (match App Store Connect > Analytics) when the
+    // analytics feed has landed; fall back to Sales & Trends until then.
+    var hasMetric = function (m) { return rows.some(function (r) { return (r.metric || "") === m && num(r.value) > 0; }); };
+    var dlAnalytics = hasMetric("downloads_analytics");
+    var dlMetric = dlAnalytics ? "downloads_analytics" : "downloads";
+    var reMetric = hasMetric("redownloads_analytics") ? "redownloads_analytics" : "redownloads";
+    var acqSource = dlAnalytics ? "App Analytics (matches App Store Connect)" : "Sales & Trends (App Units)";
+
+    var dl = asByDate(rows, dlMetric), redl = asByDate(rows, reMetric),
         imp = asByDate(rows, "impressions"), pv = asByDate(rows, "product_page_views"),
         ses = asByDate(rows, "sessions"), act = asByDate(rows, "active_devices"),
         cr = asByDate(rows, "crashes");
@@ -1675,11 +1683,11 @@
     var avgAct = dates.length ? Math.round(asSum(sAct) / dates.length) : 0;
 
     el("appstoreKpis").innerHTML =
-      card("First-Time Downloads", fmtInt(totDl), { icon: "⬇️", accent: AS_TEAL, tip: "Sales & Trends 'App Units' — first-time downloads counted by Apple ID (Pacific-time day). This differs from App Store Connect > Analytics 'First-Time Downloads', which uses a different methodology and is usually higher; Apple documents that the two don't match." }) +
-      card("Redownloads", fmtInt(totRe), { icon: "🔁", accent: AS_BLUE, tip: "Re-installs by users who previously downloaded the app (Sales & Trends)." }) +
+      card("First-Time Downloads", fmtInt(totDl), { icon: "⬇️", accent: AS_TEAL, tip: "First-time downloads. Source: " + acqSource + ". " + (dlAnalytics ? "This matches App Store Connect > Analytics." : "Currently Sales & Trends 'App Units' — Apple's Analytics 'First-Time Downloads' is measured differently (usually higher); it will replace this automatically once the Analytics feed lands.") }) +
+      card("Redownloads", fmtInt(totRe), { icon: "🔁", accent: AS_BLUE, tip: "Re-installs by users who previously downloaded the app. Source: " + acqSource + "." }) +
       card("Impressions", fmtInt(totImp), { icon: "👁️", accent: AS_BLUE, tip: "Times the app appeared in the App Store (search, browse, referrals)." }) +
       card("Product Page Views", fmtInt(totPv), { icon: "📄", accent: AS_PURPLE, tip: "Views of the app's App Store product page." }) +
-      card("Conversion Rate", (Math.round(conv * 1000) / 10) + "%", { icon: "🎯", accent: conv >= 0.35 ? "#2e7d32" : conv >= 0.2 ? AS_AMBER : AS_RED, tip: "Downloads ÷ product page views." }) +
+      card("Conversion Rate", (Math.round(conv * 1000) / 10) + "%", { icon: "🎯", accent: conv >= 0.35 ? "#2e7d32" : conv >= 0.2 ? AS_AMBER : AS_RED, tip: "First-time downloads ÷ product page views (both from " + acqSource + ")." }) +
       card("Sessions", fmtInt(totSes), { icon: "📲", accent: AS_TEAL, tip: "App sessions recorded by App Analytics in the window." }) +
       card("Active Devices / day", fmtInt(avgAct), { icon: "📱", accent: AS_BLUE, tip: "Average distinct devices active per day over the window." }) +
       card("Crashes", fmtInt(totCr), { icon: "💥", accent: totCr > 100 ? AS_RED : totCr > 30 ? AS_AMBER : "#2e7d32", tip: "Crash count from App Analytics. Spikes here correlate with Sentry crash issues (e.g. DALLAL-RN-3Q)." });
@@ -1720,7 +1728,7 @@
         '<div class="bar" style="margin-top:6px"><span style="width:' + w + '%;background:var(--teal)"></span></div>' +
         "</div></div>";
     }).join("");
-    el("asTerritories").innerHTML = listBlock("asterr", "Downloads by territory &middot; " + asRangeLabel(),
+    el("asTerritories").innerHTML = listBlock("asterr", "Downloads by territory (Sales &amp; Trends) &middot; " + asRangeLabel(),
       tRows || '<div class="muted">No territory data.</div>');
   }
 
