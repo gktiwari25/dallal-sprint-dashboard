@@ -1598,13 +1598,29 @@
     });
   }
 
+  function asTimeAgo(ms) {
+    var s = Math.max(0, Math.floor((Date.now() - ms) / 1000));
+    if (s < 60) return "just now";
+    var m = Math.floor(s / 60); if (m < 60) return m + " min ago";
+    var h = Math.floor(m / 60); if (h < 24) return h + (h === 1 ? " hour ago" : " hours ago");
+    var d = Math.floor(h / 24); return d + (d === 1 ? " day ago" : " days ago");
+  }
   function renderAppStore() {
     populateAppstoreRange();
     var live = (data.appstore && data.appstore.length);
     var rows = live ? data.appstore : sampleAppStore();
-    el("appstoreWindow").textContent = live
-      ? "Live · App Store Connect · com.app.dalal (iOS)"
-      : "Sample data — this is how it will look once the App Store Connect API key is wired up";
+    if (live) {
+      var lastSync = null, dataThrough = "";
+      rows.forEach(function (r) {
+        if (r.updated_at) { var t = new Date(r.updated_at).getTime(); if (!isNaN(t) && (lastSync == null || t > lastSync)) lastSync = t; }
+        if (r.date && r.date > dataThrough) dataThrough = r.date;
+      });
+      var syncTxt = lastSync ? " · Last synced " + asTimeAgo(lastSync) + " (" + new Date(lastSync).toLocaleString() + ")" : "";
+      var throughTxt = dataThrough ? " · data through " + dataThrough : "";
+      el("appstoreWindow").textContent = "Live · App Store Connect · com.app.dalal (iOS)" + throughTxt + syncTxt;
+    } else {
+      el("appstoreWindow").textContent = "Sample data — this is how it will look once the App Store Connect API key is wired up";
+    }
 
     var dates = asDatesInWindow(rows, asRange);
     var last = dates.length ? dates[dates.length - 1] : "";
