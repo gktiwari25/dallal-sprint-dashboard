@@ -1529,6 +1529,7 @@
   // sample so the tab renders (same pattern as the Production API tab).
   var asRange = 30;
   var asCustom = false, asFrom = "", asTo = "";
+  var asPlatform = "all";   // all | ios | android
   var _sampleAppStore = null;
   var AS_TERRITORIES = [
     { code: "KW", name: "🇰🇼 Kuwait", w: 0.42 }, { code: "SA", name: "🇸🇦 Saudi Arabia", w: 0.18 },
@@ -1564,6 +1565,17 @@
       rows.push({ date: iso, metric: "active_devices", value: active, territory: "WW", platform: "ios", app_version: "1.19" });
       rows.push({ date: iso, metric: "redownloads", value: redl, territory: "WW", platform: "ios", app_version: "1.19" });
       rows.push({ date: iso, metric: "crashes", value: crashes, territory: "WW", platform: "ios", app_version: "1.19" });
+      // Android (Google Play) sample — roughly 0.6x iOS, so the platform toggle demos.
+      var a = 0.6;
+      AS_TERRITORIES.forEach(function (t) {
+        rows.push({ date: iso, metric: "downloads", value: Math.round(base * t.w * a), territory: t.code, platform: "android", app_version: "1.19" });
+      });
+      rows.push({ date: iso, metric: "product_page_views", value: Math.round(pageViews * a), territory: "WW", platform: "android", app_version: "1.19" });
+      rows.push({ date: iso, metric: "impressions", value: Math.round(impressions * a), territory: "WW", platform: "android", app_version: "1.19" });
+      rows.push({ date: iso, metric: "sessions", value: Math.round(sessions * a), territory: "WW", platform: "android", app_version: "1.19" });
+      rows.push({ date: iso, metric: "active_devices", value: Math.round(active * a), territory: "WW", platform: "android", app_version: "1.19" });
+      rows.push({ date: iso, metric: "redownloads", value: Math.round(redl * a), territory: "WW", platform: "android", app_version: "1.19" });
+      rows.push({ date: iso, metric: "crashes", value: Math.round(crashes * a), territory: "WW", platform: "android", app_version: "1.19" });
     }
     _sampleAppStore = rows;
     return rows;
@@ -1573,6 +1585,14 @@
     var src = (data.appstore && data.appstore.length) ? data.appstore : sampleAppStore();
     var s = {}; src.forEach(function (r) { if (r.date) s[r.date] = 1; });
     return Object.keys(s).sort();
+  }
+  function populateAppstorePlatform() {
+    var sel = el("appstorePlatform"); if (!sel || sel.options.length) return;
+    [["all", "All platforms"], ["ios", "iOS · App Store"], ["android", "Android · Google Play"]].forEach(function (o) {
+      var opt = document.createElement("option"); opt.value = o[0]; opt.textContent = o[1];
+      if (o[0] === asPlatform) opt.selected = true; sel.appendChild(opt);
+    });
+    sel.addEventListener("change", function () { asPlatform = sel.value; renderAppStore(); });
   }
   function populateAppstoreRange() {
     var sel = el("appstoreRange"); if (!sel || sel.options.length) return;
@@ -1655,9 +1675,15 @@
     var d = Math.floor(h / 24); return d + (d === 1 ? " day ago" : " days ago");
   }
   function renderAppStore() {
+    populateAppstorePlatform();
     populateAppstoreRange();
     var live = (data.appstore && data.appstore.length);
-    var rows = live ? data.appstore : sampleAppStore();
+    var allRows = live ? data.appstore : sampleAppStore();
+    // Platform filter: All / iOS / Android (rows carry platform 'ios' | 'android').
+    var rows = asPlatform === "all" ? allRows : allRows.filter(function (r) { return (r.platform || "ios") === asPlatform; });
+    var hasAndroid = allRows.some(function (r) { return (r.platform || "ios") === "android" && num(r.value) > 0; });
+    var platLabel = asPlatform === "ios" ? "iOS · App Store" : asPlatform === "android" ? "Android · Google Play" : "All platforms";
+
     if (live) {
       var lastSync = null, dataThrough = "";
       rows.forEach(function (r) {
@@ -1666,9 +1692,22 @@
       });
       var syncTxt = lastSync ? " · Last synced " + asTimeAgo(lastSync) + " (" + new Date(lastSync).toLocaleString() + ")" : "";
       var throughTxt = dataThrough ? " · data through " + dataThrough : "";
-      el("appstoreWindow").textContent = "Live · App Store Connect · com.app.dalal (iOS)" + throughTxt + syncTxt;
+      el("appstoreWindow").textContent = "Live · " + platLabel + throughTxt + syncTxt;
     } else {
-      el("appstoreWindow").textContent = "Sample data — this is how it will look once the App Store Connect API key is wired up";
+      el("appstoreWindow").textContent = "Sample data (" + platLabel + ") — this is how it will look once the store APIs are wired up";
+    }
+
+    // Google Play not-connected note (Android in view but no Android data yet).
+    var playNote = el("appstorePlayNote");
+    if (playNote) {
+      if (live && (asPlatform === "android" || asPlatform === "all") && !hasAndroid) {
+        playNote.innerHTML = "🤖 <b>Google Play (Android) isn't connected yet.</b> " + (asPlatform === "android"
+          ? "Android metrics will appear once the Play Store ETL is wired up (needs a Google Play service-account key)."
+          : "Showing <b>iOS only</b> for now — Android joins here once the Play Store ETL is wired up.");
+        playNote.classList.remove("hidden");
+      } else {
+        playNote.classList.add("hidden");
+      }
     }
 
     var dates = asWindowDates(rows);
@@ -1734,7 +1773,7 @@
 
     var pendNote = el("appstorePending");
     if (pendNote) {
-      if (live && !analyticsLive) {
+      if (live && !analyticsLive && asPlatform !== "android") {
         pendNote.innerHTML = "⏳ <b>Waiting on Apple's App Analytics feed.</b> Impressions, Product Page Views, Conversion, Sessions, Active Devices and Crashes come from App Analytics, which Apple is still generating (usually 24–48h after setup) — they show <b>—</b> until then and will fill in automatically. First-Time Downloads &amp; Redownloads (Sales &amp; Trends) are live now.";
         pendNote.classList.remove("hidden");
       } else {
@@ -1784,11 +1823,12 @@
 
   function exportAppStore() {
     var live = (data.appstore && data.appstore.length);
-    var rows = live ? data.appstore : sampleAppStore();
+    var allRows = live ? data.appstore : sampleAppStore();
+    var rows = asPlatform === "all" ? allRows : allRows.filter(function (r) { return (r.platform || "ios") === asPlatform; });
     var dates = {}; asWindowDates(rows).forEach(function (d) { dates[d] = 1; });
     var out = rows.filter(function (r) { return dates[r.date]; });
-    var tag = (asCustom && asFrom && asTo) ? (asFrom + "_" + asTo) : (asRange + "d");
-    downloadCSV("dallal-appstore-" + tag + "-" + csvStamp() + ".csv", toCSV(out, [
+    var tag = (asPlatform === "all" ? "" : asPlatform + "-") + ((asCustom && asFrom && asTo) ? (asFrom + "_" + asTo) : (asRange + "d"));
+    downloadCSV("dallal-appanalytics-" + tag + "-" + csvStamp() + ".csv", toCSV(out, [
       { key: "date", label: "Date" }, { key: "metric", label: "Metric" }, { key: "value", label: "Value" },
       { key: "territory", label: "Territory" }, { key: "platform", label: "Platform" }, { key: "app_version", label: "App Version" }
     ]));
