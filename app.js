@@ -1682,15 +1682,33 @@
     var conv = totPv ? totDl / totPv : 0;
     var avgAct = dates.length ? Math.round(asSum(sAct) / dates.length) : 0;
 
+    // The engagement/stability metrics come from Apple's App Analytics feed, which
+    // lands ~24–48h after setup. Until it does, show "—" (not a misleading 0) and a note.
+    var analyticsLive = ["impressions", "product_page_views", "sessions", "active_devices", "crashes"].some(hasMetric) || dlAnalytics;
+    var PEND = '<span style="opacity:.4;font-weight:600">—</span>';
+    var PEND_TIP = "Waiting on Apple's App Analytics feed — this metric usually lands 24–48h after setup, then fills in automatically.";
+    var pv2 = function (v, live) { return live ? v : PEND; };
+    var pcol = function (c, live) { return live ? c : "#9aa6bb"; };
+
     el("appstoreKpis").innerHTML =
       card("First-Time Downloads", fmtInt(totDl), { icon: "⬇️", accent: AS_TEAL, tip: "First-time downloads. Source: " + acqSource + ". " + (dlAnalytics ? "This matches App Store Connect > Analytics." : "Currently Sales & Trends 'App Units' — Apple's Analytics 'First-Time Downloads' is measured differently (usually higher); it will replace this automatically once the Analytics feed lands.") }) +
       card("Redownloads", fmtInt(totRe), { icon: "🔁", accent: AS_BLUE, tip: "Re-installs by users who previously downloaded the app. Source: " + acqSource + "." }) +
-      card("Impressions", fmtInt(totImp), { icon: "👁️", accent: AS_BLUE, tip: "Times the app appeared in the App Store (search, browse, referrals)." }) +
-      card("Product Page Views", fmtInt(totPv), { icon: "📄", accent: AS_PURPLE, tip: "Views of the app's App Store product page." }) +
-      card("Conversion Rate", (Math.round(conv * 1000) / 10) + "%", { icon: "🎯", accent: conv >= 0.35 ? "#2e7d32" : conv >= 0.2 ? AS_AMBER : AS_RED, tip: "First-time downloads ÷ product page views (both from " + acqSource + ")." }) +
-      card("Sessions", fmtInt(totSes), { icon: "📲", accent: AS_TEAL, tip: "App sessions recorded by App Analytics in the window." }) +
-      card("Active Devices / day", fmtInt(avgAct), { icon: "📱", accent: AS_BLUE, tip: "Average distinct devices active per day over the window." }) +
-      card("Crashes", fmtInt(totCr), { icon: "💥", accent: totCr > 100 ? AS_RED : totCr > 30 ? AS_AMBER : "#2e7d32", tip: "Crash count from App Analytics. Spikes here correlate with Sentry crash issues (e.g. DALLAL-RN-3Q)." });
+      card("Impressions", pv2(fmtInt(totImp), analyticsLive), { icon: "👁️", accent: pcol(AS_BLUE, analyticsLive), tip: analyticsLive ? "Times the app appeared in the App Store (search, browse, referrals)." : PEND_TIP }) +
+      card("Product Page Views", pv2(fmtInt(totPv), analyticsLive), { icon: "📄", accent: pcol(AS_PURPLE, analyticsLive), tip: analyticsLive ? "Views of the app's App Store product page." : PEND_TIP }) +
+      card("Conversion Rate", pv2((Math.round(conv * 1000) / 10) + "%", analyticsLive && totPv > 0), { icon: "🎯", accent: pcol(conv >= 0.35 ? "#2e7d32" : conv >= 0.2 ? AS_AMBER : AS_RED, analyticsLive && totPv > 0), tip: (analyticsLive && totPv > 0) ? "First-time downloads ÷ product page views (both from " + acqSource + ")." : PEND_TIP }) +
+      card("Sessions", pv2(fmtInt(totSes), analyticsLive), { icon: "📲", accent: pcol(AS_TEAL, analyticsLive), tip: analyticsLive ? "App sessions recorded by App Analytics in the window." : PEND_TIP }) +
+      card("Active Devices / day", pv2(fmtInt(avgAct), analyticsLive), { icon: "📱", accent: pcol(AS_BLUE, analyticsLive), tip: analyticsLive ? "Average distinct devices active per day over the window." : PEND_TIP }) +
+      card("Crashes", pv2(fmtInt(totCr), analyticsLive), { icon: "💥", accent: pcol(totCr > 100 ? AS_RED : totCr > 30 ? AS_AMBER : "#2e7d32", analyticsLive), tip: analyticsLive ? "Crash count from App Analytics. Spikes here correlate with Sentry crash issues (e.g. DALLAL-RN-3Q)." : PEND_TIP });
+
+    var pendNote = el("appstorePending");
+    if (pendNote) {
+      if (live && !analyticsLive) {
+        pendNote.innerHTML = "⏳ <b>Waiting on Apple's App Analytics feed.</b> Impressions, Product Page Views, Conversion, Sessions, Active Devices and Crashes come from App Analytics, which Apple is still generating (usually 24–48h after setup) — they show <b>—</b> until then and will fill in automatically. First-Time Downloads &amp; Redownloads (Sales &amp; Trends) are live now.";
+        pendNote.classList.remove("hidden");
+      } else {
+        pendNote.classList.add("hidden");
+      }
+    }
 
     asLineChart("asDownloadsChart", dates, [
       { label: "Downloads", data: sDl, color: AS_TEAL, fill: true },
