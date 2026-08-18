@@ -717,8 +717,16 @@
       }).join("") : '<div class="muted">No unreviewed feature merges in the last 30 days. 🎉</div>');
   }
 
+  // "User Flow" is a parent tab holding 4 sub-tabs (Marketing, Re-engagement,
+  // Recovery CRM, Journey). Remember the last sub-tab so re-opening User Flow returns to it.
+  var lastUserFlowSub = "marketing";
   function showTab(which) {
-    var isDel = which === "delivery", isEng = which === "eng", isFun = which === "funnels", isMkt = which === "marketing", isFlow = which === "flow", isCrm = which === "crm", isApi = which === "api", isJourney = which === "journey", isAppStore = which === "appstore";
+    if (which === "userflow") which = lastUserFlowSub;
+    var isMkt = which === "marketing", isFlow = which === "flow", isCrm = which === "crm", isJourney = which === "journey";
+    var isSub = isMkt || isFlow || isCrm || isJourney;
+    if (isSub) lastUserFlowSub = which;
+    var isDel = which === "delivery", isEng = which === "eng", isFun = which === "funnels", isApi = which === "api", isAppStore = which === "appstore";
+    // views
     el("sprintView").classList.toggle("hidden", !isDel);
     el("engView").classList.toggle("hidden", !isEng);
     el("funnelView").classList.toggle("hidden", !isFun);
@@ -728,17 +736,23 @@
     el("journeyView").classList.toggle("hidden", !isJourney);
     el("apiView").classList.toggle("hidden", !isApi);
     el("appstoreView").classList.toggle("hidden", !isAppStore);
+    // User Flow sub-tab bar visible only while a sub-tab is active
+    el("userFlowTabs").classList.toggle("hidden", !isSub);
+    // sprint selector only on Delivery
     el("sprintSel").classList.toggle("hidden", !isDel);
     el("sprintLbl").classList.toggle("hidden", !isDel);
+    // top-level active states (User Flow lit for any of its sub-tabs)
     el("tabDelivery").classList.toggle("active", isDel);
-    el("tabEng").classList.toggle("active", isEng);
+    el("tabAppStore").classList.toggle("active", isAppStore);
     el("tabFunnels").classList.toggle("active", isFun);
+    el("tabEng").classList.toggle("active", isEng);
+    el("tabApi").classList.toggle("active", isApi);
+    el("tabUserFlow").classList.toggle("active", isSub);
+    // sub-tab active states
     el("tabMarketing").classList.toggle("active", isMkt);
     el("tabFlow").classList.toggle("active", isFlow);
     el("tabCrm").classList.toggle("active", isCrm);
     el("tabJourney").classList.toggle("active", isJourney);
-    el("tabApi").classList.toggle("active", isApi);
-    el("tabAppStore").classList.toggle("active", isAppStore);
     if (isEng) renderEng();
     if (isFun) renderFunnels();
     if (isMkt) renderMarketing();
@@ -1918,6 +1932,7 @@
     el("tabJourney").addEventListener("click", function () { showTab("journey"); });
     el("tabApi").addEventListener("click", function () { showTab("api"); });
     el("tabAppStore").addEventListener("click", function () { showTab("appstore"); });
+    el("tabUserFlow").addEventListener("click", function () { showTab("userflow"); });
     var _exAs = el("exportAppStore"); if (_exAs) _exAs.addEventListener("click", exportAppStore);
     // Keep info-icon tooltips inside the viewport: shift horizontally when a tip is
     // near the screen edge (the tooltip is centered on the icon and would clip otherwise).
