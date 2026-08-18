@@ -459,9 +459,11 @@
   }
 
   function renderRisks(sprint) {
-    // Delivery Risks: curated current risks (not sprint-filtered — carryover risks
-    // like the Map epic span sprints). Repo/security risks live on Engineering.
-    var rs = data.risks.filter(function (r) { return !isEngRisk(r) && String(r.sprint) === String(sprint); });
+    // Delivery Risks: curated current risks. NOT sprint-filtered — carryover risks
+    // (e.g. the Map epic) span sprints, and sprint-filtering made this always read
+    // zero once the selected sprint had no risk rows. Repo/security risks live on
+    // Engineering. Add rows to the Supabase `risks` table to surface them here.
+    var rs = data.risks.filter(function (r) { return !isEngRisk(r); });
     var counts = { red: 0, amber: 0, green: 0 };
     rs.forEach(function (r) { var k = (r.rag || "").toLowerCase(); if (counts[k] != null) counts[k]++; });
     el("riskCards").innerHTML =
@@ -469,7 +471,7 @@
       card("Amber", '<span class="dot amber"></span> ' + counts.amber) +
       card("Green", '<span class="dot green"></span> ' + counts.green);
     el("riskList").innerHTML = rs.map(riskCardHtml).join("") ||
-      '<div class="muted">No delivery risks logged for Sprint ' + esc(String(sprint)) + '. Risks are a <b>manually-curated</b> list (the Supabase <code>risks</code> table) — add rows there to surface them here. (Security/repo risks live on the Engineering tab.)</div>';
+      '<div class="muted">No delivery risks logged. Risks are a <b>manually-curated</b> list (the Supabase <code>risks</code> table) — add rows there to surface them here. (Security/repo risks live on the Engineering tab.)</div>';
   }
 
   // Escape text, then turn any URL into a clickable link (e.g. Asana story links).
@@ -547,13 +549,6 @@
       options: { responsive: true, plugins: { legend: { position: "bottom" } },
         scales: { y: { beginAtZero: true, title: { display: true, text: "carryover SP" } },
           y1: { beginAtZero: true, suggestedMax: 100, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "predictability %" } } } } });
-
-    mkChart("cycleTrendChart", { type: "line",
-      data: { labels: labels, datasets: [
-        { label: "Cycle", data: agg.map(function (a) { return a.cycle; }), borderColor: "#0f8b8d", backgroundColor: "transparent", tension: .3 },
-        { label: "Dev", data: agg.map(function (a) { return a.dev; }), borderColor: "#3f7fce", backgroundColor: "transparent", tension: .3 },
-        { label: "QA", data: agg.map(function (a) { return a.qa; }), borderColor: "#7b61ff", backgroundColor: "transparent", tension: .3 } ] },
-      options: { responsive: true, plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true, title: { display: true, text: "days" } } } } });
 
     mkChart("bugTrendChart", { type: "bar",
       data: { labels: labels, datasets: [
