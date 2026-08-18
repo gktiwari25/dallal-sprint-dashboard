@@ -1682,6 +1682,23 @@
     var conv = totPv ? totDl / totPv : 0;
     var avgAct = dates.length ? Math.round(asSum(sAct) / dates.length) : 0;
 
+    // Downloads this week vs last week — fixed 7d-vs-prior-7d, anchored on the
+    // latest data date (independent of the Range selector above).
+    var isoShift = function (iso, d) { var x = new Date(iso + "T00:00:00"); x.setDate(x.getDate() + d); return x.toISOString().slice(0, 10); };
+    var sumRange = function (byDate, lo, hi) { var s = 0; Object.keys(byDate).forEach(function (d) { if (d >= lo && d <= hi) s += byDate[d]; }); return s; };
+    var allDlDates = Object.keys(dl).sort();
+    var maxDlDate = allDlDates.length ? allDlDates[allDlDates.length - 1] : null;
+    var wowThis = 0, wowLast = 0, wowDelta = null;
+    if (maxDlDate) {
+      wowThis = sumRange(dl, isoShift(maxDlDate, -6), maxDlDate);
+      wowLast = sumRange(dl, isoShift(maxDlDate, -13), isoShift(maxDlDate, -7));
+      wowDelta = wowLast > 0 ? (wowThis - wowLast) / wowLast : null;
+    }
+    var wowColor = wowDelta == null ? "var(--muted,#5b6577)" : wowDelta > 0 ? "#2e7d32" : wowDelta < 0 ? "#c62828" : "var(--muted,#5b6577)";
+    var wowArrow = wowDelta == null ? "" : wowDelta > 0 ? "▲" : wowDelta < 0 ? "▼" : "▬";
+    var wowTxt = wowDelta == null ? "no prior week" : (wowDelta > 0 ? "+" : "") + (Math.round(wowDelta * 1000) / 10) + "%";
+    var wowValue = fmtInt(wowThis) + ' <span style="font-size:13px;font-weight:600;color:' + wowColor + '">' + wowArrow + " " + wowTxt + "</span>";
+
     // The engagement/stability metrics come from Apple's App Analytics feed, which
     // lands ~24–48h after setup. Until it does, show "—" (not a misleading 0) and a note.
     var analyticsLive = ["impressions", "product_page_views", "sessions", "active_devices", "crashes"].some(hasMetric) || dlAnalytics;
@@ -1693,6 +1710,7 @@
     el("appstoreKpis").innerHTML =
       card("First-Time Downloads", fmtInt(totDl), { icon: "⬇️", accent: AS_TEAL, tip: "First-time downloads. Source: " + acqSource + ". " + (dlAnalytics ? "This matches App Store Connect > Analytics." : "Currently Sales & Trends 'App Units' — Apple's Analytics 'First-Time Downloads' is measured differently (usually higher); it will replace this automatically once the Analytics feed lands.") }) +
       card("Redownloads", fmtInt(totRe), { icon: "🔁", accent: AS_BLUE, tip: "Re-installs by users who previously downloaded the app. Source: " + acqSource + "." }) +
+      card("Downloads — this wk vs last", wowValue, { icon: "📅", accent: wowColor, tip: "First-time downloads in the last 7 days" + (maxDlDate ? " (ending " + maxDlDate + ")" : "") + " vs the previous 7 days: " + fmtInt(wowThis) + " vs " + fmtInt(wowLast) + ". Source: " + acqSource + ". Independent of the Range selector." }) +
       card("Impressions", pv2(fmtInt(totImp), analyticsLive), { icon: "👁️", accent: pcol(AS_BLUE, analyticsLive), tip: analyticsLive ? "Times the app appeared in the App Store (search, browse, referrals)." : PEND_TIP }) +
       card("Product Page Views", pv2(fmtInt(totPv), analyticsLive), { icon: "📄", accent: pcol(AS_PURPLE, analyticsLive), tip: analyticsLive ? "Views of the app's App Store product page." : PEND_TIP }) +
       card("Conversion Rate", pv2((Math.round(conv * 1000) / 10) + "%", analyticsLive && totPv > 0), { icon: "🎯", accent: pcol(conv >= 0.35 ? "#2e7d32" : conv >= 0.2 ? AS_AMBER : AS_RED, analyticsLive && totPv > 0), tip: (analyticsLive && totPv > 0) ? "First-time downloads ÷ product page views (both from " + acqSource + ")." : PEND_TIP }) +
