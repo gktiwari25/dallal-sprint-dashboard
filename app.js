@@ -1514,6 +1514,7 @@
   // Populated by etl_appstore.py. Until that runs we show a clearly-labelled
   // sample so the tab renders (same pattern as the Production API tab).
   var asRange = 30;
+  var asCustom = false, asFrom = "", asTo = "";
   var _sampleAppStore = null;
   var AS_TERRITORIES = [
     { code: "KW", name: "🇰🇼 Kuwait", w: 0.42 }, { code: "SA", name: "🇸🇦 Saudi Arabia", w: 0.18 },
@@ -1554,13 +1555,47 @@
     return rows;
   }
 
+  function asAllDates() {
+    var src = (data.appstore && data.appstore.length) ? data.appstore : sampleAppStore();
+    var s = {}; src.forEach(function (r) { if (r.date) s[r.date] = 1; });
+    return Object.keys(s).sort();
+  }
   function populateAppstoreRange() {
     var sel = el("appstoreRange"); if (!sel || sel.options.length) return;
-    [[7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"]].forEach(function (o) {
+    [[7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"], [90, "Last 90 days"], ["custom", "Custom range…"]].forEach(function (o) {
       var opt = document.createElement("option"); opt.value = o[0]; opt.textContent = o[1];
       if (o[0] === asRange) opt.selected = true; sel.appendChild(opt);
     });
-    sel.addEventListener("change", function () { asRange = parseInt(sel.value, 10) || 30; renderAppStore(); });
+    sel.addEventListener("change", function () {
+      if (sel.value === "custom") {
+        asCustom = true; el("appstoreCustom").style.display = "inline-flex";
+        var ad = asAllDates();
+        if (ad.length) {
+          if (!asTo) { asTo = ad[ad.length - 1]; el("appstoreTo").value = asTo; }
+          if (!asFrom) { asFrom = ad[Math.max(0, ad.length - 30)]; el("appstoreFrom").value = asFrom; }
+          el("appstoreFrom").min = ad[0]; el("appstoreFrom").max = ad[ad.length - 1];
+          el("appstoreTo").min = ad[0]; el("appstoreTo").max = ad[ad.length - 1];
+        }
+      } else {
+        asCustom = false; el("appstoreCustom").style.display = "none"; asRange = parseInt(sel.value, 10) || 30;
+      }
+      renderAppStore();
+    });
+    el("appstoreFrom").addEventListener("change", function () { asFrom = el("appstoreFrom").value; renderAppStore(); });
+    el("appstoreTo").addEventListener("change", function () { asTo = el("appstoreTo").value; renderAppStore(); });
+  }
+  // Dates in the active window: custom [From..To] when set, else the last N days.
+  function asWindowDates(rows) {
+    var s = {}; rows.forEach(function (r) { if (r.date) s[r.date] = 1; });
+    var ds = Object.keys(s).sort();
+    if (asCustom && asFrom && asTo) {
+      var lo = asFrom, hi = asTo; if (lo > hi) { var t = lo; lo = hi; hi = t; }
+      return ds.filter(function (d) { return d >= lo && d <= hi; });
+    }
+    return ds.slice(-asRange);
+  }
+  function asRangeLabel() {
+    return (asCustom && asFrom && asTo) ? (asFrom + " to " + asTo) : ("last " + asRange + " days");
   }
 
   // sum a metric per date across territories -> { 'YYYY-MM-DD': total }
@@ -1622,7 +1657,7 @@
       el("appstoreWindow").textContent = "Sample data — this is how it will look once the App Store Connect API key is wired up";
     }
 
-    var dates = asDatesInWindow(rows, asRange);
+    var dates = asWindowDates(rows);
     var last = dates.length ? dates[dates.length - 1] : "";
 
     var dl = asByDate(rows, "downloads"), redl = asByDate(rows, "redownloads"),
@@ -1640,8 +1675,8 @@
     var avgAct = dates.length ? Math.round(asSum(sAct) / dates.length) : 0;
 
     el("appstoreKpis").innerHTML =
-      card("Downloads", fmtInt(totDl), { icon: "⬇️", accent: AS_TEAL, tip: "First-time downloads in the selected window (all territories)." }) +
-      card("Redownloads", fmtInt(totRe), { icon: "🔁", accent: AS_BLUE, tip: "Re-installs by users who previously downloaded the app." }) +
+      card("First-Time Downloads", fmtInt(totDl), { icon: "⬇️", accent: AS_TEAL, tip: "Sales & Trends 'App Units' — first-time downloads counted by Apple ID (Pacific-time day). This differs from App Store Connect > Analytics 'First-Time Downloads', which uses a different methodology and is usually higher; Apple documents that the two don't match." }) +
+      card("Redownloads", fmtInt(totRe), { icon: "🔁", accent: AS_BLUE, tip: "Re-installs by users who previously downloaded the app (Sales & Trends)." }) +
       card("Impressions", fmtInt(totImp), { icon: "👁️", accent: AS_BLUE, tip: "Times the app appeared in the App Store (search, browse, referrals)." }) +
       card("Product Page Views", fmtInt(totPv), { icon: "📄", accent: AS_PURPLE, tip: "Views of the app's App Store product page." }) +
       card("Conversion Rate", (Math.round(conv * 1000) / 10) + "%", { icon: "🎯", accent: conv >= 0.35 ? "#2e7d32" : conv >= 0.2 ? AS_AMBER : AS_RED, tip: "Downloads ÷ product page views." }) +
@@ -1685,16 +1720,17 @@
         '<div class="bar" style="margin-top:6px"><span style="width:' + w + '%;background:var(--teal)"></span></div>' +
         "</div></div>";
     }).join("");
-    el("asTerritories").innerHTML = listBlock("asterr", "Downloads by territory &middot; last " + asRange + " days",
+    el("asTerritories").innerHTML = listBlock("asterr", "Downloads by territory &middot; " + asRangeLabel(),
       tRows || '<div class="muted">No territory data.</div>');
   }
 
   function exportAppStore() {
     var live = (data.appstore && data.appstore.length);
     var rows = live ? data.appstore : sampleAppStore();
-    var dates = {}; asDatesInWindow(rows, asRange).forEach(function (d) { dates[d] = 1; });
+    var dates = {}; asWindowDates(rows).forEach(function (d) { dates[d] = 1; });
     var out = rows.filter(function (r) { return dates[r.date]; });
-    downloadCSV("dallal-appstore-" + asRange + "d-" + csvStamp() + ".csv", toCSV(out, [
+    var tag = (asCustom && asFrom && asTo) ? (asFrom + "_" + asTo) : (asRange + "d");
+    downloadCSV("dallal-appstore-" + tag + "-" + csvStamp() + ".csv", toCSV(out, [
       { key: "date", label: "Date" }, { key: "metric", label: "Metric" }, { key: "value", label: "Value" },
       { key: "territory", label: "Territory" }, { key: "platform", label: "Platform" }, { key: "app_version", label: "App Version" }
     ]));
