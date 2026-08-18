@@ -1901,6 +1901,17 @@
     el("tabApi").addEventListener("click", function () { showTab("api"); });
     el("tabAppStore").addEventListener("click", function () { showTab("appstore"); });
     var _exAs = el("exportAppStore"); if (_exAs) _exAs.addEventListener("click", exportAppStore);
+    // Keep info-icon tooltips inside the viewport: shift horizontally when a tip is
+    // near the screen edge (the tooltip is centered on the icon and would clip otherwise).
+    document.addEventListener("mouseover", function (e) {
+      var t = e.target;
+      if (!t || !t.classList || !t.classList.contains("tip")) return;
+      var r = t.getBoundingClientRect(), vw = window.innerWidth || document.documentElement.clientWidth;
+      var half = Math.min(300, vw * 0.8) / 2, m = 10, cx = r.left + r.width / 2, dx = 0;
+      if (cx + half > vw - m) dx = (vw - m) - (cx + half);
+      else if (cx - half < m) dx = m - (cx - half);
+      t.style.setProperty("--tipdx", Math.round(dx) + "px");
+    });
     el("exportApi").addEventListener("click", exportApi);
     (function () {
       var epc = el("apiEndpoints");

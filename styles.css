@@ -318,7 +318,7 @@ table.ftable tr.worst td{font-weight:600}
 /* ---- Tooltips ------------------------------------------------------------ */
 .tip{display:inline-flex;align-items:center;justify-content:center;width:15px;height:15px;border-radius:50%;background:var(--muted);color:#fff;font-size:10px;font-style:italic;font-weight:700;font-family:Georgia,serif;cursor:help;position:relative;vertical-align:middle;margin-left:5px}
 .tip:hover{z-index:70}
-.tip::after{content:attr(data-tip);position:absolute;top:150%;left:50%;transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 12px;border-radius:var(--r-xs);font:400 12px/1.5 var(--font);font-style:normal;white-space:normal;width:max-content;max-width:min(300px,80vw);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .12s var(--ease);z-index:200;box-shadow:var(--sh-lg)}
+.tip::after{content:attr(data-tip);position:absolute;top:150%;left:calc(50% + var(--tipdx,0px));transform:translateX(-50%);background:var(--navy);color:#fff;padding:10px 12px;border-radius:var(--r-xs);font:400 12px/1.5 var(--font);font-style:normal;white-space:normal;width:max-content;max-width:min(300px,80vw);opacity:0;visibility:hidden;pointer-events:none;transition:opacity .12s var(--ease);z-index:200;box-shadow:var(--sh-lg)}
 .tip:hover::after{opacity:1;visibility:visible}
 @media (prefers-color-scheme: dark){.tip::after{background:#22374f;border:1px solid var(--line-strong)}}
 
