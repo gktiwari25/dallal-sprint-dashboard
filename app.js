@@ -1529,7 +1529,7 @@
   // sample so the tab renders (same pattern as the Production API tab).
   var asRange = 30;
   var asCustom = false, asFrom = "", asTo = "";
-  var asPlatform = "all";   // all | ios | android
+  var asPlatform = "ios";   // ios | android (two sub-tabs, like User Flow)
   var _sampleAppStore = null;
   var AS_TERRITORIES = [
     { code: "KW", name: "🇰🇼 Kuwait", w: 0.42 }, { code: "SA", name: "🇸🇦 Saudi Arabia", w: 0.18 },
@@ -1585,14 +1585,6 @@
     var src = (data.appstore && data.appstore.length) ? data.appstore : sampleAppStore();
     var s = {}; src.forEach(function (r) { if (r.date) s[r.date] = 1; });
     return Object.keys(s).sort();
-  }
-  function populateAppstorePlatform() {
-    var sel = el("appstorePlatform"); if (!sel || sel.options.length) return;
-    [["all", "All platforms"], ["ios", "iOS · App Store"], ["android", "Android · Google Play"]].forEach(function (o) {
-      var opt = document.createElement("option"); opt.value = o[0]; opt.textContent = o[1];
-      if (o[0] === asPlatform) opt.selected = true; sel.appendChild(opt);
-    });
-    sel.addEventListener("change", function () { asPlatform = sel.value; renderAppStore(); });
   }
   function populateAppstoreRange() {
     var sel = el("appstoreRange"); if (!sel || sel.options.length) return;
@@ -1675,14 +1667,15 @@
     var d = Math.floor(h / 24); return d + (d === 1 ? " day ago" : " days ago");
   }
   function renderAppStore() {
-    populateAppstorePlatform();
     populateAppstoreRange();
+    el("tabPlatIos").classList.toggle("active", asPlatform === "ios");
+    el("tabPlatAndroid").classList.toggle("active", asPlatform === "android");
     var live = (data.appstore && data.appstore.length);
     var allRows = live ? data.appstore : sampleAppStore();
-    // Platform filter: All / iOS / Android (rows carry platform 'ios' | 'android').
-    var rows = asPlatform === "all" ? allRows : allRows.filter(function (r) { return (r.platform || "ios") === asPlatform; });
+    // Platform sub-tab: iOS / Android (rows carry platform 'ios' | 'android').
+    var rows = allRows.filter(function (r) { return (r.platform || "ios") === asPlatform; });
     var hasAndroid = allRows.some(function (r) { return (r.platform || "ios") === "android" && num(r.value) > 0; });
-    var platLabel = asPlatform === "ios" ? "iOS · App Store" : asPlatform === "android" ? "Android · Google Play" : "All platforms";
+    var platLabel = asPlatform === "android" ? "Android · Google Play" : "iOS · App Store";
 
     if (live) {
       var lastSync = null, dataThrough = "";
@@ -1697,13 +1690,11 @@
       el("appstoreWindow").textContent = "Sample data (" + platLabel + ") — this is how it will look once the store APIs are wired up";
     }
 
-    // Google Play not-connected note (Android in view but no Android data yet).
+    // Google Play not-connected note (Android tab selected but no Android data yet).
     var playNote = el("appstorePlayNote");
     if (playNote) {
-      if (live && (asPlatform === "android" || asPlatform === "all") && !hasAndroid) {
-        playNote.innerHTML = "🤖 <b>Google Play (Android) isn't connected yet.</b> " + (asPlatform === "android"
-          ? "Android metrics will appear once the Play Store ETL is wired up (needs a Google Play service-account key)."
-          : "Showing <b>iOS only</b> for now — Android joins here once the Play Store ETL is wired up.");
+      if (live && asPlatform === "android" && !hasAndroid) {
+        playNote.innerHTML = "🤖 <b>Google Play (Android) isn't connected yet.</b> Android metrics will appear here once the Play Store ETL is wired up (needs a Google Play service-account key). iOS is live on the other tab.";
         playNote.classList.remove("hidden");
       } else {
         playNote.classList.add("hidden");
@@ -1973,6 +1964,8 @@
     el("tabApi").addEventListener("click", function () { showTab("api"); });
     el("tabAppStore").addEventListener("click", function () { showTab("appstore"); });
     el("tabUserFlow").addEventListener("click", function () { showTab("userflow"); });
+    el("tabPlatIos").addEventListener("click", function () { asPlatform = "ios"; renderAppStore(); });
+    el("tabPlatAndroid").addEventListener("click", function () { asPlatform = "android"; renderAppStore(); });
     var _exAs = el("exportAppStore"); if (_exAs) _exAs.addEventListener("click", exportAppStore);
     // Keep info-icon tooltips inside the viewport: shift horizontally when a tip is
     // near the screen edge (the tooltip is centered on the icon and would clip otherwise).
