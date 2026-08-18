@@ -2014,9 +2014,24 @@
         b.disabled = false; b.innerHTML = txt;
       });
     });
-    // Live auto-refresh: re-pull from Supabase every 5 min and when the tab regains focus — no manual reload.
-    setInterval(function () { if (sbc && loadedOnce && !document.hidden) loadAll(); }, 300000);
+    // LIVE updates: subscribe to Supabase Realtime — the dashboard re-pulls the
+    // instant any Delivery table changes (no waiting, no manual refresh). A short
+    // debounce batches bursts. Falls back to a 60s poll if Realtime is unavailable.
+    var _reloadT = null;
+    function liveReload() { if (!(sbc && loadedOnce) || document.hidden) return; clearTimeout(_reloadT); _reloadT = setTimeout(loadAll, 1200); }
+    function subscribeRealtime() {
+      if (!sbc || !sbc.channel) return;
+      try {
+        var ch = sbc.channel("delivery-live");
+        ["fact_workitems", "fact_burndown", "dim_sprint", "fact_appstore_metrics"].forEach(function (t) {
+          ch.on("postgres_changes", { event: "*", schema: "public", table: t }, liveReload);
+        });
+        ch.subscribe();
+      } catch (e) {}
+    }
+    setInterval(function () { if (sbc && loadedOnce && !document.hidden) loadAll(); }, 60000);
     document.addEventListener("visibilitychange", function () { if (!document.hidden && sbc && loadedOnce) loadAll(); });
+    setTimeout(subscribeRealtime, 1500);
     el("googleBtn").addEventListener("click", doGoogle);
     el("magicBtn").addEventListener("click", doMagicLink);
     el("loginEmail").addEventListener("keydown", function (e) { if (e.key === "Enter") doMagicLink(); });

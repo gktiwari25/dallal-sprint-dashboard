@@ -25,7 +25,7 @@ import argparse
 import os
 import re
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import requests
 
@@ -53,12 +53,15 @@ def num(v):
         return None
 
 
-def fetch_tasks(token, project):
-    """Page through every task in the project with the fields we need."""
+def fetch_tasks(token, project, modified_since=None):
+    """Page through project tasks with the fields we need; optionally only those
+    modified since a timestamp (cheap incremental polling)."""
     headers = {"Authorization": f"Bearer {token}"}
     tasks, offset = [], None
     while True:
         params = {"project": project, "opt_fields": OPT_FIELDS, "limit": 100}
+        if modified_since:
+            params["modified_since"] = modified_since
         if offset:
             params["offset"] = offset
         r = requests.get(ASANA_BASE + "/tasks", headers=headers, params=params, timeout=90)
@@ -156,13 +159,25 @@ def upsert(rows):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="compare to Supabase, write nothing")
+    ap.add_argument("--full", action="store_true", help="fetch all tasks, ignore the incremental marker")
     args = ap.parse_args()
     token = env("ASANA_PAT")
     project = env("ASANA_PROJECT_GID", required=False, default=DEFAULT_PROJECT)
 
-    tasks = fetch_tasks(token, project)
+    marker = os.path.expanduser("~/dallal-sprint-dashboard/logs/.asana_last_sync")
+    run_start = datetime.now(timezone.utc)
+    modified_since = None
+    if not args.full and not args.dry_run and os.path.exists(marker):
+        try:
+            last = datetime.fromisoformat(open(marker).read().strip())
+            modified_since = (last - timedelta(minutes=10)).isoformat()
+        except Exception:
+            modified_since = None
+
+    tasks = fetch_tasks(token, project, modified_since)
     rows = [to_row(t, project) for t in tasks]
-    print(f"Asana: {len(rows)} tasks fetched from project {project}")
+    print(f"Asana: {len(rows)} tasks fetched from project {project}"
+          + (f" (incremental since {modified_since})" if modified_since else " (full)"))
 
     if args.dry_run:
         cur = sb_current("task_gid,section,status,is_completed,completed_at")
@@ -195,6 +210,10 @@ def main():
     FIELDS = ["task_gid", "section", "is_completed", "completed_at", "modified_at"]
     payload = [{k: r.get(k) for k in FIELDS} for r in rows]
     upsert(payload)
+    try:
+        open(marker, "w").write(run_start.isoformat())
+    except Exception:
+        pass
     print(f"Done at {datetime.now(timezone.utc).isoformat(timespec='seconds')}. {len(payload)} rows (state only).")
 
 

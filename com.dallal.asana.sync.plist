@@ -25,9 +25,9 @@
         <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
 
-    <!-- Every 15 minutes; also once at load. -->
+    <!-- Every 60 seconds; also once at load. -->
     <key>StartInterval</key>
-    <integer>900</integer>
+    <integer>60</integer>
     <key>RunAtLoad</key>
     <true/>
 
