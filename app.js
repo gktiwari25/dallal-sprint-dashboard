@@ -1255,10 +1255,24 @@
     a.download = "abandoned_listers_" + env + ".csv"; a.click();
   }
 
-  // Current running sprint: config override, else latest sprint with delivered
-  // work, +1 (the next one is "running"). Used to window the dropdown/trend.
+  // Calendar-driven current sprint: derived purely from today's date via a
+  // Monday-anchored, fixed-length cadence (config SPRINT_ANCHOR). Advances on its
+  // own each sprint boundary, independent of whether the data/ETL is current.
+  function calendarSprint() {
+    var a = cfg.SPRINT_ANCHOR;
+    if (!a || a.sprint == null || !a.start) return null;
+    var start = new Date(a.start + "T00:00:00");
+    if (isNaN(start.getTime())) return null;
+    var len = num(cfg.SPRINT_LENGTH_DAYS) || 14;
+    var days = Math.floor((new Date() - start) / 86400000);
+    return num(a.sprint) + Math.floor(days / len);
+  }
+  // Current running sprint: config override, else the calendar sprint, else the
+  // legacy fallback (latest sprint with delivered work, +1). Windows the dropdown/trend.
   function currentSprint() {
     if (cfg.CURRENT_SPRINT) return num(cfg.CURRENT_SPRINT);
+    var cal = calendarSprint();
+    if (cal != null) return cal;
     var del = data.items.filter(function (i) { return String(i.is_delivered) === "1"; })
       .map(function (i) { return num(i.sprint); }).filter(function (n) { return n > 0; });
     return del.length ? Math.max.apply(null, del) + 1 : null;
@@ -1273,8 +1287,14 @@
     return true;
   }
   function windowSprints() {
-    return data.sprints.map(function (s) { return num(s.sprint); })
-      .filter(function (n) { return n > 0 && inWindow(n); });
+    var set = {};
+    data.sprints.forEach(function (s) { var n = num(s.sprint); if (n > 0) set[n] = 1; });
+    // Always include the floor..current-sprint range so the current running sprint
+    // (and any gaps) are selectable even if dim_sprint hasn't been synced yet.
+    var c = currentSprint();
+    var lo = (MIN_SPRINT != null) ? MIN_SPRINT : (c != null ? c - SPRINT_BACK : null);
+    if (c != null && lo != null) { for (var n = lo; n <= c; n++) set[n] = 1; }
+    return Object.keys(set).map(Number).filter(function (n) { return n > 0 && inWindow(n); });
   }
 
   function populateSprintSelect() {
@@ -1287,15 +1307,17 @@
     // are excluded by isPreSprint, so the whole dashboard would compute to zero and
     // look broken. currentSprint() ("latest delivered + 1") can point at such an
     // empty, not-yet-started future sprint, so it's now only a fallback.
-    var saved = selectedSprint; if (!saved) { try { saved = localStorage.getItem("dallal_sprint"); } catch (e) {} }
     var inList = function (n) { return sprints.indexOf(num(n)) !== -1; };
-    // Default to the ACTIVE sprint = the latest sprint that has delivered work. Future
-    // sprints now carry backlog/design items too, so "latest with any work" would jump
-    // to the furthest future planning sprint — delivered-work is the right signal.
+    // Default = the current running sprint from the calendar, so a fresh load always
+    // lands on the live sprint and advances on its own each sprint boundary. An
+    // in-session manual pick (selectedSprint) still wins so the 5-min auto-refresh
+    // doesn't yank the user off a sprint they chose. Legacy fallbacks after that.
+    var cal = currentSprint();
     var delivered = sprints.filter(function (n) {
       return data.items.some(function (i) { return String(i.sprint) === String(n) && String(i.is_delivered) === "1"; });
     });
-    var def = (saved && inList(saved)) ? num(saved)
+    var def = (selectedSprint && inList(selectedSprint)) ? num(selectedSprint)
+      : (cal != null && inList(cal)) ? cal
       : delivered.length ? delivered[0]
       : (DEFAULT_SPRINT && inList(DEFAULT_SPRINT)) ? num(DEFAULT_SPRINT)
       : sprints[0];
