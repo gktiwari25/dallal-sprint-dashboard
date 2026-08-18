@@ -33,8 +33,25 @@ def notify(title, msg):
         pass
 
 
+def slack(text):
+    """Post to Slack via Incoming Webhook if SLACK_WEBHOOK_URL is set."""
+    hook = os.environ.get("SLACK_WEBHOOK_URL", "").strip()
+    if not hook.startswith("https://hooks.slack.com/"):
+        return False
+    try:
+        r = requests.post(hook, json={"text": text}, timeout=30)
+        return r.status_code == 200
+    except Exception as e:
+        print("slack post failed:", e)
+        return False
+
+
 def main():
     now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    if "--test-slack" in sys.argv:
+        ok = slack(":satellite: Dallal App Store analytics checker — test ping. Slack is wired up correctly.")
+        print(now, "slack test:", "sent" if ok else "FAILED (check SLACK_WEBHOOK_URL)")
+        return
     if os.path.exists(MARKER):
         print(now, "already notified — nothing to do")
         return
@@ -66,10 +83,11 @@ def main():
             open(MARKER, "w").write(now)
         except Exception:
             pass
-        notify("Dallal · App Store Analytics landed 🎉",
-               "%d analytics rows are now in Supabase — First-Time Downloads / impressions / "
+        msg = ("%d analytics rows are now in Supabase — First-Time Downloads / impressions / "
                "conversion now match App Store Connect. Ask Claude to verify the mapping." % n)
-        print(now, "NOTIFIED — stopping the checker job")
+        notify("Dallal · App Store Analytics landed 🎉", msg)
+        slack(":tada: *Dallal · App Store Analytics landed* — " + msg)
+        print(now, "NOTIFIED (macOS + Slack) — stopping the checker job")
         subprocess.run(
             ["launchctl", "bootout", "gui/%d/com.dallal.appstore.analyticscheck" % os.getuid()],
             check=False,
