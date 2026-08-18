@@ -90,7 +90,7 @@
   // Reopen / not-yet-started (Ready for Development) / Blocked is NOT delivered; it
   // is what carries forward. (The "Released" card below still counts only the
   // Released column — actually shipped to production.)
-  function isDone(i) { return /Ready for UAT|QA on UAT|In UAT|UAT Passed|Ready for Production|Released/i.test(i.section || "") || String(i.is_delivered) === "1"; }
+  function isDone(i) { return !!i.completed_at || i.is_completed === true || String(i.is_completed) === "1" || String(i.is_delivered) === "1" || /Ready for UAT|QA on UAT|In UAT|UAT Passed|Ready for Production|Released/i.test(i.section || ""); }
   // On-hold work is parked, not actively "not yet completed" — exclude it from the
   // open/remaining list (status enum "On hold"; also matches a Blocked/On-hold section).
   function isOnHold(i) { return /on\s*-?\s*hold/i.test(i.status || "") || /on\s*-?\s*hold/i.test(i.section || ""); }
@@ -2007,7 +2007,13 @@
     el("exportEngRisks").addEventListener("click", exportEngRisks);
     el("funnelEnv").addEventListener("change", function () { try { localStorage.setItem("dallal_funnel_env", this.value); } catch (e) {} renderFunnels(); });
     el("funnelPlatform").addEventListener("change", function () { try { localStorage.setItem("dallal_funnel_platform", this.value); } catch (e) {} renderFunnels(); });
-    el("refreshBtn").addEventListener("click", function () { if (sbc && loadedOnce) loadAll(); });
+    el("refreshBtn").addEventListener("click", function () {
+      if (!(sbc && loadedOnce)) return;
+      var b = el("refreshBtn"), txt = b.innerHTML; b.disabled = true; b.innerHTML = "↻ Refreshing…";
+      Promise.resolve(loadAll()).then(function () {}).catch(function () {}).then(function () {
+        b.disabled = false; b.innerHTML = txt;
+      });
+    });
     // Live auto-refresh: re-pull from Supabase every 5 min and when the tab regains focus — no manual reload.
     setInterval(function () { if (sbc && loadedOnce && !document.hidden) loadAll(); }, 300000);
     document.addEventListener("visibilitychange", function () { if (!document.hidden && sbc && loadedOnce) loadAll(); });
