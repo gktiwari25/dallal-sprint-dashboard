@@ -108,7 +108,7 @@
   }
   // Collapsible list block (native <details>) that remembers open/closed across re-renders.
   function listBlock(id, title, rowsHtml) {
-    var open = _collapse[id] !== false; // default open
+    var open = _collapse[id] === true; // default collapsed; remembers a user's toggle in-session
     return '<details class="lb" data-lb="' + id + '"' + (open ? " open" : "") +
       '><summary class="listhdr">' + title + "</summary>" + rowsHtml + "</details>";
   }
