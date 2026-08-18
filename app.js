@@ -459,10 +459,10 @@
   }
 
   function renderRisks(sprint) {
-    // Delivery Risks: curated current risks. NOT sprint-filtered — carryover risks
-    // (e.g. the Map epic) span sprints, and sprint-filtering made this always read
-    // zero once the selected sprint had no risk rows. Repo/security risks live on
-    // Engineering. Add rows to the Supabase `risks` table to surface them here.
+    // Delivery Risks: manually-curated list (Supabase `risks` table). Repo/security
+    // risks live on Engineering. The RAG count cards show overall posture across ALL
+    // delivery risks; the list is sprint-AWARE — risks tagged to the selected sprint
+    // (or left untagged, i.e. always-on) show first, then carryover from other sprints.
     var rs = data.risks.filter(function (r) { return !isEngRisk(r); });
     var counts = { red: 0, amber: 0, green: 0 };
     rs.forEach(function (r) { var k = (r.rag || "").toLowerCase(); if (counts[k] != null) counts[k]++; });
@@ -470,7 +470,19 @@
       card("Red", '<span class="dot red"></span> ' + counts.red) +
       card("Amber", '<span class="dot amber"></span> ' + counts.amber) +
       card("Green", '<span class="dot green"></span> ' + counts.green);
-    el("riskList").innerHTML = rs.map(riskCardHtml).join("") ||
+
+    // Current = tagged to this sprint OR untagged (untagged risks are always-on).
+    var isCurrent = function (r) { var s = String(r.sprint == null ? "" : r.sprint).trim(); return s === "" || s === String(sprint); };
+    var current = rs.filter(isCurrent);
+    var carry = rs.filter(function (r) { return !isCurrent(r); })
+      .sort(function (a, b) { return num(b.sprint) - num(a.sprint); });
+    var groupH = function (label) {
+      return '<div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px">' + label + "</div>";
+    };
+    var html = "";
+    if (current.length) html += groupH("Sprint " + esc(String(sprint)) + " &middot; " + current.length) + current.map(riskCardHtml).join("");
+    if (carry.length) html += groupH("Carryover &middot; other sprints &middot; " + carry.length) + carry.map(riskCardHtml).join("");
+    el("riskList").innerHTML = html ||
       '<div class="muted">No delivery risks logged. Risks are a <b>manually-curated</b> list (the Supabase <code>risks</code> table) — add rows there to surface them here. (Security/repo risks live on the Engineering tab.)</div>';
   }
 
