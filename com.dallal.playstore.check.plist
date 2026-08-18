@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Checks every 2h whether Google Play (Android) rows have landed in Supabase,
+  and posts a macOS + Slack notification the first time they do (then boots out).
+  Install:
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.dallal.playstore.check.plist
+  Uninstall:
+    launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.dallal.playstore.check.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.dallal.playstore.check</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/gourav/dallal-sprint-dashboard/run_play_check.sh</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <key>StartInterval</key>
+    <integer>7200</integer>
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/gourav/dallal-sprint-dashboard/logs/playcheck.out</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/gourav/dallal-sprint-dashboard/logs/playcheck.err</string>
+</dict>
+</plist>
