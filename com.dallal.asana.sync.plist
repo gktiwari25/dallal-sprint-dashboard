@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Near-live Asana -> Supabase work-item state sync, every 15 minutes.
+  Keeps section/completion fresh so the Delivery dashboard reflects Asana within
+  ~15 min instead of waiting on the slower periodic cloud sync.
+  Install:
+    launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.dallal.asana.sync.plist
+  Uninstall:
+    launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.dallal.asana.sync.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.dallal.asana.sync</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/gourav/dallal-sprint-dashboard/run_asana_sync.sh</string>
+    </array>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <!-- Every 15 minutes; also once at load. -->
+    <key>StartInterval</key>
+    <integer>900</integer>
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/gourav/dallal-sprint-dashboard/logs/asanasync.out</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/gourav/dallal-sprint-dashboard/logs/asanasync.err</string>
+</dict>
+</plist>
