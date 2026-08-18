@@ -56,6 +56,13 @@ else
   log "SKIP  appstore — ASC_ISSUER_ID / ASC_APP_ID not set in .env"
 fi
 
+# --- Google Play (Android) analytics -> Supabase (platform='android') ---------
+if [ -n "${PLAY_BUCKET_ID:-}" ] && [ -n "${GOOGLE_APPLICATION_CREDENTIALS:-}" ]; then
+  run_step "playstore" "$PY" "$DIR/etl_playstore.py" --months "${PLAY_BACKFILL_MONTHS:-2}"
+else
+  log "SKIP  playstore — PLAY_BUCKET_ID / GOOGLE_APPLICATION_CREDENTIALS not set"
+fi
+
 # --- OTHER ETLs (restore when the scripts are back on this machine) --------
 # run_step "asana"     "$PY" "$DIR/etl_asana.py"
 # run_step "amplitude" "$PY" "$DIR/etl_amplitude.py"
