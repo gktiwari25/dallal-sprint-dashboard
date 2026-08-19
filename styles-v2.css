@@ -371,7 +371,7 @@ details.lb{ border-radius:16px; }
 /* =========================================================================
    ANIMATED LOGIN BACKGROUND (original landing)
    ========================================================================= */
-#login{ position:relative; overflow:hidden; }
+#login{ position:fixed; inset:0; overflow:hidden; }
 .landing{ position:relative; z-index:2; }
 .lbg-orbs{ position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0; }
 .lbg-orbs i{ position:absolute; border-radius:50%; filter:blur(70px); opacity:.55; }
