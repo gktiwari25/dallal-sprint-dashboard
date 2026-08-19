@@ -1835,7 +1835,12 @@
     var totDl = asSum(sDl), totRe = asSum(sRe), totImp = asSum(sImp), totPv = asSum(sPv),
         totSes = asSum(sSes), totCr = asSum(sCr);
     var conv = totImp ? totDl / totImp : 0;   // App Store Connect Conversion Rate = downloads ÷ impressions
-    var avgAct = dates.length ? Math.round(asSum(sAct) / dates.length) : 0;
+    // Average over days that actually have data, NOT the whole window — Apple's
+    // analytics only covers the most recent few days, and the rest aren't "0
+    // active devices", they simply have no data yet. Dividing by the full window
+    // would dilute the daily average (e.g. 43 over 5 real days reads as ~1/30d).
+    var actDays = dates.filter(function (d) { return act[d] != null; }).length;
+    var avgAct = actDays ? Math.round(asSum(sAct) / actDays) : 0;
 
     // Downloads this week vs last week — fixed 7d-vs-prior-7d, anchored on the
     // latest data date (independent of the Range selector above).
