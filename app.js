@@ -725,7 +725,7 @@
     var isMkt = which === "marketing", isFlow = which === "flow", isCrm = which === "crm", isJourney = which === "journey";
     var isSub = isMkt || isFlow || isCrm || isJourney;
     if (isSub) lastUserFlowSub = which;
-    var isDel = which === "delivery", isEng = which === "eng", isFun = which === "funnels", isApi = which === "api", isAppStore = which === "appstore";
+    var isDel = which === "delivery", isEng = which === "eng", isFun = which === "funnels", isAppStore = which === "appstore";
     // views
     el("sprintView").classList.toggle("hidden", !isDel);
     el("engView").classList.toggle("hidden", !isEng);
@@ -734,7 +734,6 @@
     el("flowView").classList.toggle("hidden", !isFlow);
     el("crmView").classList.toggle("hidden", !isCrm);
     el("journeyView").classList.toggle("hidden", !isJourney);
-    el("apiView").classList.toggle("hidden", !isApi);
     el("appstoreView").classList.toggle("hidden", !isAppStore);
     // User Flow sub-tab bar visible only while a sub-tab is active
     el("userFlowTabs").classList.toggle("hidden", !isSub);
@@ -746,7 +745,6 @@
     el("tabAppStore").classList.toggle("active", isAppStore);
     el("tabFunnels").classList.toggle("active", isFun);
     el("tabEng").classList.toggle("active", isEng);
-    el("tabApi").classList.toggle("active", isApi);
     el("tabUserFlow").classList.toggle("active", isSub);
     // sub-tab active states
     el("tabMarketing").classList.toggle("active", isMkt);
@@ -756,7 +754,6 @@
     if (isEng) renderEng();
     if (isFun) renderFunnels();
     if (isMkt) renderMarketing();
-    if (isApi) renderApi();
     if (isAppStore) renderAppStore();
   }
 
@@ -1950,8 +1947,8 @@
       sbSelect("fact_unreviewed_prs").catch(function () { return []; }),
       sbSelect("fact_abandoned_listers").catch(function () { return []; }),
       sbSelect("fact_reengagement_log").catch(function () { return []; }),
-      sbSelect("fact_api_endpoints").catch(function () { return []; }),
-      sbSelect("fact_api_requests").catch(function () { return []; }),
+      Promise.resolve([]),  // Production API tab removed
+      Promise.resolve([]),
       sbSelect("fact_retro").catch(function () { return []; }),
       sbSelect("fact_appstore_metrics").catch(function () { return []; }),
       sbSelect("fact_trends").catch(function () { return []; }),
@@ -1971,7 +1968,6 @@
       if (!el("engView").classList.contains("hidden")) renderEng();
       if (!el("funnelView").classList.contains("hidden")) renderFunnels();
       if (!el("marketingView").classList.contains("hidden")) renderMarketing();
-      if (!el("apiView").classList.contains("hidden")) renderApi();
       if (!el("appstoreView").classList.contains("hidden")) renderAppStore();
     }).catch(function (e) {
       el("error").textContent = "Could not load data: " + e.message +
@@ -2066,7 +2062,6 @@
     el("tabFlow").addEventListener("click", function () { showTab("flow"); });
     el("tabCrm").addEventListener("click", function () { showTab("crm"); });
     el("tabJourney").addEventListener("click", function () { showTab("journey"); });
-    el("tabApi").addEventListener("click", function () { showTab("api"); });
     el("tabAppStore").addEventListener("click", function () { showTab("appstore"); });
     el("tabUserFlow").addEventListener("click", function () { showTab("userflow"); });
     el("tabPlatIos").addEventListener("click", function () { asPlatform = "ios"; renderAppStore(); });
