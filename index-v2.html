@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
+<title>Dallal Internal Dashboard — Redesign Preview</title>
+<link rel="icon" type="image/png" href="dallal-favicon.png?v=237" />
+<link rel="apple-touch-icon" href="dallal-favicon.png" />
+<link rel="stylesheet" href="styles.css?v=237" />
+<link rel="stylesheet" href="styles-v2.css?v=1" /><!-- REDESIGN PREVIEW theme layer -->
+</head>
+<body>
+
+<!-- Boot loader: shown until the auth check resolves, so the dashboard never flashes on refresh -->
+<div id="booting" class="booting"><div class="spin" aria-label="Loading"></div></div>
+
+<header class="topbar hidden" id="topbar">
+  <div>
+    <div class="title">Dallal Internal Dashboard</div>
+  </div>
+  <div class="spacer"></div>
+  <nav class="tabs">
+    <button id="tabDelivery" class="tab active">Delivery</button>
+    <button id="tabAppStore" class="tab">App Analytics</button>
+    <button id="tabFunnels" class="tab">Funnels</button>
+    <button id="tabEng" class="tab">Engineering</button>
+    <button id="tabUserFlow" class="tab">User Flow</button>
+  </nav>
+  <div class="spacer"></div>
+  <label class="sub" for="sprintSel" id="sprintLbl">Sprint</label>
+  <select id="sprintSel"></select>
+  <button id="refreshBtn" title="Reload data">&#x21bb; Refresh</button>
+  <button id="signOut" class="hidden" title="Sign out">Sign out</button>
+  <div id="updated"></div>
+</header>
+
+<!-- Login (shown when auth is required and no active session) -->
+<div id="login" class="hidden">
+  <svg class="loginbg" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+    <defs><linearGradient id="ar" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </linearGradient></defs>
+    <g stroke="#fff" stroke-opacity=".10">
+      <line x1="0" y1="120" x2="1200" y2="120"/><line x1="0" y1="240" x2="1200" y2="240"/>
+      <line x1="0" y1="360" x2="1200" y2="360"/><line x1="0" y1="480" x2="1200" y2="480"/>
+    </g>
+    <path d="M0,470 C160,440 280,470 420,420 C560,370 640,300 800,300 C940,300 1040,220 1200,170 L1200,600 L0,600 Z" fill="url(#ar)"/>
+    <path d="M0,470 C160,440 280,470 420,420 C560,370 640,300 800,300 C940,300 1040,220 1200,170" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="3"/>
+    <g fill="#fff" fill-opacity=".13">
+      <rect x="70" y="430" width="46" height="110" rx="5"/><rect x="180" y="380" width="46" height="160" rx="5"/>
+      <rect x="290" y="410" width="46" height="130" rx="5"/><rect x="400" y="330" width="46" height="210" rx="5"/>
+      <rect x="510" y="360" width="46" height="180" rx="5"/>
+    </g>
+    <g fill="#fff"><circle cx="420" cy="420" r="6"/><circle cx="800" cy="300" r="6"/><circle cx="1200" cy="170" r="6"/></g>
+    <circle cx="1010" cy="130" r="80" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="22"/>
+    <circle cx="1010" cy="130" r="80" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="22" stroke-dasharray="190 500" stroke-linecap="round"/>
+  </svg>
+  <div class="landing">
+    <header class="lnav">
+      <span class="lbrand"><img src="Dallal-logo.png" alt="Dallal" /></span>
+      <span class="live"><span class="dot"></span> Live</span>
+    </header>
+
+    <section class="hero">
+      <h1>Real-time visibility.<br/>Better delivery. Stronger quality.</h1>
+      <p class="lead">Track sprint progress, ensure quality, and empower engineering teams with live analytics.</p>
+      <button id="ctaLogin" class="cta">Login to Dashboard &rarr;</button>
+      <div class="ctasub">&#128274; Secure &middot; Private &middot; Role-based access</div>
+    </section>
+
+    <section class="features">
+      <div class="feature"><div class="ficon fi1">&#128202;</div><h3>Live Delivery</h3><p>Real-time sprint progress &amp; status</p></div>
+      <div class="feature"><div class="ficon fi2">&#128737;</div><h3>Quality First</h3><p>Track bugs, test coverage &amp; quality</p></div>
+      <div class="feature"><div class="ficon fi3">&#9881;</div><h3>Engineering Analytics</h3><p>DORA metrics, velocity &amp; team insights</p></div>
+      <div class="feature"><div class="ficon fi4">&#128201;</div><h3>Churn</h3><p>Retention, churn trends &amp; at-risk users</p></div>
+    </section>
+  </div>
+
+  <!-- Sign-in modal (opens from the Login button) -->
+  <div id="loginModal" class="hidden">
+    <div class="loginbox">
+      <button id="loginClose" class="lclose" aria-label="Close">&times;</button>
+      <img class="logo" src="Dallal-logo.png" alt="Dallal" />
+      <h2>Sign in</h2>
+      <p class="tag">Access your live analytics</p>
+
+      <button id="googleBtn" class="oauth">
+        <span class="g">G</span> Sign in with Google
+      </button>
+
+      <div class="divider"><span>or</span></div>
+
+      <label class="muted">Work email</label>
+      <input id="loginEmail" type="email" autocomplete="username" placeholder="you@dallal.com.kw" />
+      <button id="magicBtn">Email me a magic link</button>
+
+      <div id="loginInfo" class="info hidden"></div>
+      <div id="loginErr" class="err hidden" style="margin:12px 0 0"></div>
+
+      <a id="pwToggle" class="pwtoggle" href="#">Use a password instead</a>
+      <div id="pwBlock" class="hidden">
+        <label class="muted">Password</label>
+        <input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••" />
+        <button id="loginBtn">Sign in</button>
+      </div>
+
+      <div class="loginfoot">Secure access &middot; @dallal.com.kw</div>
+    </div>
+  </div>
+</div>
+
+<!-- Config prompt (shown only if config.js isn't filled in) -->
+<div id="cfg" class="hidden">
+  <h2 style="margin-top:0">Connect to Supabase</h2>
+  <p class="muted">Enter your Supabase project URL and the public <b>anon</b> key
+  (Project Settings &rarr; API). Stored in this browser only.</p>
+  <label class="muted">Project URL</label>
+  <input id="cfgUrl" placeholder="https://xxxx.supabase.co" />
+  <label class="muted">Anon key</label>
+  <input id="cfgKey" placeholder="eyJ..." />
+  <button id="cfgSave">Save &amp; load</button>
+</div>
+
+<div class="wrap hidden" id="app" >
+  <div id="error" class="err hidden"></div>
+  <div id="sampleFlag" class="sample-flag hidden"></div>
+
+  <!-- USER FLOW sub-tabs (only visible when the User Flow tab is active) -->
+  <nav id="userFlowTabs" class="subtabs hidden">
+    <button id="tabMarketing" class="subtab active">Marketing</button>
+    <button id="tabFlow" class="subtab">Re-engagement Flow</button>
+    <button id="tabCrm" class="subtab">Recovery CRM</button>
+    <button id="tabJourney" class="subtab">Journey Flow</button>
+  </nav>
+
+  <div id="sprintView">
+  <!-- SPRINT HEALTH -->
+  <div class="section"><h2>Sprint Health</h2><div class="body">
+    <div class="grid" id="healthGrid"></div>
+    <div class="muted" id="healthNote" style="margin-top:8px"></div>
+    <div class="chartcard" style="margin-top:14px"><h3>Burndown — remaining story points</h3><div class="chartbox"><canvas id="burnChart"></canvas></div></div>
+    <div class="charts" style="margin-top:12px">
+      <div class="chartcard"><h3>Bugs — total vs closed by sprint</h3><div class="chartbox"><canvas id="bugTrendChart"></canvas></div></div>
+      <div class="chartcard"><h3>Work in progress by stage (selected sprint)</h3><div class="chartbox"><canvas id="wipChart"></canvas></div></div>
+    </div>
+  </div></div>
+
+  <!-- DELIVERY -->
+  <div class="section"><h2>Delivery</h2><div class="body">
+    <div class="grid" id="deliveryGrid"></div>
+    <div id="openList" class="listblock"></div>
+  </div></div>
+
+  <!-- SCOPE CREEP -->
+  <div class="section"><h2>Scope Creep</h2><div class="body">
+    <div class="grid" id="scopeGrid"></div>
+    <div class="chartcard" style="margin-top:14px"><h3>Committed scope over the sprint (area above baseline = added work)</h3><div class="chartbox"><canvas id="scopeChart"></canvas></div></div>
+    <div id="scopeList" class="listblock"></div>
+  </div></div>
+
+  <!-- QUALITY -->
+  <div class="section"><h2>Quality</h2><div class="body">
+    <div class="grid" id="qualityGrid"></div>
+    <div class="chartcard" style="margin-top:14px"><h3>Bugs by priority</h3><div class="chartbox"><canvas id="qualityChart"></canvas></div></div>
+    <div id="bugList" class="listblock"></div>
+  </div></div>
+
+  <!-- UNESTIMATED STORIES (missing Story Points) -->
+  <div class="section"><h2>Unestimated Stories — missing Story Points</h2><div class="body">
+    <div class="grid" id="missingSPGrid"></div>
+    <div id="missingSPList" class="listblock"></div>
+  </div></div>
+
+  <!-- SPRINT RETROSPECTIVE -->
+  <div class="section"><h2>Sprint Retrospective</h2><div class="body">
+    <p class="muted" style="margin:0 0 12px">Auto-generated retrospective for <b><span id="retroSprint">&mdash;</span></b> &mdash; sprint outcomes, data-driven observations, and the team's retro notes. Switch sprints with the <b>Sprint</b> selector above.</p>
+    <div class="grid" id="retroGrid"></div>
+    <div id="retroInsights" style="margin-top:14px"></div>
+    <div id="retroBig" style="margin-top:14px"></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(270px,1fr));gap:12px;margin-top:14px">
+      <div id="retroWell"></div>
+      <div id="retroImprove"></div>
+      <div id="retroActions"></div>
+    </div>
+  </div></div>
+
+  <!-- RISKS -->
+  <div class="section"><h2>Risks</h2><div class="body">
+    <div class="grid" id="riskCards" style="margin-bottom:12px"></div>
+    <div id="riskList"></div>
+  </div></div>
+
+  <!-- FLOW -->
+  <div class="section"><h2>Flow</h2><div class="body">
+    <div class="grid" id="flowGrid"></div>
+    <div class="chartcard" style="margin-top:14px"><h3>Stage time (days)</h3><div class="chartbox"><canvas id="flowChart"></canvas></div></div>
+  </div></div>
+
+  <!-- CHARTS -->
+  <div class="section"><h2>Velocity Trend &amp; Mix</h2><div class="body">
+    <div class="charts">
+      <div class="chartcard"><h3>Delivered Story Points by Sprint</h3><div class="chartbox"><canvas id="velChart"></canvas></div></div>
+      <div class="chartcard"><h3>Status mix (selected sprint)</h3><div class="chartbox"><canvas id="statusChart"></canvas></div></div>
+    </div>
+  </div></div>
+
+  <!-- DELIVERY TRENDS & FLOW -->
+  <div class="section"><h2>Delivery Trends &amp; Flow</h2><div class="body">
+    <div class="grid" id="trendKpiGrid"></div>
+    <div class="chartcard" style="margin-top:12px"><h3>Predictability &amp; carryover by sprint</h3><div class="chartbox"><canvas id="predictChart"></canvas></div></div>
+  </div></div>
+
+  </div><!-- /sprintView -->
+
+  <!-- ENGINEERING VIEW -->
+  <div id="engView" class="hidden">
+    <div class="section"><h2 class="sech">Engineering Health — Repositories <button id="exportRepoHealth" class="expbtn" type="button" title="Download per-repo review coverage, vulnerabilities &amp; posture as CSV to share with developers">&#x2913; Export CSV</button></h2><div class="body">
+      <p class="muted" style="margin:0 0 11px">Posture: <b style="color:#c62828">Red</b> = open Critical CVE(s) to fix &middot; <b style="color:#b9820a">Yellow</b> = gaps worth fixing (some High CVEs or unreviewed merges) &middot; <b style="color:#2e7d32">Green</b> = clean. "PR review coverage" is code-review % and <b>excludes dev&rarr;UAT promotion PRs</b> (code is reviewed on dev). Hover the <span class="tip" data-tip="Hover an info badge for the definition of each metric.">i</span> badges for definitions.</p>
+      <div class="grid" id="repoCards"></div>
+    </div></div>
+
+    <div class="section"><h2>Unreviewed Merges — feature PRs merged without review</h2><div class="body">
+      <div class="grid" id="unrevPrGrid"></div>
+      <div id="unrevPrList" class="listblock"></div>
+    </div></div>
+
+    <div class="section"><h2 class="sech">Security &amp; Vulnerabilities <button id="exportVulns" class="expbtn" type="button" title="Download the vulnerability table as CSV to share with developers">&#x2913; Export CSV</button></h2><div class="body">
+      <p class="muted" style="margin:0 0 12px">How to mitigate: click an <b>advisory</b> to read what the vulnerability is, then upgrade the package to the version in <b>Mitigation</b> and re-run the scan. Enabling <b>Dependabot</b> + <b>Secret scanning</b> (free on private repos, Settings &rarr; Code security) keeps this list current automatically.</p>
+      <div class="charts">
+        <div class="chartcard"><h3>Posture</h3><div class="grid" id="postureCards"></div></div>
+      </div>
+      <table class="risks" id="vulnTable" style="margin-top:14px"><thead><tr>
+        <th>Sev</th><th>Repo</th><th>Package</th><th>Version</th><th>Advisory</th><th>Mitigation</th><th>What it is</th>
+      </tr></thead><tbody></tbody></table>
+    </div></div>
+
+    <div class="section"><h2 class="sech">Engineering Risks &amp; Security <button id="exportEngRisks" class="expbtn" type="button" title="Download the engineering/security risks as CSV to share with developers">&#x2913; Export CSV</button></h2><div class="body">
+      <div id="engRiskList"></div>
+    </div></div>
+  </div><!-- /engView -->
+
+  <!-- FUNNELS VIEW -->
+  <div id="funnelView" class="hidden">
+    <div class="section"><h2>User Funnel Analytics</h2><div class="body">
+      <div style="display:flex;align-items:center;gap:10px;margin:0 0 12px;flex-wrap:wrap">
+        <label class="sub" for="funnelEnv" style="color:var(--muted)">Environment</label>
+        <select id="funnelEnv" class="fenv"></select>
+        <label class="sub" for="funnelPlatform" style="color:var(--muted);margin-left:6px">Platform</label>
+        <select id="funnelPlatform" class="fenv"></select>
+        <label class="sub" for="funnelRange" style="color:var(--muted);margin-left:6px">Date range</label>
+        <select id="funnelRange" class="fenv"></select>
+        <span id="funnelCustom" style="display:none;align-items:center;gap:6px">
+          <label class="sub" for="funnelFrom" style="color:var(--muted)">From</label>
+          <input type="date" id="funnelFrom" class="fenv" />
+          <label class="sub" for="funnelTo" style="color:var(--muted)">To</label>
+          <input type="date" id="funnelTo" class="fenv" />
+        </span>
+      </div>
+      <div id="funnelList"></div>
+      <div id="productMetrics"></div>
+      <div id="pathSankeyCard"></div>
+    </div></div>
+
+    <!-- TRENDS (Amplitude event-segmentation charts) -->
+    <div class="section"><h2>Trends &mdash; daily unique users</h2><div class="body">
+      <p class="muted" style="margin:0 0 10px;font-size:12.5px">Mirrors the saved Amplitude trend charts (daily unique users). Use the <b>Date range</b> filter above to zoom in.</p>
+      <div id="funnelTrends"></div>
+    </div></div>
+  </div><!-- /funnelView -->
+
+  <!-- MARKETING VIEW -->
+  <div id="marketingView" class="hidden">
+    <div class="section"><h2 class="collapse-h" id="mktListingsToggle" role="button" tabindex="0" aria-expanded="true" style="cursor:pointer;user-select:none;display:flex;align-items:center;gap:9px"><span class="collapse-ic" style="font-size:15px;color:var(--muted);width:14px;display:inline-block">&#9662;</span>Abandoned Listings — Re-engagement</h2><div class="body" id="mktListingsBody">
+      <p class="muted" style="margin:0 0 12px">Users who <b>started listing a property but never published</b> (last 30 days). Message them where they dropped off to recover supply. Automation runs as a <b>dry-run</b> (composes &amp; logs, sends nothing) until email/WhatsApp credentials are wired up — send to any individual now with the per-row <b>Email</b> / <b>WhatsApp</b> buttons.</p>
+      <div style="display:flex;align-items:center;gap:10px;margin:0 0 14px;flex-wrap:wrap">
+        <label class="sub" for="mktEnv" style="color:var(--muted)">Environment</label>
+        <select id="mktEnv" class="fenv"></select>
+        <label class="sub" for="mktStep" style="color:var(--muted);margin-left:6px">Drop step</label>
+        <select id="mktStep" class="fenv"></select>
+        <label class="sub" for="mktSource" style="color:var(--muted);margin-left:6px">Source</label>
+        <select id="mktSource" class="fenv"></select>
+        <label class="sub" for="mktPlatform" style="color:var(--muted);margin-left:6px">Platform</label>
+        <select id="mktPlatform" class="fenv"></select>
+        <label class="sub" for="mktLang" style="color:var(--muted);margin-left:6px">Language</label>
+        <select id="mktLang" class="fenv"></select>
+        <label class="sub" for="mktCity" style="color:var(--muted);margin-left:6px">City</label>
+        <select id="mktCity" class="fenv"></select>
+      </div>
+      <div class="grid" id="mktKpis"></div>
+      <div class="charts" style="margin-top:12px">
+        <div class="chartcard"><h3>Abandoned by drop step</h3><div class="chartbox"><canvas id="mktStepChart"></canvas></div></div>
+        <div class="chartcard"><h3>By source</h3><div class="chartbox"><canvas id="mktSourceChart"></canvas></div></div>
+      </div>
+    </div></div>
+
+    <div class="section" id="mktUsersSec"><h2 class="collapse-h" id="mktUsersToggle" role="button" tabindex="0" aria-expanded="true" style="cursor:pointer;user-select:none;display:flex;align-items:center;gap:9px"><span class="collapse-ic" style="font-size:15px;color:var(--muted);width:14px;display:inline-block">&#9662;</span>Abandoned Users <span class="muted" id="mktUsersCount" style="font-size:14px;font-weight:400"></span></h2><div class="body" id="mktUsersBody">
+      <div id="mktList" class="listblock"></div>
+    </div></div>
+
+    <div class="section"><h2 class="sech">Automated Campaign — dry-run <button id="mktRun" class="expbtn" type="button" title="Compose the personalised Email + WhatsApp each abandoned user would receive (dry-run, nothing is sent) and log it locally">&#9654; Preview dry-run</button> <button id="exportMkt" class="expbtn" type="button" title="Download the abandoned-lister list as CSV">&#x2913; Export CSV</button></h2><div class="body">
+      <div class="grid" id="mktCampaignKpis"></div>
+      <div id="mktCampaignLog" class="listblock"></div>
+    </div></div>
+  </div><!-- /marketingView -->
+
+  <!-- RE-ENGAGEMENT FLOW VIEW -->
+  <div id="flowView" class="hidden">
+    <div class="section"><h2>Re-engagement Flow &mdash; Amplitude &rarr; CRM &rarr; Care &rarr; Sales</h2><div class="body">
+      <p class="muted" style="margin:0 0 10px">User drop-off recovery pipeline: Amplitude detects the drop-off &rarr; CRM builds a de-duplicated profile &rarr; automated Email / WhatsApp &rarr; a 48h <b>Activity Guard</b> halts escalation the instant the user returns &rarr; Customer Care call &rarr; Sales re-trigger, with a Reporting feedback loop. <a class="tasklink" href="reengagement-flow.html?v=237" target="_blank" rel="noopener">Open full screen &#8599;</a></p>
+      <div style="display:flex;flex-wrap:wrap;gap:7px 15px;margin:0 0 14px;font-size:12.5px;color:#5b6577">
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#eaf2ff;border:1px solid #7fa2e8"></span>Data &middot; Notify Care &middot; Sales</span>
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#e9f7ef;border:1px solid #7fc79a"></span>CRM / System</span>
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#f1ecfb;border:1px solid #b79fe0"></span>Automated outreach</span>
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#fdf5e1;border:1px solid #e2c676"></span>Wait &middot; Decision</span>
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#e5f6f5;border:1px solid #7fcec7"></span>Customer Care call</span>
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#fdebec;border:1px solid #e6a0a4"></span>Reporting</span>
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#e4f6ea;border:1px solid #4fae74"></span>Recovered &middot; Activity Guard halt</span>
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:16px;border-top:2px dashed #93a0b6"></span>Feedback loop</span>
+      </div>
+      <iframe id="flowFrame" src="reengagement-flow.html?v=237" title="User Drop-off Recovery Flow" loading="lazy" scrolling="no" style="width:100%;height:900px;border:0;border-radius:12px;background:transparent"></iframe>
+    </div></div>
+  </div><!-- /flowView -->
+
+  <!-- RECOVERY CRM VIEW -->
+  <div id="crmView" class="hidden">
+    <div class="section"><h2>Recovery CRM &mdash; Marketing Automation &amp; User Recovery</h2><div class="body">
+      <p class="muted" style="margin:0 0 12px">Working prototype of the drop-off recovery CRM: live Recovery Queue, Kanban pipeline, analytics, the 9-step automation workflow, per-user CRM timeline &amp; call logging, and an interactive QA suite of 30 test cases. <a class="tasklink" href="crm-recovery.html?v=237" target="_blank" rel="noopener">Open full screen &#8599;</a></p>
+      <iframe id="crmFrame" src="crm-recovery.html?v=237" title="Dallal Recovery CRM" loading="lazy" style="width:100%;height:1040px;border:1px solid var(--line,#e7ebf0);border-radius:12px;background:transparent"></iframe>
+    </div></div>
+  </div><!-- /crmView -->
+
+  <!-- JOURNEY FLOW VIEW -->
+  <div id="journeyView" class="hidden">
+    <div class="section"><h2>Journey Flow &mdash; Ad &rarr; App/Web &rarr; Amplitude &rarr; Leadnics CRM + Braze</h2><div class="body">
+      <p class="muted" style="margin:0 0 10px">End-to-end architecture: an Instagram ad &rarr; App/Web capture &amp; identity merge (one <b>external_id</b>) &rarr; <b>Amplitude</b> collects &amp; routes every event &rarr; fans out to <b>Leadnics CRM</b>, <b>Braze</b> &amp; the warehouse &rarr; Braze re-engages at each step &rarr; Leadnics recovers with human care &amp; sales &rarr; analytics, with outcomes looping back. <a class="tasklink" href="journey-flow.html?v=237" target="_blank" rel="noopener">Open full screen &#8599;</a></p>
+      <div style="display:flex;flex-wrap:wrap;gap:7px 15px;margin:0 0 14px;font-size:12.5px;color:#5b6577">
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#eaf2ff;border:1px solid #b6cdf2"></span>Acquisition &middot; App &middot; Analytics</span>
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#e9f7ef;border:1px solid #aeddc0"></span>Identity &middot; CRM</span>
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#e5f6f5;border:1px solid #aadfdb"></span>Amplitude hub &middot; Warehouse &middot; Recovery</span>
+        <span style="display:inline-flex;align-items:center;gap:6px"><span style="width:12px;height:12px;border-radius:3px;background:#f1ecfb;border:1px solid #d0c1ee"></span>Braze &amp; messaging</span>
+      </div>
+      <iframe id="journeyFrame" src="journey-flow.html?v=237" title="Unified Journey — Data &amp; Activation Flow" loading="lazy" scrolling="no" style="width:100%;height:1700px;border:0;border-radius:12px;background:transparent"></iframe>
+    </div></div>
+  </div><!-- /journeyView -->
+
+  <!-- APP STORE VIEW -->
+  <div id="appstoreView" class="hidden">
+    <nav id="appstorePlatformTabs" class="subtabs">
+      <button id="tabPlatIos" class="subtab active">iOS &middot; App Store</button>
+      <button id="tabPlatAndroid" class="subtab">Android &middot; Google Play</button>
+    </nav>
+    <div class="section"><h2 class="sech">App Analytics &mdash; App Store &amp; Google Play <button id="exportAppStore" class="expbtn" type="button" title="Download the app analytics daily metrics as CSV">&#x2913; Export CSV</button></h2><div class="body">
+      <div style="display:flex;align-items:center;gap:10px;margin:0 0 12px;flex-wrap:wrap">
+        <label class="sub" for="appstoreRange" style="color:var(--muted)">Range</label>
+        <select id="appstoreRange" class="fenv"></select>
+        <span id="appstoreCustom" style="display:none;align-items:center;gap:6px">
+          <label class="sub" for="appstoreFrom" style="color:var(--muted)">From</label>
+          <input type="date" id="appstoreFrom" class="fenv" />
+          <label class="sub" for="appstoreTo" style="color:var(--muted)">To</label>
+          <input type="date" id="appstoreTo" class="fenv" />
+        </span>
+        <span id="appstoreWindow" class="muted" style="font-size:12.5px"></span>
+      </div>
+      <div class="grid" id="appstoreKpis"></div>
+      <div id="appstorePending" class="hidden" style="margin:12px 0 0;padding:10px 12px;border-radius:8px;background:#fff8e6;border:1px solid #f0d998;color:#7a5b12;font-size:12.5px"></div>
+      <div id="appstorePlayNote" class="hidden" style="margin:10px 0 0;padding:10px 12px;border-radius:8px;background:#eaf2ff;border:1px solid #b6cdf2;color:#1c3a63;font-size:12.5px"></div>
+      <p class="muted" style="margin:12px 0 0;font-size:12.5px">Source: <b>App Store Connect API</b> (Sales &amp; Trends + App Analytics). Apple data has a 1&ndash;3 day reporting lag. <b>Conversion</b> = first-time downloads &divide; impressions (App Store Connect's Conversion Rate). <b>Active Devices</b> is estimated from the Sessions report. <b>Crashes</b> come from App Analytics.</p>
+    </div></div>
+
+    <div class="section"><h2>Acquisition &mdash; downloads &amp; discovery</h2><div class="body">
+      <div class="charts">
+        <div class="chartcard"><h3>Downloads by day</h3><div class="chartbox"><canvas id="asDownloadsChart"></canvas></div></div>
+        <div class="chartcard"><h3>Impressions &amp; product page views</h3><div class="chartbox"><canvas id="asImpressionsChart"></canvas></div></div>
+      </div>
+    </div></div>
+
+    <div class="section"><h2>Engagement &amp; Stability</h2><div class="body">
+      <div class="charts">
+        <div class="chartcard"><h3>Sessions &amp; active devices</h3><div class="chartbox"><canvas id="asSessionsChart"></canvas></div></div>
+        <div class="chartcard"><h3>Conversion rate (downloads &divide; page views)</h3><div class="chartbox"><canvas id="asConversionChart"></canvas></div></div>
+      </div>
+      <div class="chartcard" style="margin-top:14px"><h3>Crashes by day</h3><div class="chartbox"><canvas id="asCrashChart"></canvas></div></div>
+    </div></div>
+
+    <div class="section"><h2>Top territories &mdash; downloads</h2><div class="body">
+      <div id="asTerritories" class="listblock"></div>
+    </div></div>
+  </div><!-- /appstoreView -->
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-chart-sankey@0.12.1/dist/chartjs-chart-sankey.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="config.js?v=237"></script>
+<script src="sample-data.js?v=237"></script>
+<script src="funnels-data.js?v=237"></script>
+<script src="app.js?v=237"></script>
+</body>
+</html>
