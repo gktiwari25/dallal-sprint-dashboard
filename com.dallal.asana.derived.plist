@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<plist version="1.0"><dict>
+  <key>Label</key><string>com.dallal.asana.derived</string>
+  <key>ProgramArguments</key><array><string>/bin/bash</string><string>/Users/gourav/dallal-sprint-dashboard/run_derived_sync.sh</string></array>
+  <key>EnvironmentVariables</key><dict><key>PATH</key><string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string></dict>
+  <key>StartInterval</key><integer>43200</integer>
+  <key>RunAtLoad</key><true/>
+  <key>StandardOutPath</key><string>/Users/gourav/dallal-sprint-dashboard/logs/derived.out</string>
+  <key>StandardErrorPath</key><string>/Users/gourav/dallal-sprint-dashboard/logs/derived.err</string>
+</dict></plist>
