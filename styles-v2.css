@@ -102,16 +102,20 @@ header.topbar #updated{ font-size:10.5px; color:rgba(233,236,255,.5); padding:8p
 .minigrid .card{ padding:15px 16px !important; }
 .minigrid .card .value{ font-size:24px !important; }
 
-.hcard{ background:var(--card); border:1px solid var(--line); border-radius:20px; padding:18px 20px; box-shadow:var(--sh-sm); display:flex; flex-direction:column; gap:13px; transition:box-shadow var(--dur) var(--ease),transform var(--dur) var(--ease); }
+.hcard{ background:var(--card); border:1px solid var(--line); border-radius:20px; padding:18px 20px; box-shadow:var(--sh-sm); display:flex; flex-direction:column; gap:8px; transition:box-shadow var(--dur) var(--ease),transform var(--dur) var(--ease); }
 .hcard:hover{ box-shadow:var(--sh-md); transform:translateY(-3px); }
 .hcard-top{ display:flex; align-items:center; justify-content:space-between; }
-.hcard-title{ font-size:11px; font-weight:800; letter-spacing:.06em; color:var(--hc); }
+.hcard-title{ font-size:11.5px; font-weight:800; letter-spacing:.05em; color:var(--hc); }
 .hcard-ic{ width:34px; height:34px; border-radius:11px; display:grid; place-items:center; font-size:16px; background:color-mix(in srgb,var(--hc) 15%,transparent); }
-.hcard-mid{ display:flex; align-items:flex-end; justify-content:space-between; gap:8px; }
-.hcard-frac{ font-size:13px; font-weight:700; color:var(--ink-2); }
-.hcard-pct{ font-size:34px; font-weight:800; color:var(--hc); letter-spacing:-.02em; line-height:.95; }
-.hbar{ height:9px; border-radius:99px; background:color-mix(in srgb,var(--hc) 14%,var(--surface-3)); overflow:hidden; }
-.hbar > span{ display:block; height:100%; border-radius:99px; background:linear-gradient(90deg,var(--hc),color-mix(in srgb,var(--hc) 55%,#fff)); box-shadow:0 2px 8px color-mix(in srgb,var(--hc) 40%,transparent); }
+/* Ascending "growth" bars with a floating % pill */
+.hbars{ position:relative; display:flex; align-items:flex-end; gap:7px; height:74px; margin:16px 0 4px; }
+.hbars i{ flex:1; border-radius:6px 6px 5px 5px; align-self:flex-end; min-height:8px; }
+.hbars i.on{ background:linear-gradient(180deg,color-mix(in srgb,var(--hc) 55%,#fff),var(--hc)); box-shadow:0 3px 8px color-mix(in srgb,var(--hc) 32%,transparent); }
+.hbars i.off{ background:color-mix(in srgb,var(--hc) 15%,var(--surface-3)); }
+.hbadge{ position:absolute; top:-4px; transform:translateX(-50%); background:var(--hc); color:#fff; font-size:12.5px; font-weight:800; padding:3px 9px; border-radius:9px; box-shadow:0 7px 16px color-mix(in srgb,var(--hc) 42%,transparent); white-space:nowrap; }
+.hbadge::after{ content:""; position:absolute; bottom:-4px; left:50%; transform:translateX(-50%); border:5px solid transparent; border-top-color:var(--hc); border-bottom:0; }
+.hcard-foot{ display:flex; align-items:baseline; gap:8px; }
+.hcard-frac{ font-size:15px; font-weight:800; color:var(--ink); }
 .hcard-cap{ font-size:11px; color:var(--muted); }
 
 .glance{ background:var(--card); border:1px solid var(--line); border-radius:20px; padding:16px 18px; box-shadow:var(--sh-sm); display:flex; flex-direction:column; }

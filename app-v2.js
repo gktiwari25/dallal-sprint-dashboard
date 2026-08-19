@@ -288,10 +288,16 @@
   // ---------- redesign helpers (v2) ----------
   function heroCard(title, icon, p, frac, cap, color) {
     var pc = (p == null || isNaN(p)) ? 0 : Math.round(p * 100);
+    var N = 7, solid = Math.max(1, Math.round(pc / 100 * N)), bars = "";
+    for (var i = 0; i < N; i++) {
+      var h = 30 + i * (70 / (N - 1));   // ascending 30%..100%
+      bars += '<i class="' + (i < solid ? "on" : "off") + '" style="height:' + h + '%"></i>';
+    }
+    var badgeLeft = Math.max(9, Math.min(84, (solid - 0.5) / N * 100));
     return '<div class="hcard" style="--hc:' + color + '">' +
       '<div class="hcard-top"><span class="hcard-title">' + title + '</span><span class="hcard-ic">' + icon + '</span></div>' +
-      '<div class="hcard-mid"><span class="hcard-frac">' + frac + '</span><span class="hcard-pct">' + pc + '%</span></div>' +
-      '<div class="hbar"><span style="width:' + Math.max(2, Math.min(100, pc)) + '%"></span></div>' +
+      '<div class="hbars"><span class="hbadge" style="left:' + badgeLeft + '%">' + pc + '%</span>' + bars + '</div>' +
+      '<div class="hcard-foot"><span class="hcard-frac">' + frac + '</span></div>' +
       '<div class="hcard-cap">' + cap + '</div></div>';
   }
   function glanceRow(icon, val, sub, ring) {
