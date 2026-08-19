@@ -1999,8 +1999,11 @@
     var actEst = !hasMetric("active_devices") && hasMetric("active_devices_est");
     var actLive = hasMetric("active_devices") || actEst;
     var convLive = impLive && totImp > 0;
+    var isAndroid = asPlatform === "android";
     var PEND = '<span style="opacity:.4;font-weight:600">—</span>';
-    var PEND_TIP = "Waiting on Apple's App Analytics feed — this metric usually lands 24–48h after setup, then fills in automatically.";
+    var PEND_TIP = isAndroid
+      ? "Not reported by Google Play — this metric comes from Apple's App Analytics (iOS only)."
+      : "Waiting on Apple's App Analytics feed — this metric usually lands 24–48h after setup, then fills in automatically.";
     var pv2 = function (v, live) { return live ? v : PEND; };
     var pcol = function (c, live) { return live ? c : "#9aa6bb"; };
 
@@ -2016,17 +2019,29 @@
         '<div class="mcard-val">' + value + '</div>' + (sparkHtml || '') + (sub ? '<div class="mcard-sub">' + sub + '</div>' : '') + '</div>';
     }
     var wowBadge = wowDelta == null ? '' : ' <span class="mbadge" style="color:' + (wowDelta > 0 ? "#16a34a" : wowDelta < 0 ? "#dc2626" : "#64748b") + ';background:' + (wowDelta > 0 ? "rgba(34,197,94,.14)" : wowDelta < 0 ? "rgba(239,68,68,.14)" : "rgba(120,140,170,.14)") + '">' + wowArrow + ' ' + wowTxt + '</span>';
+    // Apple-only metrics (Impressions / Page Views / Conversion / Sessions /
+    // Redownloads) don't exist in Google Play's reports — omit those tiles on Android.
     el("appstoreKpis").innerHTML =
-      mcard("First-Time Downloads", fmtInt(totDl), "⬇️", COL.dl, sparkBox("sp_dl", sDl, COL.dl, true), null, "First-time downloads. Source: " + acqSource + ".") +
-      mcard("Redownloads", fmtInt(totRe), "🔁", COL.re, sparkBox("sp_re", sRe, COL.re, true), null, "Re-installs by users who previously downloaded the app.") +
-      mcard("Downloads — This Week vs Last", fmtInt(wowThis) + wowBadge, "📅", COL.wk, sparkBox("sp_wk", sDl.slice(-14), COL.wk, true), (maxDlDate ? "Last week: " + fmtInt(wowLast) : ""), "First-time downloads last 7 days vs previous 7. Independent of the Range selector.") +
-      mcard("Impressions", pv2(fmtInt(totImp), impLive), "👁️", COL.imp, sparkBox("sp_imp", sImp, COL.imp, impLive), null, impLive ? "Times the app appeared in the App Store." : PEND_TIP) +
-      mcard("Product Page Views", pv2(fmtInt(totPv), pvLive), "📄", COL.pv, sparkBox("sp_pv", sPv, COL.pv, pvLive), null, pvLive ? "Views of the app's product page." : PEND_TIP) +
-      mcard("Conversion Rate", pv2((Math.round(conv * 1000) / 10) + "%", convLive), "🎯", COL.conv, sparkBox("sp_cv", [], COL.conv, false), null, convLive ? "First-time downloads ÷ impressions." : "Waiting on Impressions from Apple's App Analytics feed.") +
-      mcard("Sessions", pv2(fmtInt(totSes), sesLive), "📲", COL.ses, sparkBox("sp_ses", sSes, COL.ses, sesLive), (actLive ? "Active Devices: " + (actEst ? "~" : "") + fmtInt(avgAct) : ""), sesLive ? "App sessions recorded by App Analytics." : PEND_TIP) +
-      mcard("Active Devices / Day" + (actEst ? " (est.)" : ""), pv2((actEst ? "~" : "") + fmtInt(avgAct), actLive), "📱", COL.act, sparkBox("sp_act", sAct, COL.act, actLive), null, actLive ? "Average distinct devices active per day." : PEND_TIP) +
-      mcard("Crashes", pv2(fmtInt(totCr), crLive), "💥", COL.cr, sparkBox("sp_cr", sCr, COL.cr, crLive), (crLive ? "" : "No crash data"), crLive ? "Crash count from App Analytics." : PEND_TIP);
+      mcard(isAndroid ? "Installs" : "First-Time Downloads", fmtInt(totDl), "⬇️", COL.dl, sparkBox("sp_dl", sDl, COL.dl, true), null, (isAndroid ? "New-user installs from Google Play. " : "First-time downloads. ") + "Source: " + acqSource + ".") +
+      (isAndroid ? "" :
+        mcard("Redownloads", fmtInt(totRe), "🔁", COL.re, sparkBox("sp_re", sRe, COL.re, true), null, "Re-installs by users who previously downloaded the app.")) +
+      mcard("Downloads — This Week vs Last", fmtInt(wowThis) + wowBadge, "📅", COL.wk, sparkBox("sp_wk", sDl.slice(-14), COL.wk, true), (maxDlDate ? "Last week: " + fmtInt(wowLast) : ""), (isAndroid ? "Installs" : "First-time downloads") + " last 7 days vs previous 7. Independent of the Range selector.") +
+      (isAndroid ? "" :
+        mcard("Impressions", pv2(fmtInt(totImp), impLive), "👁️", COL.imp, sparkBox("sp_imp", sImp, COL.imp, impLive), null, impLive ? "Times the app appeared in the App Store." : PEND_TIP) +
+        mcard("Product Page Views", pv2(fmtInt(totPv), pvLive), "📄", COL.pv, sparkBox("sp_pv", sPv, COL.pv, pvLive), null, pvLive ? "Views of the app's product page." : PEND_TIP) +
+        mcard("Conversion Rate", pv2((Math.round(conv * 1000) / 10) + "%", convLive), "🎯", COL.conv, sparkBox("sp_cv", [], COL.conv, false), null, convLive ? "First-time downloads ÷ impressions." : "Waiting on Impressions from Apple's App Analytics feed.") +
+        mcard("Sessions", pv2(fmtInt(totSes), sesLive), "📲", COL.ses, sparkBox("sp_ses", sSes, COL.ses, sesLive), (actLive ? "Active Devices: " + (actEst ? "~" : "") + fmtInt(avgAct) : ""), sesLive ? "App sessions recorded by App Analytics." : PEND_TIP)) +
+      mcard("Active Devices / Day" + (actEst ? " (est.)" : ""), pv2((actEst ? "~" : "") + fmtInt(avgAct), actLive), "📱", COL.act, sparkBox("sp_act", sAct, COL.act, actLive), null, actLive ? (isAndroid ? "Active device installs reported by Google Play." : "Average distinct devices active per day.") : PEND_TIP) +
+      mcard("Crashes", pv2(fmtInt(totCr), crLive), "💥", COL.cr, sparkBox("sp_cr", sCr, COL.cr, crLive), (crLive ? "" : "No crash data"), crLive ? "Crash count." : (isAndroid ? "No crashes reported by Google Play in this window." : PEND_TIP));
     _sparks.forEach(function (s) { drawSpark(s[0], s[1], s[2]); });
+
+    // Platform-aware source note.
+    var srcNote = el("appstoreSource");
+    if (srcNote) {
+      srcNote.innerHTML = isAndroid
+        ? 'Source: <b>Google Play bulk reports</b> (Play Console). Installs, active devices, store performance &amp; crashes by day. Google Play doesn\'t report App Store-style impressions, product page views, conversion or sessions.'
+        : 'Source: <b>App Store Connect API</b> (Sales &amp; Trends + App Analytics). Apple data has a 1&ndash;3 day reporting lag. <b>Conversion</b> = first-time downloads &divide; impressions (App Store Connect\'s Conversion Rate). <b>Active Devices</b> is estimated from the Sessions report. <b>Crashes</b> come from App Analytics.';
+    }
 
     var pendNote = el("appstorePending");
     if (pendNote) {
