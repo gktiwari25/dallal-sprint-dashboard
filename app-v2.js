@@ -331,6 +331,20 @@
     if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); return; }
     ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
   }
+  function hexA(hex, a) {
+    if (typeof hex !== "string" || hex[0] !== "#") return "rgba(124,97,255," + a + ")";
+    var n = hex.slice(1); if (n.length === 3) n = n.split("").map(function (c) { return c + c; }).join("");
+    return "rgba(" + parseInt(n.slice(0, 2), 16) + "," + parseInt(n.slice(2, 4), 16) + "," + parseInt(n.slice(4, 6), 16) + "," + a + ")";
+  }
+  // Tiny gradient sparkline for a KPI card (no axes/grid/tooltip).
+  function drawSpark(id, data, color) {
+    var e = el(id); if (!e || !data || !data.length) return;
+    mkChart(id, { type: "line",
+      data: { labels: data.map(function (_, i) { return i; }), datasets: [{ data: data, borderColor: color, borderWidth: 2, tension: .42, pointRadius: 0, fill: true,
+        backgroundColor: function (c) { var a = c.chart.chartArea; if (!a) return "transparent"; var g = c.chart.ctx.createLinearGradient(0, a.top, 0, a.bottom); g.addColorStop(0, hexA(color, .30)); g.addColorStop(1, hexA(color, 0)); return g; } }] },
+      options: { responsive: true, maintainAspectRatio: false, animation: false, plugins: { legend: { display: false }, tooltip: { enabled: false } }, scales: { x: { display: false }, y: { display: false } }, elements: { line: { borderCapStyle: "round" } } } });
+  }
+
   // "Not yet completed" summary card (ring + activity bars) — click to expand list.
   function notCompletedBlock(id, notDone, total, onHold, rowsHtml) {
     var openC = _collapse[id] === true;
@@ -1990,16 +2004,29 @@
     var pv2 = function (v, live) { return live ? v : PEND; };
     var pcol = function (c, live) { return live ? c : "#9aa6bb"; };
 
+    var COL = { dl: "#7b61ff", re: "#3b82f6", wk: "#22c55e", imp: "#f5883f", pv: "#ec4899", conv: "#8a74f4", ses: "#0ea89a", act: "#7b61ff", cr: "#ef4444" };
+    var _sparks = [];
+    function sparkBox(id, series, color, ok) {
+      if (ok && series && series.some(function (v) { return v > 0; })) { _sparks.push([id, series, color]); return '<div class="mcard-spark"><canvas id="' + id + '"></canvas></div>'; }
+      return '<div class="mcard-spark nospark"></div>';
+    }
+    function mcard(title, value, icon, color, sparkHtml, sub, tip) {
+      var t = tip ? ' <span class="tip" data-tip="' + escAttr(tip) + '">i</span>' : '';
+      return '<div class="mcard" style="--mc:' + color + '"><div class="mcard-top"><span class="mcard-ic">' + icon + '</span><span class="mcard-title">' + title + t + '</span></div>' +
+        '<div class="mcard-val">' + value + '</div>' + (sparkHtml || '') + (sub ? '<div class="mcard-sub">' + sub + '</div>' : '') + '</div>';
+    }
+    var wowBadge = wowDelta == null ? '' : ' <span class="mbadge" style="color:' + (wowDelta > 0 ? "#16a34a" : wowDelta < 0 ? "#dc2626" : "#64748b") + ';background:' + (wowDelta > 0 ? "rgba(34,197,94,.14)" : wowDelta < 0 ? "rgba(239,68,68,.14)" : "rgba(120,140,170,.14)") + '">' + wowArrow + ' ' + wowTxt + '</span>';
     el("appstoreKpis").innerHTML =
-      card("First-Time Downloads", fmtInt(totDl), { icon: "⬇️", accent: AS_TEAL, tip: "First-time downloads. Source: " + acqSource + ". " + (dlAnalytics ? "Matches App Store Connect > Analytics for the days Apple's feed has produced; earlier days use Sales & Trends until it catches up." : "Currently Sales & Trends 'App Units' — Apple's Analytics 'First-Time Downloads' is measured differently (usually higher); analytics values replace these per-day once the feed lands.") }) +
-      card("Redownloads", fmtInt(totRe), { icon: "🔁", accent: AS_BLUE, tip: "Re-installs by users who previously downloaded the app. Source: " + acqSource + "." }) +
-      card("Downloads — this wk vs last", wowValue, { icon: "📅", accent: wowColor, tip: "First-time downloads in the last 7 days" + (maxDlDate ? " (ending " + maxDlDate + ")" : "") + " vs the previous 7 days: " + fmtInt(wowThis) + " vs " + fmtInt(wowLast) + ". Source: " + acqSource + ". Independent of the Range selector." }) +
-      card("Impressions", pv2(fmtInt(totImp), impLive), { icon: "👁️", accent: pcol(AS_BLUE, impLive), tip: impLive ? "Times the app appeared in the App Store (search, browse, referrals)." : PEND_TIP }) +
-      card("Product Page Views", pv2(fmtInt(totPv), pvLive), { icon: "📄", accent: pcol(AS_PURPLE, pvLive), tip: pvLive ? "Views of the app's App Store product page." : PEND_TIP }) +
-      card("Conversion Rate", pv2((Math.round(conv * 1000) / 10) + "%", convLive), { icon: "🎯", accent: pcol(conv >= 0.35 ? "#2e7d32" : conv >= 0.2 ? AS_AMBER : AS_RED, convLive), tip: convLive ? "First-time downloads ÷ impressions — App Store Connect's Conversion Rate." : "Waiting on Impressions from Apple's App Analytics feed (needed to compute Conversion Rate)." }) +
-      card("Sessions", pv2(fmtInt(totSes), sesLive), { icon: "📲", accent: pcol(AS_TEAL, sesLive), tip: sesLive ? "App sessions recorded by App Analytics in the window." : PEND_TIP }) +
-      card("Active Devices / day" + (actEst ? " (est.)" : ""), pv2((actEst ? "~" : "") + fmtInt(avgAct), actLive), { icon: "📱", accent: pcol(AS_BLUE, actLive), tip: actLive ? (actEst ? "Estimated (upper bound) from Unique Devices in Apple's App Sessions report — Apple provides no clean Active Devices report, so this over-counts slightly and is shown as an estimate." : "Average distinct devices active per day over the window.") : PEND_TIP }) +
-      card("Crashes", pv2(fmtInt(totCr), crLive), { icon: "💥", accent: pcol(totCr > 100 ? AS_RED : totCr > 30 ? AS_AMBER : "#2e7d32", crLive), tip: crLive ? "Crash count from App Analytics. Spikes here correlate with Sentry crash issues (e.g. DALLAL-RN-3Q)." : PEND_TIP });
+      mcard("First-Time Downloads", fmtInt(totDl), "⬇️", COL.dl, sparkBox("sp_dl", sDl, COL.dl, true), null, "First-time downloads. Source: " + acqSource + ".") +
+      mcard("Redownloads", fmtInt(totRe), "🔁", COL.re, sparkBox("sp_re", sRe, COL.re, true), null, "Re-installs by users who previously downloaded the app.") +
+      mcard("Downloads — This Week vs Last", fmtInt(wowThis) + wowBadge, "📅", COL.wk, sparkBox("sp_wk", sDl.slice(-14), COL.wk, true), (maxDlDate ? "Last week: " + fmtInt(wowLast) : ""), "First-time downloads last 7 days vs previous 7. Independent of the Range selector.") +
+      mcard("Impressions", pv2(fmtInt(totImp), impLive), "👁️", COL.imp, sparkBox("sp_imp", sImp, COL.imp, impLive), null, impLive ? "Times the app appeared in the App Store." : PEND_TIP) +
+      mcard("Product Page Views", pv2(fmtInt(totPv), pvLive), "📄", COL.pv, sparkBox("sp_pv", sPv, COL.pv, pvLive), null, pvLive ? "Views of the app's product page." : PEND_TIP) +
+      mcard("Conversion Rate", pv2((Math.round(conv * 1000) / 10) + "%", convLive), "🎯", COL.conv, sparkBox("sp_cv", [], COL.conv, false), null, convLive ? "First-time downloads ÷ impressions." : "Waiting on Impressions from Apple's App Analytics feed.") +
+      mcard("Sessions", pv2(fmtInt(totSes), sesLive), "📲", COL.ses, sparkBox("sp_ses", sSes, COL.ses, sesLive), (actLive ? "Active Devices: " + (actEst ? "~" : "") + fmtInt(avgAct) : ""), sesLive ? "App sessions recorded by App Analytics." : PEND_TIP) +
+      mcard("Active Devices / Day" + (actEst ? " (est.)" : ""), pv2((actEst ? "~" : "") + fmtInt(avgAct), actLive), "📱", COL.act, sparkBox("sp_act", sAct, COL.act, actLive), null, actLive ? "Average distinct devices active per day." : PEND_TIP) +
+      mcard("Crashes", pv2(fmtInt(totCr), crLive), "💥", COL.cr, sparkBox("sp_cr", sCr, COL.cr, crLive), (crLive ? "" : "No crash data"), crLive ? "Crash count from App Analytics." : PEND_TIP);
+    _sparks.forEach(function (s) { drawSpark(s[0], s[1], s[2]); });
 
     var pendNote = el("appstorePending");
     if (pendNote) {
@@ -2039,20 +2066,22 @@
     var maxT = tArr.length ? tArr[0].v : 0;
     var totalT = tArr.reduce(function (s, t) { return s + t.v; }, 0);
     var nameOf = {}; AS_TERRITORIES.forEach(function (t) { nameOf[t.code] = t.name; });
+    // Names may already include a flag emoji — strip it (we render the flag separately).
+    var tName = function (code) { return (nameOf[code] || code).replace(/^[\u{1F1E6}-\u{1F1FF}]{2}\s*/u, ""); };
     var shareOf = function (v) { return totalT ? Math.round(v / totalT * 1000) / 10 : 0; };
     if (!tArr.length) { el("asTerritories").innerHTML = '<div class="muted">No territory data.</div>'; return; }
     var top = tArr[0], count = tArr.length, avgShare = Math.round(1000 / count) / 10;
 
     var kpis =
       statCard("Total Downloads", fmtInt(totalT), "across territories", "var(--muted)", "⬇️", "#7b61ff") +
-      statCard("Top Territory", fmtInt(top.v), (nameOf[top.code] || top.code) + " · " + shareOf(top.v) + "%", "#22a565", "📈", "#22a565") +
+      statCard("Top Territory", fmtInt(top.v), tName(top.code) + " · " + shareOf(top.v) + "%", "#22a565", "📈", "#22a565") +
       statCard("Territories", count, "countries", "var(--muted)", "🌐", "#2f6df6") +
       statCard("Avg Share", avgShare + "%", "per territory", "var(--muted)", "🥧", "#f5883f");
 
     var listRows = tArr.slice(0, 10).map(function (t, i) {
       var w = maxT ? Math.round(t.v / maxT * 100) : 0;
       return '<div class="trow"><span class="trank">' + (i + 1) + '</span><span class="tflag">' + flagEmoji(t.code) + '</span>' +
-        '<span class="tname">' + esc(nameOf[t.code] || t.code) + '</span>' +
+        '<span class="tname">' + esc(tName(t.code)) + '</span>' +
         '<span class="tbar"><span style="width:' + Math.max(3, w) + '%"></span></span>' +
         '<span class="tdl">' + fmtInt(t.v) + '</span><span class="tshare">' + shareOf(t.v) + '%</span></div>';
     }).join("");
@@ -2061,7 +2090,7 @@
     var top4 = tArr.slice(0, 4), othersV = tArr.slice(4).reduce(function (s, t) { return s + t.v; }, 0);
     var segs = top4.map(function (t, i) { var sh = totalT ? t.v / totalT * 100 : 0; return '<span class="dseg" style="width:' + sh + '%;background:' + dc[i] + '">' + (sh > 7 ? shareOf(t.v) + '%' : '') + '</span>'; }).join("");
     if (othersV > 0) segs += '<span class="dseg" style="width:' + (othersV / totalT * 100) + '%;background:' + dc[4] + '"></span>';
-    var legend = top4.map(function (t, i) { return '<span class="dleg"><i style="background:' + dc[i] + '"></i>' + esc(nameOf[t.code] || t.code) + ' (' + shareOf(t.v) + '%)</span>'; }).join("");
+    var legend = top4.map(function (t, i) { return '<span class="dleg"><i style="background:' + dc[i] + '"></i>' + esc(tName(t.code)) + ' (' + shareOf(t.v) + '%)</span>'; }).join("");
     if (othersV > 0) legend += '<span class="dleg"><i style="background:' + dc[4] + '"></i>Others (' + shareOf(othersV) + '%)</span>';
 
     el("asTerritories").innerHTML =

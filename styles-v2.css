@@ -138,6 +138,22 @@ header.topbar #updated{ font-size:10.5px; color:rgba(233,236,255,.5); padding:8p
 @media (max-width:1120px){ #healthGrid{ grid-template-columns:1fr; } .hero3{ grid-template-columns:repeat(3,1fr); } }
 @media (max-width:640px){ .hero3, .minigrid{ grid-template-columns:1fr; } }
 
+/* ===== App Analytics KPI cards with sparklines — matches ref ===== */
+#appstoreKpis{ display:grid !important; grid-template-columns:repeat(7,1fr); gap:14px; }
+.mcard{ background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--sh-sm); padding:16px; display:flex; flex-direction:column; gap:10px; min-height:158px; transition:box-shadow var(--dur) var(--ease),transform var(--dur) var(--ease); }
+.mcard:hover{ box-shadow:var(--sh-md); transform:translateY(-3px); }
+.mcard-top{ display:flex; align-items:flex-start; gap:10px; }
+.mcard-ic{ width:34px; height:34px; border-radius:11px; display:grid; place-items:center; font-size:16px; flex:0 0 auto; background:color-mix(in srgb,var(--mc) 15%,transparent); }
+.mcard-title{ font-size:11px; font-weight:700; color:var(--muted); line-height:1.25; }
+.mcard-val{ font-size:26px; font-weight:800; color:var(--ink); letter-spacing:-.02em; line-height:1; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.mbadge{ font-size:11px; font-weight:800; padding:2px 7px; border-radius:7px; white-space:nowrap; }
+.mcard-spark{ margin-top:auto; height:44px; position:relative; }
+.mcard-spark canvas{ width:100%!important; height:100%!important; }
+.mcard-spark.nospark::after{ content:""; display:block; height:2px; margin-top:20px; border-radius:2px; background:repeating-linear-gradient(90deg,var(--line) 0 8px,transparent 8px 14px); }
+.mcard-sub{ font-size:11px; color:var(--muted); font-weight:600; }
+@media (max-width:1400px){ #appstoreKpis{ grid-template-columns:repeat(4,1fr); } }
+@media (max-width:900px){ #appstoreKpis{ grid-template-columns:repeat(2,1fr); } }
+
 /* ===== Top Territories — KPIs + ranked bar list + distribution ===== */
 .terrkpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:16px; }
 .terrpanel{ background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--sh-sm); padding:16px 18px; margin-bottom:16px; }
