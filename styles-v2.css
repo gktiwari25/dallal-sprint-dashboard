@@ -394,3 +394,16 @@ details.lb{ border-radius:16px; }
 .lbg-curve{ stroke-dasharray:2600; animation:lbg-draw 12s linear infinite; }
 @keyframes lbg-draw{ from{ stroke-dashoffset:2600; } to{ stroke-dashoffset:0; } }
 @media (prefers-reduced-motion: reduce){ .lbg-orbs i,.loginbg,.lbg-ring,.lbg-bars rect,.lbg-curve{ animation:none !important; } }
+
+/* Fit the login landing to the viewport (no scroll) */
+#login{ display:flex !important; align-items:center; justify-content:center; }
+.landing{ width:min(1040px,100%); margin:0 !important; padding:20px 26px !important; }
+.lnav{ margin-bottom:18px !important; }
+.hero{ padding:14px 10px 6px !important; }
+.hero h1{ font-size:36px !important; margin-bottom:13px !important; }
+.hero .lead{ font-size:15px !important; margin-bottom:20px !important; }
+.hero .cta{ padding:13px 28px !important; }
+.features{ margin-top:24px !important; }
+.feature{ padding:18px 18px !important; }
+.feature .ficon{ width:42px; height:42px; margin-bottom:10px; }
+@media (max-height:720px){ .hero h1{ font-size:31px !important; } .features{ margin-top:16px !important; } .feature{ padding:14px 16px !important; } }
