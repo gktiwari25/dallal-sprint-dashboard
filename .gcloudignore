@@ -1,0 +1,14 @@
+# Keep the Cloud Build upload small and secret-free.
+# NOTE: when this file exists it REPLACES .gitignore for uploads, so .env and
+# secrets/ MUST be listed here explicitly.
+.git/
+.venv/
+node_modules/
+logs/
+*.log
+.env
+.env.*
+!.env.example
+secrets/
+*.p8
+.DS_Store

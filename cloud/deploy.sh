@@ -19,37 +19,48 @@ gcloud config set project "$PROJECT"
 gcloud services enable run.googleapis.com cloudbuild.googleapis.com \
   cloudscheduler.googleapis.com secretmanager.googleapis.com artifactregistry.googleapis.com
 
-put() { # put SECRET_NAME VALUE
-  printf '%s' "$2" | gcloud secrets create "$1" --data-file=- 2>/dev/null \
-    || printf '%s' "$2" | gcloud secrets versions add "$1" --data-file=- ; }
+PNUM="$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')"
+SA="${PNUM}-compute@developer.gserviceaccount.com"   # Cloud Run job identity + scheduler caller
 
-# scalar secrets from .env (names must match .env exactly)
+put() { # put SECRET_NAME VALUE -> create or add version; echoes name on success
+  if printf '%s' "$2" | gcloud secrets create "$1" --data-file=- 2>/dev/null \
+     || printf '%s' "$2" | gcloud secrets versions add "$1" --data-file=- >/dev/null 2>&1; then
+    echo "$1"
+  fi ; }
+
+# Push each present secret; collect the ones that actually got created into SEC.
+SEC=""
+add() { [ -n "${1:-}" ] && SEC="${SEC}${SEC:+,}${1}=${1}:latest"; }
+
 SCALARS="SUPABASE_URL SUPABASE_SERVICE_KEY SUPABASE_SERVICE_ROLE_KEY ASC_ISSUER_ID ASC_KEY_ID \
 ASC_VENDOR_NUMBER ASC_APP_ID PLAY_BUCKET_ID PLAY_PACKAGE_NAME AMPLITUDE_API_HOST AMPLITUDE_PROD_APP \
 AMPLITUDE_UAT_APP AMPLITUDE_PROD_API_KEY AMPLITUDE_PROD_SECRET_KEY AMPLITUDE_UAT_API_KEY \
 AMPLITUDE_UAT_SECRET_KEY ASANA_PAT ASANA_PROJECT_GID SLACK_WEBHOOK_URL GH_TOKEN"
 for v in $SCALARS; do
-  val="${!v:-}"; [ -n "$val" ] && put "$v" "$val"
+  val="${!v:-}"; [ -n "$val" ] && add "$(put "$v" "$val")"
 done
-# file secrets -> passed as env (base64 .p8, raw SA JSON)
-put ASC_PRIVATE_KEY_B64 "$(base64 < "$ASC_PRIVATE_KEY_PATH")"
-put GOOGLE_SA_JSON "$(cat "$GOOGLE_APPLICATION_CREDENTIALS")"
+# file secrets (only if the source files exist)
+[ -n "${ASC_PRIVATE_KEY_PATH:-}" ] && [ -f "$ASC_PRIVATE_KEY_PATH" ] \
+  && add "$(put ASC_PRIVATE_KEY_B64 "$(base64 < "$ASC_PRIVATE_KEY_PATH")")"
+[ -n "${GOOGLE_APPLICATION_CREDENTIALS:-}" ] && [ -f "$GOOGLE_APPLICATION_CREDENTIALS" ] \
+  && add "$(put GOOGLE_SA_JSON "$(cat "$GOOGLE_APPLICATION_CREDENTIALS")")"
+echo "Secrets wired: $SEC"
 
-# Build the --set-secrets list (ENV=secret:latest) — scalars + the two file secrets
-SEC=""
-for s in $SCALARS ASC_PRIVATE_KEY_B64 GOOGLE_SA_JSON; do
-  SEC="${SEC}${SEC:+,}${s}=${s}:latest"
-done
+# The job identity must be able to read the secrets; the scheduler caller must run jobs.
+gcloud projects add-iam-policy-binding "$PROJECT" \
+  --member="serviceAccount:$SA" --role="roles/secretmanager.secretAccessor" --condition=None -q >/dev/null
+gcloud projects add-iam-policy-binding "$PROJECT" \
+  --member="serviceAccount:$SA" --role="roles/run.developer" --condition=None -q >/dev/null
 
 deploy() { # deploy JOBNAME ARG
   gcloud run jobs deploy "$1" --source . --region "$REGION" \
-    --set-secrets "$SEC" --args "$2" --task-timeout=1200s --max-retries=1 --memory=1Gi
+    --service-account "$SA" --set-secrets "$SEC" --args "$2" \
+    --task-timeout=1200s --max-retries=1 --memory=1Gi
 }
 deploy dallal-etl-hourly  hourly
 deploy dallal-etl-derived derived
 
 # Scheduler: hourly at :15, derived every 12h. Uses the Cloud Run Jobs run target.
-SA="$(gcloud iam service-accounts list --filter='displayName:Compute Engine default' --format='value(email)' | head -1)"
 sched() { # sched NAME CRON JOB
   gcloud scheduler jobs create http "$1" --location "$REGION" --schedule="$2" \
     --uri="https://${REGION}-run.googleapis.com/apis/run.googleapis.com/v1/namespaces/${PROJECT}/jobs/${3}:run" \
