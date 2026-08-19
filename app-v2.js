@@ -335,10 +335,8 @@
         heroCard("CARRY FORWARD", "⏱️", m.carryFwd, carryTxt, "work carried forward", "#f5a623") +
       "</div>" +
       '<div class="minigrid">' +
-        card("Velocity", m.velocity + ' <small>' + m.velocityUnit + "</small>", { icon: "⚡", accent: "#7b61ff" }) +
         card("Sprint Goal", "", { rag: rag[0], ragText: rag[1], icon: "🎯" }) +
         card("Delivered", (m.usePts ? Math.round(m.deliveredSP) + " SP" : m.completed + " items"), { icon: "✅", accent: "#2e7d32" }) +
-        card("Committed", (m.usePts ? Math.round(m.committedSP) + " SP" : m.planned + " items"), { icon: "📌", accent: "#3f7fce" }) +
       "</div>" +
       glanceCard(m, daysLeft);
     el("healthNote").innerHTML = m.usePts
