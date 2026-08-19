@@ -815,6 +815,24 @@
     });
   }
   var FUNNEL_INFO = {
+    "Listing Flow": {
+      icon: "🏠", tag: "Supply side",
+      what: "How a property owner or agent goes from <b>starting a listing to publishing it live</b> — every published listing is new inventory, so this funnel is the engine of marketplace <b>supply</b>. Mirrors the team's Amplitude <i>Listing Flow</i> chart.",
+      biz: "Business impact: more completed listings = more inventory for buyers. The number that matters is <b>Publish Property</b>.",
+      lens: "Fix the steepest drop first — it adds the most new listings. The big fall is usually early (Started → PACI); a late fall (Media → Publish) is the most costly since the user did all the work but never went live."
+    },
+    "Licensed broker Registration": {
+      icon: "🧑‍💼", tag: "Onboarding · Supply",
+      what: "How a licensed broker goes from <b>starting verification to completing their profile</b> — onboarding trusted supply-side agents. Mirrors the Amplitude <i>Licensed broker Registration</i> chart.",
+      biz: "Business impact: verified brokers list more, higher-quality inventory. The number that matters is <b>Add information to the profile</b> (fully onboarded).",
+      lens: "A drop at <b>Uploaded broker license</b> suggests friction in the upload/verification step; a drop at the last step means brokers verified but never finished their profile."
+    },
+    "Company Registration": {
+      icon: "🏢", tag: "Onboarding · Supply",
+      what: "How a company goes from <b>starting verification to adding company information</b> — onboarding business/developer accounts. Mirrors the Amplitude <i>Company Registration</i> chart.",
+      biz: "Business impact: registered companies bring bulk/project inventory. The number that matters is <b>Added Company Information</b>.",
+      lens: "A drop at <b>Uploaded Commercial License</b> points to document-upload friction; a late drop means the license passed but company details were never completed."
+    },
     "Listing Creation": {
       icon: "🏠", tag: "Supply side",
       what: "How a property owner or agent goes from <b>starting a listing to publishing it live</b>. Every published listing is new inventory on Dallal, so this funnel is the engine of marketplace <b>supply</b>.",

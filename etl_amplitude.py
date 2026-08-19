@@ -100,32 +100,29 @@ FUNNELS_UAT = [
 # Creation has a healthy web/android/ios split, but Registration is mobile-only
 # (no web signups) and Discovery is negligible, so some per-platform funnels will
 # legitimately render as "no data".
+# PROD funnels: mirror the team's saved Amplitude charts in the "Dallal Dashboard"
+# space (chart ids 4jb7ago6 / ivwusoty / 352hod0g) — same events, step labels and
+# 1-day conversion window, so the dashboard matches Amplitude exactly. "All Users"
+# (no platform split), so the PROD project below uses only the "All" platform.
 FUNNELS_PROD = [
-    {"name": "Listing Creation", "steps": [
-        # Corrected to match the real wizard order (verified from Amplitude step
-        # volumes): PACI and Location come BEFORE Property Details.
-        ("Listing Started", "listing_flow.welcome.step_entered"),
-        ("Category", "listing_flow.category.step_completed"),
-        ("PACI Verified", "listing_flow.paci_results.step_completed"),
-        ("Location Set", "listing_flow.address_review.step_completed"),
-        ("Property Details", "listing_flow.property_details.step_completed"),
-        ("Photos Added", "listing_flow.photos_media.step_completed"),
-        ("Reviewed", "listing_flow.property_review.step_completed"),
-        ("Published", "listing_published"),
+    {"name": "Listing Flow", "steps": [
+        ("Listing Flow Started", "listing_started"),
+        ("PACI stage", "listing_paci_number"),
+        ("Address Stage", "listing_address"),
+        ("Describe Property Stage", "listing_describe_property"),
+        ("Select Category Stage", "listing_category"),
+        ("Add Media Stage", "property_media_added"),
+        ("Publish Property Stage", "property_published"),
     ]},
-    {"name": "Property Discovery", "steps": [
-        ("Search", "property_search"),
-        ("View Details", "view_details"),
-        ("Gallery Viewed", "listing_gallery_opened"),
-        ("Property Saved", "listing_saved"),
-        ("Agent Contacted", "owner_message_clicked"),
-        ("Chat Started", "conversation_opened"),
+    {"name": "Licensed broker Registration", "steps": [
+        ("Verification Started", "verification_started"),
+        ("Uploaded broker license", "licensed_broker_license_uploaded"),
+        ("Add information to the profile", "licensed_broker_information_added"),
     ]},
-    {"name": "User Registration", "steps": [
-        ("Registration Started", "sign_up_started"),
-        ("Signed Up", "sign_up"),
-        ("OTP Verified", "otp_verified"),
-        ("Login Success", "user_journey.login.success"),
+    {"name": "Company Registration", "steps": [
+        ("Verification Started", "verification_started"),
+        ("Uploaded Commercial License", "company_license_uploaded"),
+        ("Added Company Information", "company_information_added"),
     ]},
 ]
 
@@ -137,10 +134,10 @@ PROJECTS = [
     {"env": "PROD", "app": os.environ.get("AMPLITUDE_PROD_APP", "776558"),
      "key": _env("AMPLITUDE_PROD_API_KEY"),
      "secret": _env("AMPLITUDE_PROD_SECRET_KEY"),
-     "funnels": FUNNELS_PROD, "platforms": ["All", "web", "android", "ios"]},
+     "funnels": FUNNELS_PROD, "platforms": ["All"]},
 ]
 
-CONVERSION_SECONDS = 604800  # 7-day funnel window
+CONVERSION_SECONDS = 86400   # 1-day window, matching the saved Amplitude funnel charts
 
 
 def build_events(steps, platform):
