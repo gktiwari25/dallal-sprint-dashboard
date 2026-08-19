@@ -309,11 +309,12 @@
     var storyPct = m.planned ? Math.round(100 * m.completed / m.planned) : 0;
     return '<div class="glance">' +
       '<div class="glance-h"><span>⭐</span> AT A GLANCE</div>' +
+      '<div class="grows">' +
       glanceRow('🛡️', m.completed + ' / ' + m.planned, 'Stories Delivered', storyPct) +
       (daysLeft != null ? glanceRow('📅', daysLeft, 'Days Remaining', null) : '') +
+      glanceRow('⚡', m.velocity + ' ' + m.velocityUnit, 'Velocity', null) +
       glanceRow('📌', (m.usePts ? Math.round(m.committedSP) : m.planned) + ' SP', 'Committed', null) +
-      glanceRow('⏱️', (m.usePts ? Math.round(m.carryFwdSP) : (m.carryFwdItems || 0)) + ' SP', 'Carry Forward', null) +
-      '</div>';
+      '</div></div>';
   }
 
   // ---------- render ----------

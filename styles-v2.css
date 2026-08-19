@@ -96,7 +96,7 @@ header.topbar #updated{ font-size:10.5px; color:rgba(233,236,255,.5); padding:8p
 .grid > .card:nth-child(5n+5) .icon{ background:var(--chip-5); }
 
 /* ===== Sprint Health hero (progress cards + At-a-Glance) — matches ref ===== */
-#healthGrid{ display:grid !important; grid-template-columns:minmax(0,2.5fr) minmax(0,1.25fr) minmax(0,1fr); gap:16px; align-items:start; }
+#healthGrid{ display:grid !important; grid-template-columns:minmax(0,2.5fr) minmax(0,1.25fr) minmax(0,1fr); gap:16px; align-items:stretch; }
 .hero3{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
 .minigrid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; align-content:start; }
 .minigrid .card{ padding:15px 16px !important; }
@@ -121,7 +121,8 @@ header.topbar #updated{ font-size:10.5px; color:rgba(233,236,255,.5); padding:8p
 .glance{ background:var(--card); border:1px solid var(--line); border-radius:20px; padding:16px 18px; box-shadow:var(--sh-sm); display:flex; flex-direction:column; }
 .glance-h{ font-size:11px; font-weight:800; letter-spacing:.06em; color:var(--ink-2); display:flex; align-items:center; gap:8px; margin-bottom:4px; }
 .glance-h span{ color:#f5a623; }
-.grow{ display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
+.grows{ flex:1; display:flex; flex-direction:column; }
+.grow{ flex:1; display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); min-height:58px; }
 .grow:last-child{ border-bottom:0; }
 .gic{ width:38px; height:38px; border-radius:11px; display:grid; place-items:center; font-size:16px; background:var(--surface-3); flex:0 0 auto; }
 .gtext{ display:flex; flex-direction:column; flex:1; min-width:0; }
