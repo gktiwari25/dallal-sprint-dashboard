@@ -1953,7 +1953,19 @@
     });
   }
 
-  function loadAll() {
+  // Fast 32-bit FNV-1a hash — a cheap signature of the fetched data so background
+  // refreshes can tell whether anything actually changed before repainting.
+  var _dataSig = null;
+  function hashStr(s) {
+    var h = 0x811c9dc5;
+    for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = (h * 0x01000193) >>> 0; }
+    return h >>> 0;
+  }
+
+  // force=true (manual Refresh button) always repaints. Background callers
+  // (60s poll / Supabase Realtime / tab focus) pass nothing: they fetch quietly
+  // and only re-render when the data signature changed — no flicker otherwise.
+  function loadAll(force) {
     hide("error");
     return Promise.all([
       sbSelect("fact_workitems"),
@@ -1974,6 +1986,10 @@
       sbSelect("fact_appstore_metrics").catch(function () { return []; }),
       sbSelect("fact_trends").catch(function () { return []; }),
     ]).then(function (res) {
+      // Skip the repaint entirely when a background refresh brought no new data.
+      var sig = hashStr(JSON.stringify(res));
+      if (!force && loadedOnce && sig === _dataSig) return;
+      _dataSig = sig;
       data.items = res[0]; data.sprints = res[1]; data.flow = res[2]; data.risks = res[3];
       data.burndown = res[4]; data.repos = res[5]; data.vulns = res[6]; data.funnels = res[7]; data.paths = res[8];
       data.unreviewedPrs = res[9]; data.abandoned = res[10]; data.reengage = res[11];
@@ -2131,7 +2147,7 @@
     el("refreshBtn").addEventListener("click", function () {
       if (!(sbc && loadedOnce)) return;
       var b = el("refreshBtn"), txt = b.innerHTML; b.disabled = true; b.innerHTML = "↻ Refreshing…";
-      Promise.resolve(loadAll()).then(function () {}).catch(function () {}).then(function () {
+      Promise.resolve(loadAll(true)).then(function () {}).catch(function () {}).then(function () {
         b.disabled = false; b.innerHTML = txt;
       });
     });
