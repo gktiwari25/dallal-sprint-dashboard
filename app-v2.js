@@ -479,11 +479,15 @@
     burnChart = new Chart(el("burnChart"), {
       type: "line",
       data: { labels: labels, datasets: [
-        { label: "Remaining (actual)", data: actual, borderColor: "#c62828", backgroundColor: "rgba(198,40,40,.10)", fill: true, tension: .2, spanGaps: true },
-        { label: "Ideal", data: ideal, borderColor: "#6b7a8d", borderDash: [6, 4], pointRadius: 0, fill: false } ] },
-      options: { responsive: true, plugins: { legend: { position: "bottom" },
-        tooltip: { callbacks: { title: function (t) { return "Day " + (t[0].dataIndex + 1) + " (" + t[0].label + ")"; } } } },
-        scales: { y: { beginAtZero: true, title: { display: true, text: "story points" } } } },
+        { label: "Remaining (actual)", data: actual, borderColor: "#6c5ce7", borderWidth: 2.6, tension: .38, spanGaps: true, fill: true,
+          pointRadius: 4, pointBackgroundColor: "#fff", pointBorderColor: "#6c5ce7", pointBorderWidth: 2, pointHoverRadius: 6,
+          backgroundColor: function (c) { var a = c.chart.chartArea; if (!a) return "rgba(108,92,231,.12)"; var g = c.chart.ctx.createLinearGradient(0, a.top, 0, a.bottom); g.addColorStop(0, "rgba(108,92,231,.28)"); g.addColorStop(1, "rgba(108,92,231,.02)"); return g; } },
+        { label: "Ideal", data: ideal, borderColor: "#9aa6bb", borderDash: [5, 5], borderWidth: 1.6, pointRadius: 0, fill: false, tension: 0 } ] },
+      options: { responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { position: "top", align: "end", labels: { usePointStyle: true, pointStyle: "line", boxWidth: 26, padding: 16, color: "#8f9fb5", font: { size: 11.5, weight: "600" } } },
+          tooltip: { backgroundColor: "rgba(19,22,52,.96)", cornerRadius: 12, padding: 12, titleColor: "#fff", bodyColor: "#e7e9f7", usePointStyle: true, callbacks: { title: function (t) { return "Day " + (t[0].dataIndex + 1) + " (" + t[0].label + ")"; } } } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: "Story Points", color: "#8f9fb5" }, grid: { color: "rgba(125,142,170,.14)" }, border: { display: false }, ticks: { color: "#8f9fb5" } },
+          x: { grid: { display: false }, border: { display: false }, ticks: { color: "#8f9fb5" } } } },
     });
   }
 
@@ -591,17 +595,55 @@
         scales: { y: { beginAtZero: true, title: { display: true, text: "carryover SP" } },
           y1: { beginAtZero: true, suggestedMax: 100, position: "right", grid: { drawOnChartArea: false }, title: { display: true, text: "predictability %" } } } } });
 
-    mkChart("bugTrendChart", { type: "bar",
+    // Bugs — dual AREA chart (Total pink / Closed green) with point value labels.
+    var bugLabels = { id: "bugLabels", afterDatasetsDraw: function (chart) {
+      var ctx = chart.ctx;
+      chart.data.datasets.forEach(function (ds, di) {
+        var meta = chart.getDatasetMeta(di);
+        meta.data.forEach(function (pt, i) {
+          var v = ds.data[i]; if (v == null) return;
+          ctx.save(); ctx.font = "700 11px 'Fira Sans',sans-serif"; ctx.textAlign = "center";
+          ctx.fillStyle = di === 0 ? "#e94b6a" : "#22a565";
+          ctx.fillText(v, pt.x, di === 0 ? pt.y - 9 : pt.y + 17); ctx.restore();
+        });
+      });
+    } };
+    mkChart("bugTrendChart", {
+      type: "line",
       data: { labels: labels, datasets: [
-        { label: "Total bugs in sprint", data: agg.map(function (a) { return a.bugsRaised; }), backgroundColor: "#c62828", borderRadius: 5 },
-        { label: "Closed", data: agg.map(function (a) { return a.bugsClosed; }), backgroundColor: "#2e7d32", borderRadius: 5 } ] },
-      options: { responsive: true, plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true } } } });
+        { label: "Total Bugs", data: agg.map(function (a) { return a.bugsRaised; }), borderColor: "#e94b6a", borderWidth: 2.4, tension: .4, fill: true, backgroundColor: "rgba(233,75,106,.14)", pointRadius: 4, pointBackgroundColor: "#fff", pointBorderColor: "#e94b6a", pointBorderWidth: 2, pointHoverRadius: 6 },
+        { label: "Closed", data: agg.map(function (a) { return a.bugsClosed; }), borderColor: "#22a565", borderWidth: 2.4, tension: .4, fill: true, backgroundColor: "rgba(34,165,101,.16)", pointRadius: 4, pointBackgroundColor: "#fff", pointBorderColor: "#22a565", pointBorderWidth: 2, pointHoverRadius: 6 } ] },
+      options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 18 } },
+        plugins: { legend: { position: "top", align: "end", labels: { usePointStyle: true, pointStyle: "circle", boxWidth: 8, padding: 14, color: "#8f9fb5", font: { size: 11.5, weight: "600" } } } },
+        scales: { y: { beginAtZero: true, grid: { color: "rgba(125,142,170,.14)" }, border: { display: false }, ticks: { color: "#8f9fb5" } },
+          x: { grid: { display: false }, border: { display: false }, ticks: { color: "#8f9fb5" } } } },
+      plugins: [bugLabels],
+    });
 
-    mkChart("wipChart", { type: "bar",
-      data: { labels: ["In Dev", "In QA", "Blocked", "Ready", "Released"],
-        datasets: [{ data: [m.inDev, m.inQA, m.blocked, m.ready, m.released],
-          backgroundColor: ["#7b61ff", "#1f6feb", "#c62828", "#f29f05", "#0f8b8d"], borderRadius: 5, barThickness: 32 }] },
-      options: { indexAxis: "y", responsive: true, plugins: { legend: { display: false } }, scales: { x: { beginAtZero: true, title: { display: true, text: "stories" } } } } });
+    // Work in progress — custom rows (icon + bar + count + %) + total donut.
+    if (el("wipCustom")) el("wipCustom").innerHTML = wipHTML(m);
+  }
+
+  function wipHTML(m) {
+    var stages = [
+      { name: "In Dev", ic: "&lt;/&gt;", v: m.inDev, c: "#7b61ff" },
+      { name: "In QA", ic: "🧪", v: m.inQA, c: "#3b82f6" },
+      { name: "Blocked", ic: "⛔", v: m.blocked, c: "#ef4444" },
+      { name: "Ready", ic: "✅", v: m.ready, c: "#f5a623" },
+      { name: "Released", ic: "🚀", v: m.released, c: "#22c55e" } ];
+    var total = stages.reduce(function (s, x) { return s + (x.v || 0); }, 0);
+    var denom = total || 1, maxv = Math.max.apply(null, stages.map(function (x) { return x.v || 0; })) || 1;
+    var rows = stages.map(function (x) {
+      var pct = Math.round(100 * (x.v || 0) / denom), w = Math.round(100 * (x.v || 0) / maxv);
+      return '<div class="wiprow" style="--wc:' + x.c + '"><span class="wipic">' + x.ic + '</span><span class="wipname">' + x.name + '</span>' +
+        '<span class="wiptrack"><span style="width:' + Math.max(2, w) + '%"></span></span>' +
+        '<span class="wipval">' + (x.v || 0) + '</span><span class="wippct">' + pct + '%</span></div>';
+    }).join("");
+    var acc = 0, segs = [];
+    stages.forEach(function (x) { var f = (x.v || 0) / denom; if (f > 0) segs.push(x.c + ' ' + (acc * 360).toFixed(1) + 'deg ' + ((acc + f) * 360).toFixed(1) + 'deg'); acc += f; });
+    var donut = 'conic-gradient(' + (segs.length ? segs.join(',') : 'var(--surface-3) 0deg 360deg') + ')';
+    return '<div class="wipwrap"><div class="wiprows">' + rows + '</div>' +
+      '<div class="wipdonut" style="background:' + donut + '"><div class="wipdc"><b>' + total + '</b><span>Total Stories</span></div></div></div>';
   }
 
   // ---------- engineering page ----------

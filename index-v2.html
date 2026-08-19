@@ -10,7 +10,7 @@
 <link rel="icon" type="image/png" href="dallal-favicon.png?v=237" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
 <link rel="stylesheet" href="styles.css?v=237" />
-<link rel="stylesheet" href="styles-v2.css?v=7" /><!-- REDESIGN PREVIEW theme layer -->
+<link rel="stylesheet" href="styles-v2.css?v=8" /><!-- REDESIGN PREVIEW theme layer -->
 </head>
 <body>
 
@@ -144,7 +144,7 @@
     <div class="chartcard" style="margin-top:14px"><h3>Burndown — remaining story points</h3><div class="chartbox"><canvas id="burnChart"></canvas></div></div>
     <div class="charts" style="margin-top:12px">
       <div class="chartcard"><h3>Bugs — total vs closed by sprint</h3><div class="chartbox"><canvas id="bugTrendChart"></canvas></div></div>
-      <div class="chartcard"><h3>Work in progress by stage (selected sprint)</h3><div class="chartbox"><canvas id="wipChart"></canvas></div></div>
+      <div class="chartcard"><h3>Work in progress by stage (selected sprint)</h3><div id="wipCustom" class="wipbox"></div></div>
     </div>
   </div></div>
 
@@ -399,6 +399,6 @@
 <script src="config.js?v=237"></script>
 <script src="sample-data.js?v=237"></script>
 <script src="funnels-data.js?v=237"></script>
-<script src="app-v2.js?v=1"></script>
+<script src="app-v2.js?v=2"></script>
 </body>
 </html>
