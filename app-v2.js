@@ -2399,37 +2399,40 @@
       }
     } catch (e) {}
 
-    // PKCE flow (modern supabase-js default): OAuth returns a ?code= which
-    // detectSessionInUrl exchanges for a session on load. (The old implicit pin
-    // broke with newer supabase-js — Google would return and drop back to the
-    // landing with no session.)
+    // We finish the OAuth redirect OURSELVES (detectSessionInUrl:false) so there's
+    // no race that clears the URL before the exchange — and we handle BOTH flows:
+    // PKCE (?code=) and implicit (#access_token=).
+    var _hadCode = /[?&]code=/.test(window.location.search);
+    var _hadTok = (window.location.hash || "").indexOf("access_token=") !== -1;
     sbc = window.supabase.createClient(URL_, KEY_, {
-      auth: {
-        flowType: "pkce",
-        detectSessionInUrl: true,
-        persistSession: true,
-        autoRefreshToken: true
-      }
+      auth: { flowType: "pkce", detectSessionInUrl: false, persistSession: true, autoRefreshToken: true }
     });
 
-    // Belt-and-suspenders: if a ?code= is still present after load, exchange it.
-    try {
-      var _q = new URLSearchParams(window.location.search);
-      if (_q.get("code")) {
-        sbc.auth.exchangeCodeForSession(window.location.href).then(function (res) {
+    function finishRedirect() {
+      if (_hadCode) {
+        var _code = new URLSearchParams(window.location.search).get("code");
+        return sbc.auth.exchangeCodeForSession(_code).then(function (res) {
           try { history.replaceState(null, "", window.location.pathname); } catch (e) {}
-          if (res && res.data && res.data.session) onAuth(res.data.session);
-        }).catch(function () {});
+          return (res && res.data && res.data.session) || null;
+        }).catch(function () { try { history.replaceState(null, "", window.location.pathname); } catch (e) {} return null; });
       }
-    } catch (e) {}
+      if (_hadTok) {
+        var p = new URLSearchParams((window.location.hash || "").replace(/^#+/, ""));
+        return sbc.auth.setSession({ access_token: p.get("access_token"), refresh_token: p.get("refresh_token") }).then(function (res) {
+          try { history.replaceState(null, "", window.location.pathname); } catch (e) {}
+          return (res && res.data && res.data.session) || null;
+        }).catch(function () { try { history.replaceState(null, "", window.location.pathname); } catch (e) {} return null; });
+      }
+      return Promise.resolve(undefined);   // no redirect payload
+    }
 
     if (!REQUIRE_AUTH) { showAppUI(); loadAll(); return; }   // intentional public mode
-    // #app/#topbar start hidden in the HTML; reveal only after the session check
-    // resolves (via onAuth). The boot loader covers the gap so nothing flashes.
-    sbc.auth.onAuthStateChange(function (_e, session) { onAuth(session); });
-    sbc.auth.getSession()
-      .then(function (r) { onAuth(r.data.session); })
-      .catch(function () { showLoginUI(); });   // never hang on the loader if the check fails
+    sbc.auth.onAuthStateChange(function (_e, session) { if (session) onAuth(session); });
+    finishRedirect().then(function (s) {
+      if (s) { onAuth(s); return; }                          // fresh OAuth login
+      if (s === null) { showLoginUI(); return; }             // redirect came back but failed
+      sbc.auth.getSession().then(function (r) { onAuth(r.data.session); }).catch(function () { showLoginUI(); });
+    });
   }
 
   document.addEventListener("DOMContentLoaded", init);
