@@ -101,9 +101,13 @@ header.topbar #updated{ font-size:10.5px; color:rgba(233,236,255,.5); padding:8p
 .chartcard h3{ font-weight:700; font-size:13px; display:flex; align-items:center; gap:9px; }
 .chartcard h3::before{ content:""; width:8px; height:8px; border-radius:3px; background:var(--accent-grad); flex:0 0 auto; }
 
-/* Gauges (donut rings) — leave sizing/rendering to app.js; just polish labels */
-.gctr{ font-weight:800 !important; }
-.glabel{ font-weight:600; color:var(--muted); }
+/* Gauges — bigger, premium rings in elevated tiles */
+.gauges{ gap:16px; }
+.gauge{ border-radius:20px !important; padding:22px 14px !important; box-shadow:var(--sh-sm) !important; border:1px solid var(--line) !important; background:var(--card) !important; }
+.gauge:hover{ box-shadow:var(--sh-md) !important; transform:translateY(-3px); }
+.gwrap{ width:138px !important; height:138px !important; }
+.gctr{ font-size:27px !important; font-weight:800 !important; letter-spacing:-.02em; }
+.glabel{ margin-top:14px !important; font-size:11px !important; letter-spacing:.07em; font-weight:600; color:var(--muted); }
 
 /* Tables — rounded card, soft header, row hover */
 table.risks, table.ftable{ border-radius:16px !important; overflow:hidden; box-shadow:var(--sh-xs); border:1px solid var(--line); background:var(--card); }
