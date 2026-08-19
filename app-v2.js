@@ -331,6 +331,21 @@
     if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); return; }
     ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
   }
+  // "Not yet completed" summary card (ring + activity bars) — click to expand list.
+  function notCompletedBlock(id, notDone, total, onHold, rowsHtml) {
+    var openC = _collapse[id] === true;
+    var pct = total ? Math.round(100 * notDone / total) : 0;
+    var N = 48, filled = Math.round(pct / 100 * N), bars = "";
+    for (var i = 0; i < N; i++) bars += '<i class="' + (i < filled ? "on" : "") + '"></i>';
+    var onHoldTxt = onHold ? ' &middot; ' + onHold + ' on hold' : '';
+    return '<details class="lb ncblock" data-lb="' + id + '"' + (openC ? " open" : "") + '>' +
+      '<summary class="ncsum">' +
+        '<span class="ncring" style="--p:' + pct + '"><i>' + pct + '%</i></span>' +
+        '<span class="nctext"><b>NOT YET COMPLETED</b><span>' + notDone + ' of ' + total + ' stories' + onHoldTxt + '</span></span>' +
+        '<span class="ncbars">' + bars + '</span>' +
+        '<span class="ncchev">&#9656;</span>' +
+      '</summary><div class="ncbody">' + rowsHtml + '</div></details>';
+  }
 
   // ---------- render ----------
   function render(sprint) {
@@ -367,8 +382,7 @@
       statCard("Released", m.released, pctOf(m.released, m.planned) + "% of total", "#7b61ff", "🚀", "#7b61ff", "Released board column (shipped to production).");
     var openItems = m.its.filter(function (i) { return !isDone(i) && !isOnHold(i); });
     var onHoldCount = m.its.filter(function (i) { return !isDone(i) && isOnHold(i); }).length;
-    el("openList").innerHTML = listBlock("open", "Not yet completed &middot; " + openItems.length + " of " + m.planned + " stories" +
-      (onHoldCount ? " <span class=\"muted\" style=\"font-weight:400\">(" + onHoldCount + " on hold, excluded)</span>" : ""),
+    el("openList").innerHTML = notCompletedBlock("open", openItems.length, m.planned, onHoldCount,
       (openItems.length ? openItems.map(taskRow).join("") : '<div class="muted">All committed stories completed. 🎉</div>'));
 
     el("qualityGrid").innerHTML =
@@ -378,11 +392,7 @@
       card("High (P2)", m.pHigh, { icon: "🟠", accent: "#f29f05", tip: "Bug tickets with task Priority = P2 High." }) +
       card("Reopened", m.reopened, { icon: "🔁", tip: "Count of items sent back for rework at least once this sprint (bounced to Raised by QA / Reopen / UAT Failed) — derived from Status history, refreshed on the daily flow sync. Rework rate of delivered items: " + pct(m.reopenedPct) + "." }) +
       card("Defect Escape", (m.escapeReliable ? pct(m.defectEscape) : "--") + ' <span style="font-size:13px;color:var(--muted,#5b6577)">' + m.bugsClassified + "/" + m.bugs + " classified</span>", { icon: "🪲", accent: m.escapeReliable ? undefined : "#5b6577", tip: "Share of bugs found in Prod, out of bugs that have a 'Found In' value (Dev/UAT/Prod). Bugs with no 'Found In' are excluded, and the rate shows '—' until at least 3 bugs and 50% of the sprint's bugs are classified in Asana." });
-    mkChart("qualityChart", { type: "doughnut",
-      data: { labels: ["Critical", "High", "Medium", "Other"],
-        datasets: [{ data: [m.pCritical, m.pHigh, m.pMedium, Math.max(0, m.bugs - m.pCritical - m.pHigh - m.pMedium)],
-          backgroundColor: ["#c62828", "#f29f05", "#1f6feb", "#9aa7b4"], borderWidth: 0 }] },
-      options: { cutout: "60%", responsive: true, plugins: { legend: { position: "right", labels: { boxWidth: 12, font: { size: 11 } } } } } });
+    // (Bugs by priority doughnut removed per design.)
     var bugItems = m.its.filter(isBug);
     el("bugList").innerHTML = listBlock("bugs", "Bug tickets &middot; " + bugItems.length,
       (bugItems.length ? bugItems.map(taskRow).join("") : '<div class="muted">No bug tickets this sprint.</div>'));
