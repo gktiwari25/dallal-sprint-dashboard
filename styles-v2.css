@@ -407,3 +407,9 @@ details.lb{ border-radius:16px; }
 .feature{ padding:18px 18px !important; }
 .feature .ficon{ width:42px; height:42px; margin-bottom:10px; }
 @media (max-height:720px){ .hero h1{ font-size:31px !important; } .features{ margin-top:16px !important; } .feature{ padding:14px 16px !important; } }
+
+/* Logo bar pinned to the top of the login, enlarged */
+#login > .lnav{ position:absolute; top:24px; left:0; right:0; margin:0 !important; padding:0 44px; z-index:5; }
+#login > .lnav .lbrand{ padding:11px 20px !important; border-radius:16px !important; box-shadow:0 10px 26px rgba(0,0,0,.28) !important; }
+#login > .lnav .lbrand img{ height:38px !important; }
+@media (max-height:720px){ #login > .lnav{ top:16px; } #login > .lnav .lbrand img{ height:32px !important; } }
