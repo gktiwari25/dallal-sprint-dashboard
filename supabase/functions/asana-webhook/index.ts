@@ -52,14 +52,26 @@ async function computeRow(t: any) {
   const completed = !!t.completed;
   let delivered = completed || (!!section && SECTION_DONE.test(section));
 
-  // A parent is also delivered when ALL its subtasks are completed (matches the
-  // sync). Story points are NOT written here (owned by the hourly sync), so we
-  // only need subtask completion — a lighter subtask fetch.
+  // Story points + parent-delivered, mirroring etl_derived.py's SUPERSEDE rule in
+  // ONE subtask fetch: a parent's own SP is replaced by the SUM of its subtasks'
+  // SP when ANY subtask is pointed; the parent is also delivered when ALL its
+  // subtasks are completed.
+  let sp: number | null = numVal(idx, "story_points");
   if ((t.num_subtasks ?? 0) > 0) {
-    const r = await fetch(`${A}/tasks/${t.gid}/subtasks?opt_fields=completed`, { headers: AH });
+    const r = await fetch(`${A}/tasks/${t.gid}/subtasks?opt_fields=completed,custom_fields.gid,custom_fields.number_value`, { headers: AH });
     if (r.ok) {
       const subs = (await r.json()).data ?? [];
-      if (subs.length && subs.every((s: any) => s.completed)) delivered = true;
+      if (subs.length) {
+        let ssum = 0, anySp = false, allDone = true;
+        for (const s of subs) {
+          for (const f of s.custom_fields ?? []) {
+            if (f.gid === CF.story_points && f.number_value != null) { ssum += f.number_value; anySp = true; }
+          }
+          if (!s.completed) allDone = false;
+        }
+        if (anySp) sp = Math.round(ssum * 100) / 100;   // supersede parent's own SP
+        if (allDone) delivered = true;
+      }
     }
   }
   const type = enumName(idx, "type");
@@ -76,9 +88,7 @@ async function computeRow(t: any) {
     repo: enumName(idx, "repo"),
     found_in: enumName(idx, "found_in"),
     root_cause: enumName(idx, "root_cause"),
-    // story_points intentionally OMITTED from the real-time write — it's messy at
-    // the source (mixed add/supersede history) and only changes at planning. The
-    // hourly sync owns it; partial upsert leaves the stored value untouched.
+    story_points: sp,   // real-time now, via the supersede rule above
     efforts_hours: numVal(idx, "efforts_hours"),
     release: textVal(idx, "release"),
     assignee: t.assignee?.name ?? null,
@@ -178,7 +188,10 @@ if (TEST) {
     const j = await (await fetch(u, { headers: AH })).json();
     tasks.push(...(j.data ?? [])); off = j.next_page?.offset;
   } while (off);
-  const rows = await Promise.all(tasks.map(computeRow));
+  // Rate-limit-safe: compute in small batches so the bulk subtask fetches don't
+  // trip Asana's limit (the live webhook only ever handles a handful at once).
+  const rows: any[] = [];
+  for (let i = 0; i < tasks.length; i += 5) rows.push(...await Promise.all(tasks.slice(i, i + 5).map(computeRow)));
   const cur: Record<string, any> = {};
   const q = await fetch(`${SUPABASE_URL}/rest/v1/fact_workitems?select=*&limit=5000`, { headers: { apikey: SERVICE_ROLE, Authorization: `Bearer ${SERVICE_ROLE}` } });
   for (const x of await q.json()) cur[x.task_gid] = x;
