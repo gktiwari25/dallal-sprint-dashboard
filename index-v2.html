@@ -10,7 +10,7 @@
 <link rel="icon" type="image/png" href="dallal-favicon.png?v=237" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
 <link rel="stylesheet" href="styles.css?v=237" />
-<link rel="stylesheet" href="styles-v2.css?v=15" /><!-- REDESIGN PREVIEW theme layer -->
+<link rel="stylesheet" href="styles-v2.css?v=16" /><!-- REDESIGN PREVIEW theme layer -->
 </head>
 <body>
 
@@ -37,77 +37,47 @@
   <div id="updated"></div>
 </header>
 
-<!-- Login (shown when auth is required and no active session) -->
-<div id="login" class="hidden">
-  <svg class="loginbg" viewBox="0 0 1200 600" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-    <defs><linearGradient id="ar" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#fff" stop-opacity=".45"/><stop offset="1" stop-color="#fff" stop-opacity="0"/>
-    </linearGradient></defs>
-    <g stroke="#fff" stroke-opacity=".10">
-      <line x1="0" y1="120" x2="1200" y2="120"/><line x1="0" y1="240" x2="1200" y2="240"/>
-      <line x1="0" y1="360" x2="1200" y2="360"/><line x1="0" y1="480" x2="1200" y2="480"/>
-    </g>
-    <path d="M0,470 C160,440 280,470 420,420 C560,370 640,300 800,300 C940,300 1040,220 1200,170 L1200,600 L0,600 Z" fill="url(#ar)"/>
-    <path d="M0,470 C160,440 280,470 420,420 C560,370 640,300 800,300 C940,300 1040,220 1200,170" fill="none" stroke="#fff" stroke-opacity=".55" stroke-width="3"/>
-    <g fill="#fff" fill-opacity=".13">
-      <rect x="70" y="430" width="46" height="110" rx="5"/><rect x="180" y="380" width="46" height="160" rx="5"/>
-      <rect x="290" y="410" width="46" height="130" rx="5"/><rect x="400" y="330" width="46" height="210" rx="5"/>
-      <rect x="510" y="360" width="46" height="180" rx="5"/>
-    </g>
-    <g fill="#fff"><circle cx="420" cy="420" r="6"/><circle cx="800" cy="300" r="6"/><circle cx="1200" cy="170" r="6"/></g>
-    <circle cx="1010" cy="130" r="80" fill="none" stroke="#fff" stroke-opacity=".16" stroke-width="22"/>
-    <circle cx="1010" cy="130" r="80" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="22" stroke-dasharray="190 500" stroke-linecap="round"/>
-  </svg>
-  <div class="landing">
-    <header class="lnav">
-      <span class="lbrand"><img src="Dallal-logo.png" alt="Dallal" /></span>
-      <span class="live"><span class="dot"></span> Live</span>
-    </header>
-
-    <section class="hero">
-      <h1>Real-time visibility.<br/>Better delivery. Stronger quality.</h1>
-      <p class="lead">Track sprint progress, ensure quality, and empower engineering teams with live analytics.</p>
-      <button id="ctaLogin" class="cta">Login to Dashboard &rarr;</button>
-      <div class="ctasub">&#128274; Secure &middot; Private &middot; Role-based access</div>
-    </section>
-
-    <section class="features">
-      <div class="feature"><div class="ficon fi1">&#128202;</div><h3>Live Delivery</h3><p>Real-time sprint progress &amp; status</p></div>
-      <div class="feature"><div class="ficon fi2">&#128737;</div><h3>Quality First</h3><p>Track bugs, test coverage &amp; quality</p></div>
-      <div class="feature"><div class="ficon fi3">&#9881;</div><h3>Engineering Analytics</h3><p>DORA metrics, velocity &amp; team insights</p></div>
-      <div class="feature"><div class="ficon fi4">&#128201;</div><h3>Churn</h3><p>Retention, churn trends &amp; at-risk users</p></div>
-    </section>
+<!-- Login (split-screen: brand panel + sign-in form) -->
+<div id="login" class="hidden loginsplit">
+  <div class="lspane-left">
+    <div class="lltop">
+      <span class="llbrand"><img src="Dallal-logo.png" alt="Dallal" /></span>
+      <span class="lllive"><span class="dot"></span> Live Analytics</span>
+    </div>
+    <h1 class="llh1">Real-time <em>visibility</em>.<br/>Better <em>delivery</em>.<br/>Stronger <em>quality</em>.</h1>
+    <p class="lllead">Track sprint progress, ensure quality, and empower engineering teams with live analytics.</p>
+    <div class="llfeats">
+      <div class="llfeat"><span class="llfic">&#128202;</span><b>Live</b><span>Real-time sprint progress &amp; status</span></div>
+      <div class="llfeat"><span class="llfic">&#128737;</span><b>Quality First</b><span>Track bugs, test coverage &amp; quality</span></div>
+      <div class="llfeat"><span class="llfic">&#128200;</span><b>Data Driven</b><span>DORA metrics, velocity &amp; insights</span></div>
+      <div class="llfeat"><span class="llfic">&#128101;</span><b>Team Focused</b><span>Churn trends &amp; at-risk users</span></div>
+    </div>
   </div>
+  <div class="lspane-right">
+    <div class="lform">
+      <h2 class="lfh">Welcome back &#128075;</h2>
+      <p class="lfsub">Sign in to access your Dallal dashboard</p>
 
-  <!-- Sign-in modal (opens from the Login button) -->
-  <div id="loginModal" class="hidden">
-    <div class="loginbox">
-      <button id="loginClose" class="lclose" aria-label="Close">&times;</button>
-      <img class="logo" src="Dallal-logo.png" alt="Dallal" />
-      <h2>Sign in</h2>
-      <p class="tag">Access your live analytics</p>
+      <label class="lflabel">Email address</label>
+      <div class="lfield"><span class="lfi">&#9993;</span><input id="loginEmail" type="email" autocomplete="username" placeholder="Enter your email" /></div>
 
-      <button id="googleBtn" class="oauth">
-        <span class="g">G</span> Sign in with Google
-      </button>
-
-      <div class="divider"><span>or</span></div>
-
-      <label class="muted">Work email</label>
-      <input id="loginEmail" type="email" autocomplete="username" placeholder="you@dallal.com.kw" />
-      <button id="magicBtn">Email me a magic link</button>
+      <label class="lflabel">Password</label>
+      <div class="lfield"><span class="lfi">&#128274;</span><input id="loginPass" type="password" autocomplete="current-password" placeholder="Enter your password" /><a id="pwToggle" class="lfeye" href="#" title="Show / hide">&#128065;</a></div>
+      <div class="lfforgot"><a id="magicBtn" href="#">Forgot password?</a></div>
 
       <div id="loginInfo" class="info hidden"></div>
-      <div id="loginErr" class="err hidden" style="margin:12px 0 0"></div>
+      <div id="loginErr" class="err hidden"></div>
 
-      <a id="pwToggle" class="pwtoggle" href="#">Use a password instead</a>
-      <div id="pwBlock" class="hidden">
-        <label class="muted">Password</label>
-        <input id="loginPass" type="password" autocomplete="current-password" placeholder="••••••••" />
-        <button id="loginBtn">Sign in</button>
+      <button id="loginBtn" class="lfbtn">Login to Dashboard &rarr;</button>
+
+      <div class="lfdiv"><span>or continue with</span></div>
+      <div class="lfsso">
+        <button id="googleBtn" class="lfsso-b"><span class="g">G</span> Continue with Google</button>
+        <button id="msBtn" class="lfsso-b"><span class="ms">&#9638;</span> Continue with Microsoft</button>
       </div>
 
-      <div class="loginfoot">Secure access &middot; @dallal.com.kw</div>
+      <div class="lfsec"><span class="lfsec-ic">&#128737;</span><div><b>Secure &middot; Private &middot; Role-based access</b><span>Your data is safe with enterprise-grade security.</span></div></div>
+      <div class="lfcontact">Don't have access? <a href="mailto:ali.b@dallal.com.kw">Contact your administrator</a></div>
     </div>
   </div>
 </div>
@@ -399,6 +369,6 @@
 <script src="config.js?v=237"></script>
 <script src="sample-data.js?v=237"></script>
 <script src="funnels-data.js?v=237"></script>
-<script src="app-v2.js?v=9"></script>
+<script src="app-v2.js?v=10"></script>
 </body>
 </html>

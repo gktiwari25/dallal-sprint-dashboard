@@ -2364,17 +2364,18 @@
     document.addEventListener("visibilitychange", function () { if (!document.hidden && sbc && loadedOnce) loadAll(); });
     setTimeout(subscribeRealtime, 1500);
     el("googleBtn").addEventListener("click", doGoogle);
-    el("magicBtn").addEventListener("click", doMagicLink);
-    el("loginEmail").addEventListener("keydown", function (e) { if (e.key === "Enter") doMagicLink(); });
+    var _ms = el("msBtn"); if (_ms) _ms.addEventListener("click", function () { loginError("Microsoft SSO isn't enabled yet — sign in with Google or use the magic link."); });
+    el("magicBtn").addEventListener("click", function (e) { if (e && e.preventDefault) e.preventDefault(); doMagicLink(); });
+    el("loginEmail").addEventListener("keydown", function (e) { if (e.key === "Enter") doLogin(); });
     el("loginBtn").addEventListener("click", doLogin);
     el("loginPass").addEventListener("keydown", function (e) { if (e.key === "Enter") doLogin(); });
-    el("pwToggle").addEventListener("click", function (e) { e.preventDefault(); el("pwBlock").classList.toggle("hidden"); });
+    // Eye toggle now shows/hides the password text (the field is always visible).
+    el("pwToggle").addEventListener("click", function (e) { e.preventDefault(); var p = el("loginPass"); if (p) p.type = p.type === "password" ? "text" : "password"; });
     el("signOut").addEventListener("click", function () { if (sbc) sbc.auth.signOut(); });
-    // Landing -> sign-in modal
-    el("ctaLogin").addEventListener("click", function () { show("loginModal"); var e = el("loginEmail"); if (e) e.focus(); });
-    el("loginClose").addEventListener("click", function () { hide("loginModal"); });
-    el("loginModal").addEventListener("click", function (ev) { if (ev.target === el("loginModal")) hide("loginModal"); });
-    document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") hide("loginModal"); });
+    // Optional legacy modal controls (guarded — the split login has no modal).
+    var _cta = el("ctaLogin"); if (_cta) _cta.addEventListener("click", function () { var e = el("loginEmail"); if (e) e.focus(); });
+    var _lc = el("loginClose"); if (_lc) _lc.addEventListener("click", function () { hide("loginModal"); });
+    var _lm = el("loginModal"); if (_lm) _lm.addEventListener("click", function (ev) { if (ev.target === _lm) hide("loginModal"); });
     // Remember collapsed/expanded state of story lists across re-renders.
     document.addEventListener("toggle", function (e) {
       var d = e.target; if (d && d.tagName === "DETAILS" && d.getAttribute("data-lb")) _collapse[d.getAttribute("data-lb")] = d.open;
