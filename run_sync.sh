@@ -78,4 +78,7 @@ else
   log "SKIP  amplitude/marketing/paths — AMPLITUDE_PROD_API_KEY not set in .env"
 fi
 
+# --- One-time Slack alert when App Store Impressions first land ---------------
+run_step "impr-check" "$PY" "$DIR/check_impressions.py"
+
 log "==== sync run done ===="
