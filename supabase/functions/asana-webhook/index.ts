@@ -28,7 +28,7 @@ const CF: Record<string, string> = {
 };
 const SECTION_DONE = /UAT Passed|Released|Ready for Production/i;
 const TASK_FIELDS =
-  "name,completed,completed_at,created_at,modified_at,assignee.name,num_subtasks," +
+  "name,completed,completed_at,created_at,modified_at,assignee.name,num_subtasks,parent.gid," +
   "memberships.section.name,memberships.project.gid," +
   "custom_fields.gid,custom_fields.enum_value.name,custom_fields.number_value,custom_fields.text_value";
 
@@ -45,6 +45,10 @@ function sectionOf(t: any): string | null {
   }
   return null;
 }
+// Only top-level members of the tracked project are stories. Subtasks (and tasks
+// removed from the board) roll up into their parent's superseded SP — they must
+// NOT get their own row (that's what created the orphan "Unestimated" entries).
+const isProjectMember = (t: any) => (t.memberships ?? []).some((m: any) => m.project?.gid === PROJECT);
 
 async function computeRow(t: any) {
   const idx = cfIndex(t);
@@ -102,11 +106,20 @@ async function computeRow(t: any) {
   };
 }
 
-async function syncTask(gid: string) {
+async function syncTask(gid: string, depth = 0) {
   const r = await fetch(`${A}/tasks/${gid}?opt_fields=${TASK_FIELDS}`, { headers: AH });
   if (!r.ok) return;
-  const row = await computeRow((await r.json()).data);
-  await sb.from("fact_workitems").upsert(row, { onConflict: "task_gid" });
+  const t = (await r.json()).data;
+  if (isProjectMember(t)) {
+    await sb.from("fact_workitems").upsert(await computeRow(t), { onConflict: "task_gid" });
+  } else {
+    // Not a tracked story (a subtask, or a task removed from the board): never keep
+    // it as its own row — that pollutes "Unestimated" and risks double-counting.
+    // Drop any stale row, and if it's a subtask, re-sync its PARENT so the rolled-up
+    // (superseded) story points and delivered status update in real time.
+    await sb.from("fact_workitems").delete().eq("task_gid", gid);
+    if (t.parent?.gid && depth < 2) await syncTask(t.parent.gid, depth + 1);
+  }
 }
 
 // Rebuild dim_sprint aggregates + today's burndown snapshot from ALL rows.
