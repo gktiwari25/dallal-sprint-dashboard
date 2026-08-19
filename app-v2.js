@@ -368,10 +368,18 @@
     var goalHex = { green: "#2e7d32", amber: "#f29f05", red: "#c62828" }[rag[0]] || "#0f8b8d";
     var fracSP = m.usePts ? (Math.round(m.deliveredSP) + " / " + Math.round(m.committedSP) + " SP") : (m.completed + " / " + m.planned);
     var carryTxt = m.usePts ? (Math.round(m.carryFwdSP) + " SP") : ((m.carryFwdItems || 0) + " items");
-    // Days remaining from the sprint end date, when this is an ongoing sprint.
+    // Days remaining from the sprint's SCHEDULED end (calendar cadence), not the
+    // last-activity date. Only shown for the currently-running sprint.
     var daysLeft = null;
-    var srow = (data.sprints || []).filter(function (s) { return String(s.sprint) === String(sprint); })[0];
-    if (srow) { var endd = srow.planned_end || srow.inferred_end; if (endd) { var dl = Math.ceil((new Date(endd) - new Date()) / 86400000); if (dl >= 0 && dl < 400) daysLeft = dl; } }
+    (function () {
+      var a = cfg.SPRINT_ANCHOR; if (!a || a.sprint == null || !a.start) return;
+      var start0 = new Date(a.start + "T00:00:00"); if (isNaN(start0.getTime())) return;
+      var len = num(cfg.SPRINT_LENGTH_DAYS) || 14;
+      var startN = new Date(start0.getTime() + (num(sprint) - num(a.sprint)) * len * 86400000);
+      var endN = new Date(startN.getTime() + len * 86400000);           // end (exclusive)
+      var dl = Math.ceil((endN - new Date()) / 86400000);
+      if (dl >= 0 && dl <= len) daysLeft = dl;                          // only the ongoing sprint
+    })();
     el("healthGrid").innerHTML =
       '<div class="hero3">' +
         heroCard("SPRINT PROGRESS", "📈", m.progress, fracSP, "story points completed", "#f5883f") +
@@ -2149,11 +2157,20 @@
     ]));
   }
 
+  // Paginate: PostgREST caps each response at ~1000 rows regardless of .limit(),
+  // so fetch in 1000-row pages until a short page — otherwise larger tables
+  // (fact_appstore_metrics, fact_trends…) load an arbitrary truncated slice.
   function sbSelect(table) {
-    return sbc.from(table).select("*").limit(5000).then(function (r) {
-      if (r.error) throw new Error(table + ": " + r.error.message);
-      return r.data || [];
-    });
+    var PAGE = 1000, all = [];
+    function page(from) {
+      return sbc.from(table).select("*").range(from, from + PAGE - 1).then(function (r) {
+        if (r.error) throw new Error(table + ": " + r.error.message);
+        var got = r.data || [];
+        all = all.concat(got);
+        return got.length === PAGE ? page(from + PAGE) : all;
+      });
+    }
+    return page(0);
   }
 
   // Fast 32-bit FNV-1a hash — a cheap signature of the fetched data so background
