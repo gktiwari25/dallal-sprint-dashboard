@@ -1,10 +1,10 @@
 /* ============================================================================
-   Dallal Dashboard — REDESIGN PREVIEW (v2.2)
-   Senior-UX redesign inspired by Sunny Rathod's LifeStats + Dabang references:
-   rich gradient nav rail, gradient hero KPI, multicolor stat chips, big bold
-   numbers, deep rounded cards with layered depth. Fully light + dark aware.
-   Layered over styles.css — reuses every class name + app.js element ID, so
-   app.js is unchanged. Loaded only by index-v2.html (live is untouched).
+   Dallal Dashboard — REDESIGN OVERHAUL (v3)
+   Full relook inspired by Sunny Rathod's LifeStats + Dabang: gradient nav rail,
+   floating elevated cards on a soft tinted canvas, multicolour stat chips, big
+   bold numbers, deep rounding + layered depth, modern charts, and restyled
+   tables / task rows / funnels / gauges. Fully light + dark aware.
+   Layered over styles.css — reuses every class + app.js ID (app.js unchanged).
    ========================================================================== */
 
 :root{
@@ -13,142 +13,141 @@
   --accent-grad:linear-gradient(135deg,#5a5be6 0%,#8a74f4 60%,#a06bf0 100%);
   --rail-grad:linear-gradient(168deg,#171d4d 0%,#231a58 52%,#2f1c63 100%);
   --r-md:14px; --r-lg:18px; --r-xl:22px;
+  --sh-xs:0 2px 8px rgba(23,31,58,.05);
   --sh-sm:0 4px 16px rgba(23,31,58,.07);
   --sh-md:0 14px 34px rgba(23,31,58,.10);
   --sh-lg:0 26px 64px rgba(23,31,58,.18);
-  /* stat-chip palette (translucent so it reads on light AND dark cards) */
   --chip-1:rgba(90,91,230,.16); --chip-2:rgba(14,168,150,.18);
-  --chip-3:rgba(245,140,72,.20); --chip-4:rgba(31,120,235,.16);
-  --chip-5:rgba(236,72,153,.16);
+  --chip-3:rgba(245,140,72,.20); --chip-4:rgba(31,120,235,.16); --chip-5:rgba(236,72,153,.16);
+  --c1:#5a5be6; --c2:#0ea89a; --c3:#f5883f; --c4:#2f6df6; --c5:#ec4899;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --sh-xs:0 2px 8px rgba(0,0,0,.4); --sh-sm:0 4px 16px rgba(0,0,0,.42); --sh-md:0 14px 34px rgba(0,0,0,.5); --sh-lg:0 26px 64px rgba(0,0,0,.6); }
 }
 
-/* Airy canvas with a soft colour wash (works over light OR dark --bg) */
 body{
   background:
-    radial-gradient(1200px 640px at 100% -12%, rgba(124,116,244,.14), transparent 60%),
+    radial-gradient(1200px 640px at 100% -12%, rgba(124,116,244,.15), transparent 60%),
     radial-gradient(1000px 560px at -6% 112%, rgba(14,168,150,.10), transparent 55%),
     var(--bg) !important;
 }
-@media (prefers-color-scheme: dark){
-  :root{ --sh-sm:0 4px 16px rgba(0,0,0,.4); --sh-md:0 14px 34px rgba(0,0,0,.5); --sh-lg:0 26px 64px rgba(0,0,0,.6); }
-  body{
-    background:
-      radial-gradient(1200px 640px at 100% -12%, rgba(124,116,244,.20), transparent 60%),
-      radial-gradient(1000px 560px at -6% 112%, rgba(14,168,150,.14), transparent 55%),
-      var(--bg) !important;
-  }
-}
+@media (prefers-color-scheme: dark){ body{
+  background:
+    radial-gradient(1200px 640px at 100% -12%, rgba(124,116,244,.22), transparent 60%),
+    radial-gradient(1000px 560px at -6% 112%, rgba(14,168,150,.14), transparent 55%),
+    var(--bg) !important; } }
 
 /* =========================================================================
-   NAVIGATION RAIL  (was header.topbar) — rich gradient, works in both themes
+   NAVIGATION RAIL
    ========================================================================= */
 header.topbar{
-  position:fixed !important; left:16px; top:16px; bottom:16px; right:auto;
-  width:var(--side-w); z-index:60;
+  position:fixed !important; left:16px; top:16px; bottom:16px; right:auto; width:var(--side-w); z-index:60;
   flex-direction:column !important; align-items:stretch; flex-wrap:nowrap !important; gap:6px;
   background:var(--rail-grad) !important; color:#eef0ff !important;
-  border:1px solid rgba(255,255,255,.08) !important; border-radius:26px;
-  box-shadow:var(--sh-lg); padding:20px 14px 16px; overflow-y:auto;
+  border:1px solid rgba(255,255,255,.08) !important; border-radius:26px; box-shadow:var(--sh-lg);
+  padding:20px 14px 16px; overflow-y:auto;
 }
-header.topbar .title{
-  font-size:17px !important; color:#fff !important; font-weight:800;
-  padding:4px 8px 16px; display:flex; align-items:center; gap:11px; line-height:1.2;
-}
-header.topbar .title::before{
-  content:""; width:32px; height:32px; border-radius:10px; flex:0 0 auto;
-  background:linear-gradient(135deg,#8a74f4,#5a5be6); box-shadow:0 8px 18px rgba(138,116,244,.55);
-}
+header.topbar .title{ font-size:17px !important; color:#fff !important; font-weight:800; padding:4px 8px 16px; display:flex; align-items:center; gap:11px; line-height:1.2; }
+header.topbar .title::before{ content:""; width:32px; height:32px; border-radius:10px; flex:0 0 auto; background:linear-gradient(135deg,#8a74f4,#5a5be6); box-shadow:0 8px 18px rgba(138,116,244,.55); }
 header.topbar > .spacer:first-of-type{ display:none; }
 header.topbar > .spacer{ flex:1 1 auto; min-height:8px; }
-
-nav.tabs{
-  flex-direction:column !important; gap:4px; width:100%; margin:0 !important;
-  background:transparent !important; border:0 !important; padding:0 !important; border-radius:0 !important;
-}
-nav.tabs .tab{
-  width:100%; text-align:left; justify-content:flex-start !important; display:flex; align-items:center;
-  padding:11px 14px !important; border-radius:13px !important; font-size:13.5px; font-weight:600;
-  color:rgba(233,236,255,.72) !important; background:transparent !important; border:0 !important;
-}
-nav.tabs .tab::before{
-  content:""; width:7px; height:7px; border-radius:50%; margin-right:12px; flex:0 0 auto;
-  background:rgba(255,255,255,.28); transition:all var(--dur) var(--ease);
-}
+nav.tabs{ flex-direction:column !important; gap:4px; width:100%; margin:0 !important; background:transparent !important; border:0 !important; padding:0 !important; border-radius:0 !important; }
+nav.tabs .tab{ width:100%; text-align:left; justify-content:flex-start !important; display:flex; align-items:center; padding:11px 14px !important; border-radius:13px !important; font-size:13.5px; font-weight:600; color:rgba(233,236,255,.72) !important; background:transparent !important; border:0 !important; }
+nav.tabs .tab::before{ content:""; width:7px; height:7px; border-radius:50%; margin-right:12px; flex:0 0 auto; background:rgba(255,255,255,.28); transition:all var(--dur) var(--ease); }
 nav.tabs .tab:hover{ background:rgba(255,255,255,.08) !important; color:#fff !important; }
-nav.tabs .tab.active{
-  background:linear-gradient(135deg,rgba(138,116,244,.95),rgba(90,91,230,.95)) !important; color:#fff !important;
-  box-shadow:0 10px 22px rgba(90,91,230,.5);
-}
+nav.tabs .tab.active{ background:linear-gradient(135deg,rgba(138,116,244,.95),rgba(90,91,230,.95)) !important; color:#fff !important; box-shadow:0 10px 22px rgba(90,91,230,.5); }
 nav.tabs .tab.active::before{ background:#fff; box-shadow:0 0 10px rgba(255,255,255,.9); }
-
 header.topbar #sprintLbl{ padding:2px 10px 4px; color:rgba(233,236,255,.55); font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; }
-header.topbar #sprintSel{
-  width:100%; margin:0 0 8px; background:rgba(255,255,255,.1) !important; color:#fff !important;
-  border:1px solid rgba(255,255,255,.16) !important; border-radius:11px; padding:9px 11px; font-weight:600;
-}
+header.topbar #sprintSel{ width:100%; margin:0 0 8px; background:rgba(255,255,255,.1) !important; color:#fff !important; border:1px solid rgba(255,255,255,.16) !important; border-radius:11px; padding:9px 11px; font-weight:600; }
 header.topbar #sprintSel option{ color:#12213a; }
-header.topbar #refreshBtn{
-  width:100%; justify-content:center; margin:0 0 8px; color:#fff !important; border:0 !important; border-radius:12px;
-  padding:11px 12px; font-weight:700; background:linear-gradient(135deg,#8a74f4,#5a5be6) !important;
-  box-shadow:0 10px 22px rgba(90,91,230,.45);
-}
+header.topbar #refreshBtn{ width:100%; justify-content:center; margin:0 0 8px; color:#fff !important; border:0 !important; border-radius:12px; padding:11px 12px; font-weight:700; background:linear-gradient(135deg,#8a74f4,#5a5be6) !important; box-shadow:0 10px 22px rgba(90,91,230,.45); }
 header.topbar #refreshBtn:hover{ filter:brightness(1.08); }
-header.topbar #signOut{
-  width:100%; justify-content:center; background:rgba(255,255,255,.06) !important; color:rgba(233,236,255,.8) !important;
-  border:1px solid rgba(255,255,255,.16) !important; border-radius:12px; padding:9px 12px; font-weight:600;
-}
+header.topbar #signOut{ width:100%; justify-content:center; background:rgba(255,255,255,.06) !important; color:rgba(233,236,255,.8) !important; border:1px solid rgba(255,255,255,.16) !important; border-radius:12px; padding:9px 12px; font-weight:600; }
 header.topbar #signOut:hover{ background:rgba(255,255,255,.12) !important; color:#fff !important; }
 header.topbar #updated{ font-size:10.5px; color:rgba(233,236,255,.5); padding:8px 10px 0; line-height:1.4; }
 
 /* =========================================================================
-   CONTENT — shifted right of the rail
+   CONTENT
    ========================================================================= */
-.wrap{ margin-left:calc(var(--side-w) + 30px) !important; margin-right:16px !important; max-width:none !important; padding-top:20px; }
+.wrap{ margin-left:calc(var(--side-w) + 30px) !important; margin-right:16px !important; max-width:none !important; padding-top:22px; }
 #sampleFlag{ margin-left:calc(var(--side-w) + 30px); margin-right:16px; }
 .subtabs{ background:var(--card); border:1px solid var(--line); border-radius:14px; box-shadow:var(--sh-sm); padding:5px; }
 .subtabs .subtab.active{ background:var(--accent-grad) !important; color:#fff !important; box-shadow:0 6px 16px rgba(90,91,230,.34); }
 
-/* =========================================================================
-   SECTIONS + CARDS — deep rounding, layered depth, colour
-   ========================================================================= */
-.section{ border-radius:22px !important; box-shadow:var(--sh-sm); border:1px solid var(--line); }
-.section > h2{ letter-spacing:-.01em; display:flex; align-items:center; gap:10px; }
-.section > h2::before{ content:""; width:5px; height:18px; border-radius:3px; background:var(--accent-grad); flex:0 0 auto; }
+/* Section: transparent grouper (cards float on the canvas) with a bold header */
+.section{ margin:0 0 30px !important; }
+.section > h2{ font-size:15px !important; letter-spacing:-.01em; display:flex; align-items:center; gap:11px; color:var(--ink); }
+.section > h2::before{ content:"" !important; width:5px !important; height:19px !important; border-radius:3px !important; background:var(--accent-grad) !important; flex:0 0 auto; }
+.section .body{ padding-top:14px !important; }
 
-.card{ border-radius:18px !important; padding:18px !important; box-shadow:var(--sh-sm) !important; border:1px solid var(--line) !important; background:var(--card) !important; }
+/* KPI cards — floating, rounded, multicolour icon chips, big numbers */
+.card{ border-radius:20px !important; padding:18px 19px !important; box-shadow:var(--sh-sm) !important; border:1px solid var(--line) !important; background:var(--card) !important; }
 .card::before{ display:none !important; }
 .card:hover{ box-shadow:var(--sh-md) !important; transform:translateY(-3px); }
-.card .icon{
-  top:15px !important; right:15px !important; width:38px; height:38px; border-radius:12px;
-  display:grid; place-items:center; font-size:18px !important; opacity:1 !important; background:var(--chip-1);
-}
-.card:has(.icon) .label{ padding-right:50px; }
-.card .label{ font-size:11px !important; }
-.card .value{ font-size:30px !important; letter-spacing:-.02em; }
-
-/* Multicolour stat chips — cycle so a KPI row reads like the reference */
+.card .icon{ top:16px !important; right:16px !important; width:40px; height:40px; border-radius:13px; display:grid; place-items:center; font-size:19px !important; opacity:1 !important; background:var(--chip-1); }
+.card:has(.icon) .label{ padding-right:52px; }
+.card .label{ font-size:11px !important; letter-spacing:.06em; }
+.card .value{ font-size:31px !important; letter-spacing:-.025em; }
+.card .bar{ height:8px; border-radius:8px; }
 .grid > .card:nth-child(5n+1) .icon{ background:var(--chip-1); }
 .grid > .card:nth-child(5n+2) .icon{ background:var(--chip-2); }
 .grid > .card:nth-child(5n+3) .icon{ background:var(--chip-3); }
 .grid > .card:nth-child(5n+4) .icon{ background:var(--chip-4); }
 .grid > .card:nth-child(5n+5) .icon{ background:var(--chip-5); }
 
-/* (Gradient hero removed — highlighting the first tile was arbitrary. All KPI
-   tiles are now consistent; colour comes from the multicolour chips + charts.) */
+/* Chart cards — bigger, elevated, titled */
+.chartcard{ border-radius:20px !important; box-shadow:var(--sh-sm) !important; border:1px solid var(--line) !important; background:var(--card) !important; padding:18px 18px 14px !important; }
+.chartcard:hover{ box-shadow:var(--sh-md) !important; }
+.chartcard h3{ font-weight:700; font-size:13px; display:flex; align-items:center; gap:9px; }
+.chartcard h3::before{ content:""; width:8px; height:8px; border-radius:3px; background:var(--accent-grad); flex:0 0 auto; }
+.chartbox{ height:262px !important; }
 
-/* Chart cards */
-.chartcard{ border-radius:18px !important; box-shadow:var(--sh-sm) !important; border:1px solid var(--line); background:var(--card); }
-.chartcard h3{ font-weight:700; }
+/* Gauges (donut rings) */
+.gauges{ gap:16px; }
+.gwrap{ filter:drop-shadow(0 6px 14px rgba(90,91,230,.14)); }
+.gctr{ font-weight:800 !important; }
+.glabel{ font-weight:600; color:var(--muted); }
+
+/* Tables — rounded card, soft header, row hover */
+table.risks, table.ftable{ border-radius:16px !important; overflow:hidden; box-shadow:var(--sh-xs); border:1px solid var(--line); background:var(--card); }
+table.risks th{ background:var(--surface-2) !important; font-size:10.5px; letter-spacing:.06em; color:var(--muted); }
+table.risks tbody tr:hover, table.ftable tbody tr:hover{ background:var(--surface-2); }
+table.risks td, table.risks th{ padding:12px 14px !important; }
+
+/* Task rows / list blocks */
+.listhdr{ font-size:11px !important; letter-spacing:.07em; }
+.taskrow{ border-radius:13px !important; padding:11px 14px !important; box-shadow:var(--sh-xs); border:1px solid var(--line) !important; }
+.taskrow:hover{ box-shadow:var(--sh-sm); transform:translateX(2px); }
+.taskrow .trbadge{ border-radius:8px; padding:4px 8px; }
+.taskrow .trstatus{ background:var(--surface-3); border-radius:999px; padding:4px 12px; font-weight:600; }
+details.lb{ border-radius:16px; }
+
+/* Funnels — modern steps + panels */
+.funnelcard{ border-radius:20px !important; box-shadow:var(--sh-sm) !important; border:1px solid var(--line); background:var(--card); }
+.fstep{ border-radius:14px !important; }
+.ftrack{ border-radius:999px; overflow:hidden; }
+.ffill{ border-radius:999px; }
+.fkpi, .fkpis > *{ border-radius:14px; }
+.ftag{ border-radius:999px; }
+.finsight{ border-radius:14px; }
+
+/* Cards that are actually panels (repo / risk) */
+.repocard, .riskcard{ border-radius:18px !important; box-shadow:var(--sh-sm) !important; border:1px solid var(--line) !important; background:var(--card) !important; }
+.repocard:hover, .riskcard:hover{ box-shadow:var(--sh-md) !important; }
+
+/* Content buttons + selects (export, range, env pickers) */
+.wrap button:not(.subtab), .fenv, .expbtn{ border-radius:11px !important; }
+.wrap select, .wrap input[type="date"]{ border-radius:11px !important; }
+
+/* Info-icon chips + status pills a touch rounder */
+.tip{ font-weight:700; }
+.rag{ border-radius:999px; font-weight:700; }
 
 /* =========================================================================
-   RESPONSIVE — collapse the rail back to a top bar on narrow screens
+   RESPONSIVE — rail collapses to a top bar
    ========================================================================= */
 @media (max-width:980px){
-  header.topbar{
-    position:sticky !important; left:0; top:0; right:0; bottom:auto; width:auto;
-    flex-direction:row !important; flex-wrap:wrap !important; align-items:center;
-    border-radius:0; margin:0; border:0;
-  }
+  header.topbar{ position:sticky !important; left:0; top:0; right:0; bottom:auto; width:auto; flex-direction:row !important; flex-wrap:wrap !important; align-items:center; border-radius:0; margin:0; border:0; }
   header.topbar .title::before{ display:none; }
   header.topbar > .spacer{ flex:1; }
   header.topbar > .spacer:first-of-type{ display:block; }
