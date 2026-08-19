@@ -1,0 +1,4 @@
+repo,critical,high,medium,low,scanned_deps,scanned_at,note
+Dallal-ReactJs,2,39,39,7,1114,2026-06-29,OSV scan (npm)
+Dallal-React-Native-Mobile,2,17,15,3,1547,2026-06-29,OSV scan (npm)
+Dallal-BE-ROR,,,,,,2026-06-29,scan pending (run --scan-vulns)

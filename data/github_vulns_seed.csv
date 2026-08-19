@@ -1,0 +1,13 @@
+repo,package,version,severity,advisory,fixed_in,direct,summary
+Dallal-ReactJs,vitest,4.0.17,CRITICAL,CVE-2026-47429,4.1.0,yes,Arbitrary file read/exec when Vitest UI server is listening
+Dallal-ReactJs,form-data,4.0.2,CRITICAL,GHSA-fjxv-7rqg-78g4,4.0.4,no,Unsafe random boundary selection
+Dallal-ReactJs,axios,1.9.0,HIGH,CVE-2026-44486,1.16.0,yes,Proxy-auth credential leak across redirects + MitM (16 advisories)
+Dallal-ReactJs,react-router,7.6.0,HIGH,CVE-2026-21884,7.15.0,yes,SSR XSS / open-redirect (7 advisories)
+Dallal-ReactJs,vite,6.4.1,HIGH,CVE-2026-31486,6.4.3,yes,Dev-server arbitrary file read via WebSocket
+Dallal-ReactJs,lodash,4.17.21,HIGH,CVE-2026-4800,4.18.0,no,Code injection via _.template
+Dallal-React-Native-Mobile,shell-quote,1.8.3,CRITICAL,CVE-2026-9277,1.8.4,no,quote() does not escape newlines (command injection)
+Dallal-React-Native-Mobile,xmldom,0.5.0,CRITICAL,CVE-2022-39353,0.8.4,no,Multiple-root-node XML parsing
+Dallal-React-Native-Mobile,lodash,4.17.21,HIGH,CVE-2026-4800,4.18.0,yes,Code injection via _.template (direct prod dep)
+Dallal-React-Native-Mobile,@grpc/grpc-js,1.9.15,HIGH,GHSA-7v5v-9h63-cj86,1.10.9,no,Crash / DoS
+Dallal-React-Native-Mobile,ws,8.20.0,HIGH,CVE-2024-37890,8.17.1,no,DoS via memory exhaustion
+Dallal-BE-ROR,,,UNKNOWN,,,,Dependency vuln scan not completed - run etl_github.py --scan-vulns

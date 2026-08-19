@@ -63,9 +63,18 @@ else
   log "SKIP  playstore — PLAY_BUCKET_ID / GOOGLE_APPLICATION_CREDENTIALS not set"
 fi
 
-# --- OTHER ETLs (restore when the scripts are back on this machine) --------
-# run_step "asana"     "$PY" "$DIR/etl_asana.py"
-# run_step "amplitude" "$PY" "$DIR/etl_amplitude.py"
-# run_step "github"    "$PY" "$DIR/etl_github.py"
+# --- Engineering (GitHub repo health + vulns) -> Supabase ---------------------
+# Uses the gh CLI (no token env needed). fact_repo_health + fact_vulns.
+run_step "github" "$PY" "$DIR/etl_github.py" --out "$DIR/data" --supabase
+
+# --- Amplitude (Funnels / Marketing / Paths) -> Supabase ----------------------
+# Only run when the Amplitude keys are present in .env.
+if [ -n "${AMPLITUDE_PROD_API_KEY:-}" ]; then
+  run_step "amplitude" "$PY" "$DIR/etl_amplitude.py" --supabase
+  run_step "marketing" "$PY" "$DIR/etl_marketing.py" --supabase
+  run_step "paths"     "$PY" "$DIR/etl_paths.py" --supabase
+else
+  log "SKIP  amplitude/marketing/paths — AMPLITUDE_PROD_API_KEY not set in .env"
+fi
 
 log "==== sync run done ===="

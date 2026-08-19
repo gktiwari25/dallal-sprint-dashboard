@@ -156,6 +156,36 @@ def upsert(rows):
             print(f"  upserted {len(chunk)} rows")
 
 
+# ---------------------------------------------------------------------------
+# Shared Supabase push used by the sibling ETLs (etl_github / etl_amplitude /
+# etl_marketing / etl_paths import `etl_asana.SB_CONFLICT` + `write_supabase`).
+# Each script extends SB_CONFLICT with its own table->conflict-key at runtime.
+# ---------------------------------------------------------------------------
+SB_CONFLICT = {
+    "fact_workitems": "task_gid", "dim_sprint": "sprint", "dim_date": "date",
+    "fact_flow": "task_gid", "fact_burndown": "snapshot_date,sprint", "load_log": None,
+}
+
+
+def write_supabase(tables):
+    """Idempotent upsert of {table: rows} via PostgREST; "" -> NULL, chunked 500."""
+    url = env("SUPABASE_URL").rstrip("/") + "/rest/v1/"
+    key = os.environ.get("SUPABASE_SERVICE_KEY") or env("SUPABASE_SERVICE_ROLE_KEY")
+    for name, rows in tables.items():
+        if not rows:
+            continue
+        clean = [{k: (None if v == "" else v) for k, v in r.items()} for r in rows]
+        conflict = SB_CONFLICT.get(name)
+        path = f"{name}?on_conflict={conflict}" if conflict else name
+        headers = {"apikey": key, "Authorization": "Bearer " + key, "Content-Type": "application/json",
+                   "Prefer": "resolution=merge-duplicates,return=minimal" if conflict else "return=minimal"}
+        for i in range(0, len(clean), 500):
+            r = requests.post(url + path, headers=headers, json=clean[i:i + 500], timeout=90)
+            if r.status_code not in (200, 201, 204):
+                print(f"  supabase {name}: {r.status_code} {r.text[:200]}", file=sys.stderr)
+        print(f"  supabase: {name} <- {len(clean)} rows", file=sys.stderr)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true", help="compare to Supabase, write nothing")
