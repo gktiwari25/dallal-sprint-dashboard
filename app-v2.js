@@ -2037,18 +2037,41 @@
     });
     var tArr = Object.keys(terr).map(function (k) { return { code: k, v: terr[k] }; }).sort(function (a, b) { return b.v - a.v; });
     var maxT = tArr.length ? tArr[0].v : 0;
+    var totalT = tArr.reduce(function (s, t) { return s + t.v; }, 0);
     var nameOf = {}; AS_TERRITORIES.forEach(function (t) { nameOf[t.code] = t.name; });
-    var tRows = tArr.slice(0, 10).map(function (t) {
+    var shareOf = function (v) { return totalT ? Math.round(v / totalT * 1000) / 10 : 0; };
+    if (!tArr.length) { el("asTerritories").innerHTML = '<div class="muted">No territory data.</div>'; return; }
+    var top = tArr[0], count = tArr.length, avgShare = Math.round(1000 / count) / 10;
+
+    var kpis =
+      statCard("Total Downloads", fmtInt(totalT), "across territories", "var(--muted)", "⬇️", "#7b61ff") +
+      statCard("Top Territory", fmtInt(top.v), (nameOf[top.code] || top.code) + " · " + shareOf(top.v) + "%", "#22a565", "📈", "#22a565") +
+      statCard("Territories", count, "countries", "var(--muted)", "🌐", "#2f6df6") +
+      statCard("Avg Share", avgShare + "%", "per territory", "var(--muted)", "🥧", "#f5883f");
+
+    var listRows = tArr.slice(0, 10).map(function (t, i) {
       var w = maxT ? Math.round(t.v / maxT * 100) : 0;
-      var share = totDl ? (Math.round(t.v / totDl * 1000) / 10) : 0;
-      return '<div class="taskrow"><div class="tasktitle" style="width:100%">' +
-        '<span>' + esc(nameOf[t.code] || t.code) + '</span>' +
-        '<span class="muted" style="float:right">' + fmtInt(t.v) + " · " + share + "%</span>" +
-        '<div class="bar" style="margin-top:6px"><span style="width:' + w + '%;background:var(--teal)"></span></div>' +
-        "</div></div>";
+      return '<div class="trow"><span class="trank">' + (i + 1) + '</span><span class="tflag">' + flagEmoji(t.code) + '</span>' +
+        '<span class="tname">' + esc(nameOf[t.code] || t.code) + '</span>' +
+        '<span class="tbar"><span style="width:' + Math.max(3, w) + '%"></span></span>' +
+        '<span class="tdl">' + fmtInt(t.v) + '</span><span class="tshare">' + shareOf(t.v) + '%</span></div>';
     }).join("");
-    el("asTerritories").innerHTML = listBlock("asterr", "Downloads by territory (Sales &amp; Trends) &middot; " + asRangeLabel(),
-      tRows || '<div class="muted">No territory data.</div>');
+
+    var dc = ["#6c5ce7", "#2f6df6", "#0ea89a", "#f5a623", "#9aa7b4"];
+    var top4 = tArr.slice(0, 4), othersV = tArr.slice(4).reduce(function (s, t) { return s + t.v; }, 0);
+    var segs = top4.map(function (t, i) { var sh = totalT ? t.v / totalT * 100 : 0; return '<span class="dseg" style="width:' + sh + '%;background:' + dc[i] + '">' + (sh > 7 ? shareOf(t.v) + '%' : '') + '</span>'; }).join("");
+    if (othersV > 0) segs += '<span class="dseg" style="width:' + (othersV / totalT * 100) + '%;background:' + dc[4] + '"></span>';
+    var legend = top4.map(function (t, i) { return '<span class="dleg"><i style="background:' + dc[i] + '"></i>' + esc(nameOf[t.code] || t.code) + ' (' + shareOf(t.v) + '%)</span>'; }).join("");
+    if (othersV > 0) legend += '<span class="dleg"><i style="background:' + dc[4] + '"></i>Others (' + shareOf(othersV) + '%)</span>';
+
+    el("asTerritories").innerHTML =
+      '<div class="terrkpis">' + kpis + '</div>' +
+      '<div class="terrpanel"><div class="terrpanel-h">Downloads by Territory <span>· ' + asRangeLabel() + '</span></div><div class="terrlist">' + listRows + '</div></div>' +
+      '<div class="terrpanel"><div class="terrpanel-h">Download Distribution</div><div class="dbar">' + segs + '</div><div class="dlegend">' + legend + '</div></div>';
+  }
+  function flagEmoji(code) {
+    if (!/^[A-Za-z]{2}$/.test(code)) return "🏳️";
+    return code.toUpperCase().replace(/./g, function (c) { return String.fromCodePoint(127397 + c.charCodeAt(0)); });
   }
 
   function exportAppStore() {

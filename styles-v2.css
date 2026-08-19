@@ -138,6 +138,29 @@ header.topbar #updated{ font-size:10.5px; color:rgba(233,236,255,.5); padding:8p
 @media (max-width:1120px){ #healthGrid{ grid-template-columns:1fr; } .hero3{ grid-template-columns:repeat(3,1fr); } }
 @media (max-width:640px){ .hero3, .minigrid{ grid-template-columns:1fr; } }
 
+/* ===== Top Territories — KPIs + ranked bar list + distribution ===== */
+.terrkpis{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:16px; }
+.terrpanel{ background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--sh-sm); padding:16px 18px; margin-bottom:16px; }
+.terrpanel-h{ font-size:12px; font-weight:800; letter-spacing:.03em; color:var(--ink-2); margin-bottom:12px; }
+.terrpanel-h span{ color:var(--muted); font-weight:600; }
+.terrlist{ display:flex; flex-direction:column; gap:3px; }
+.trow{ display:grid; grid-template-columns:28px 26px 1.5fr 2.4fr auto 54px; align-items:center; gap:12px; padding:9px 8px; border-radius:11px; }
+.trow:hover{ background:var(--surface-2); }
+.trank{ font-size:12px; font-weight:800; color:var(--muted); text-align:center; background:var(--surface-3); border-radius:7px; padding:4px 0; }
+.tflag{ font-size:18px; text-align:center; line-height:1; }
+.tname{ font-size:13px; font-weight:600; color:var(--ink); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.tbar{ height:11px; border-radius:99px; background:var(--surface-3); overflow:hidden; }
+.tbar > span{ display:block; height:100%; border-radius:99px; background:linear-gradient(90deg,#6c5ce7,#8a74f4); }
+.tdl{ font-size:13.5px; font-weight:800; color:var(--ink); text-align:right; }
+.tshare{ font-size:12.5px; font-weight:700; color:var(--muted); text-align:right; }
+.dbar{ display:flex; height:36px; border-radius:11px; overflow:hidden; gap:2px; }
+.dseg{ display:grid; place-items:center; color:#fff; font-size:11.5px; font-weight:700; min-width:3px; transition:filter var(--dur) var(--ease); }
+.dseg:hover{ filter:brightness(1.08); }
+.dlegend{ display:flex; flex-wrap:wrap; gap:18px; margin-top:13px; }
+.dleg{ display:flex; align-items:center; gap:7px; font-size:12px; color:var(--ink-2); font-weight:600; }
+.dleg i{ width:10px; height:10px; border-radius:50%; flex:0 0 auto; }
+@media (max-width:900px){ .terrkpis{ grid-template-columns:repeat(2,1fr); } .trow{ grid-template-columns:26px 24px 1fr 1.5fr auto 48px; gap:9px; } }
+
 /* ===== "Not yet completed" summary card (ring + bars, click to expand) ===== */
 .ncblock{ background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--sh-sm); overflow:hidden; }
 .ncblock > summary{ list-style:none; cursor:pointer; display:flex; align-items:center; gap:22px; padding:16px 22px; }
