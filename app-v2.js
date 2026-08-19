@@ -2372,9 +2372,10 @@
     el("pwToggle").addEventListener("click", function (e) { e.preventDefault(); var pb = el("pwBlock"); if (pb) pb.classList.toggle("hidden"); var lp = el("loginPass"); if (lp && !pb.classList.contains("hidden")) lp.focus(); });
     el("signOut").addEventListener("click", function () { if (sbc) sbc.auth.signOut(); });
     // Optional legacy modal controls (guarded — the split login has no modal).
-    var _cta = el("ctaLogin"); if (_cta) _cta.addEventListener("click", function () { var e = el("loginEmail"); if (e) e.focus(); });
+    var _cta = el("ctaLogin"); if (_cta) _cta.addEventListener("click", function () { show("loginModal"); var e = el("loginEmail"); if (e) e.focus(); });
     var _lc = el("loginClose"); if (_lc) _lc.addEventListener("click", function () { hide("loginModal"); });
     var _lm = el("loginModal"); if (_lm) _lm.addEventListener("click", function (ev) { if (ev.target === _lm) hide("loginModal"); });
+    document.addEventListener("keydown", function (ev) { if (ev.key === "Escape") { var m = el("loginModal"); if (m) hide("loginModal"); } });
     // Remember collapsed/expanded state of story lists across re-renders.
     document.addEventListener("toggle", function (e) {
       var d = e.target; if (d && d.tagName === "DETAILS" && d.getAttribute("data-lb")) _collapse[d.getAttribute("data-lb")] = d.open;

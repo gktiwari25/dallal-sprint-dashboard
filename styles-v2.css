@@ -367,3 +367,30 @@ details.lb{ border-radius:16px; }
   header.topbar #sprintLbl, header.topbar #updated{ display:none; }
   .wrap, #sampleFlag{ margin-left:14px !important; margin-right:14px !important; }
 }
+
+/* =========================================================================
+   ANIMATED LOGIN BACKGROUND (original landing)
+   ========================================================================= */
+#login{ position:relative; overflow:hidden; }
+.landing{ position:relative; z-index:2; }
+.lbg-orbs{ position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0; }
+.lbg-orbs i{ position:absolute; border-radius:50%; filter:blur(70px); opacity:.55; }
+.lbg-orbs i:nth-child(1){ width:460px; height:460px; background:radial-gradient(circle,rgba(108,92,231,.55),transparent 70%); top:-140px; left:-90px; animation:lbg-d1 20s ease-in-out infinite; }
+.lbg-orbs i:nth-child(2){ width:380px; height:380px; background:radial-gradient(circle,rgba(14,168,150,.42),transparent 70%); bottom:-120px; right:8%; animation:lbg-d2 24s ease-in-out infinite; }
+.lbg-orbs i:nth-child(3){ width:320px; height:320px; background:radial-gradient(circle,rgba(59,130,246,.40),transparent 70%); top:28%; right:-90px; animation:lbg-d3 22s ease-in-out infinite; }
+@keyframes lbg-d1{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(70px,50px) scale(1.10); } }
+@keyframes lbg-d2{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(-60px,-40px) scale(1.08); } }
+@keyframes lbg-d3{ 0%,100%{ transform:translate(0,0); } 50%{ transform:translate(-50px,60px); } }
+.loginbg{ position:relative; z-index:1; animation:lbg-breathe 16s ease-in-out infinite; }
+@keyframes lbg-breathe{ 0%,100%{ opacity:.92; transform:scale(1); } 50%{ opacity:1; transform:scale(1.02); } }
+.lbg-ring{ transform-box:fill-box; transform-origin:center; animation:lbg-spin 16s linear infinite; }
+@keyframes lbg-spin{ to{ transform:rotate(360deg); } }
+.lbg-bars rect{ transform-box:fill-box; transform-origin:bottom; animation:lbg-bar 6s ease-in-out infinite; }
+.lbg-bars rect:nth-child(2){ animation-delay:.6s; }
+.lbg-bars rect:nth-child(3){ animation-delay:1.2s; }
+.lbg-bars rect:nth-child(4){ animation-delay:1.8s; }
+.lbg-bars rect:nth-child(5){ animation-delay:2.4s; }
+@keyframes lbg-bar{ 0%,100%{ transform:scaleY(1); opacity:.13; } 50%{ transform:scaleY(1.14); opacity:.24; } }
+.lbg-curve{ stroke-dasharray:2600; animation:lbg-draw 12s linear infinite; }
+@keyframes lbg-draw{ from{ stroke-dashoffset:2600; } to{ stroke-dashoffset:0; } }
+@media (prefers-reduced-motion: reduce){ .lbg-orbs i,.loginbg,.lbg-ring,.lbg-bars rect,.lbg-curve{ animation:none !important; } }
