@@ -1961,6 +1961,29 @@
     for (var i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = (h * 0x01000193) >>> 0; }
     return h >>> 0;
   }
+  // Volatile bookkeeping columns that change without affecting anything on screen
+  // (the ETLs / Asana webhook bump these constantly). Excluding them means a pure
+  // modified_at touch no longer counts as "new data" and won't trigger a repaint.
+  var _SIG_SKIP = { modified_at: 1, updated_at: 1, synced_at: 1, last_synced: 1,
+                    last_synced_at: 1, inserted_at: 1, ingested_at: 1, _synced_at: 1 };
+  // Order-independent signature: sum per-row hashes (so re-inserted rows in a new
+  // order don't read as a change) over stable, meaningful fields only.
+  function dataSig(res) {
+    var acc = 0;
+    for (var t = 0; t < res.length; t++) {
+      var arr = res[t] || [], tableAcc = 0;
+      for (var i = 0; i < arr.length; i++) {
+        var row = arr[i] || {}, keys = Object.keys(row).sort(), parts = "";
+        for (var k = 0; k < keys.length; k++) {
+          if (_SIG_SKIP[keys[k]]) continue;
+          parts += keys[k] + "=" + row[keys[k]] + "\x1f";
+        }
+        tableAcc = (tableAcc + hashStr(parts)) >>> 0;   // sum => order-independent
+      }
+      acc = (acc ^ hashStr(t + ":" + arr.length + ":" + tableAcc)) >>> 0;
+    }
+    return acc >>> 0;
+  }
 
   // force=true (manual Refresh button) always repaints. Background callers
   // (60s poll / Supabase Realtime / tab focus) pass nothing: they fetch quietly
@@ -1986,8 +2009,9 @@
       sbSelect("fact_appstore_metrics").catch(function () { return []; }),
       sbSelect("fact_trends").catch(function () { return []; }),
     ]).then(function (res) {
-      // Skip the repaint entirely when a background refresh brought no new data.
-      var sig = hashStr(JSON.stringify(res));
+      // Skip the repaint entirely when a background refresh brought no meaningful
+      // new data (volatile timestamps and row re-ordering are ignored by dataSig).
+      var sig = dataSig(res);
       if (!force && loadedOnce && sig === _dataSig) return;
       _dataSig = sig;
       data.items = res[0]; data.sprints = res[1]; data.flow = res[2]; data.risks = res[3];
