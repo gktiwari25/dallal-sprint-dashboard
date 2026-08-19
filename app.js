@@ -902,7 +902,74 @@
       toName: f.steps[bi] ? f.steps[bi].name : "", toN: u[bi] || 0, dropPct: dropPct };
   }
 
+  // ---------- Funnels date-range calendar + Trends (event segmentation) ----------
+  var funnelRangeDays = 30, funnelCustom = false, funnelFrom = "", funnelTo = "";
+  function trendAllDates() {
+    var s = {}; (data.trends || []).forEach(function (r) { if (r.date) s[r.date] = 1; });
+    return Object.keys(s).sort();
+  }
+  function populateFunnelRange() {
+    var sel = el("funnelRange"); if (!sel || sel.options.length) return;
+    [[7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"], ["custom", "Custom range…"]].forEach(function (o) {
+      var opt = document.createElement("option"); opt.value = o[0]; opt.textContent = o[1];
+      if (o[0] === funnelRangeDays) opt.selected = true; sel.appendChild(opt);
+    });
+    sel.addEventListener("change", function () {
+      if (sel.value === "custom") {
+        funnelCustom = true; el("funnelCustom").style.display = "inline-flex";
+        var ad = trendAllDates();
+        if (ad.length) {
+          if (!funnelTo) { funnelTo = ad[ad.length - 1]; el("funnelTo").value = funnelTo; }
+          if (!funnelFrom) { funnelFrom = ad[Math.max(0, ad.length - 14)]; el("funnelFrom").value = funnelFrom; }
+          el("funnelFrom").min = ad[0]; el("funnelFrom").max = ad[ad.length - 1];
+          el("funnelTo").min = ad[0]; el("funnelTo").max = ad[ad.length - 1];
+        }
+      } else { funnelCustom = false; el("funnelCustom").style.display = "none"; funnelRangeDays = parseInt(sel.value, 10) || 30; }
+      renderTrends();
+    });
+    el("funnelFrom").addEventListener("change", function () { funnelFrom = el("funnelFrom").value; renderTrends(); });
+    el("funnelTo").addEventListener("change", function () { funnelTo = el("funnelTo").value; renderTrends(); });
+  }
+  function trendWindowDates(dates) {
+    if (funnelCustom && funnelFrom && funnelTo) {
+      var lo = funnelFrom, hi = funnelTo; if (lo > hi) { var t = lo; lo = hi; hi = t; }
+      return dates.filter(function (d) { return d >= lo && d <= hi; });
+    }
+    return dates.slice(-funnelRangeDays);
+  }
+  var TREND_COLORS = ["#0f8b8d", "#1f6feb", "#7c5cbf", "#f29f05", "#2e7d32", "#c62828", "#12a3a5", "#b9820a"];
+  function renderTrends() {
+    var host = el("funnelTrends"); if (!host) return;
+    var rows = (data.trends || []).filter(function (r) { return (r.env || "PROD") === "PROD"; });
+    if (!rows.length) { host.innerHTML = '<div class="muted">No trend data yet.</div>'; return; }
+    var allSet = {}; rows.forEach(function (r) { if (r.date) allSet[r.date] = 1; });
+    var dates = trendWindowDates(Object.keys(allSet).sort());
+    var inWin = {}; dates.forEach(function (d) { inWin[d] = 1; });
+    var charts = {};
+    rows.forEach(function (r) { if (!inWin[r.date]) return; var c = charts[r.chart] = charts[r.chart] || {}; (c[r.series] = c[r.series] || {})[r.date] = num(r.value); });
+    var order = ["Registration and Log In", "Demand Side Activities", "Register Interest & Messaging"];
+    var names = Object.keys(charts).sort(function (a, b) { var ia = order.indexOf(a), ib = order.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); });
+    host.innerHTML = names.map(function (n, i) {
+      return '<div class="chartcard" style="margin-top:' + (i ? 14 : 0) + 'px"><h3>' + esc(n) + '</h3><div class="chartbox" style="height:280px"><canvas id="trendChart' + i + '"></canvas></div></div>';
+    }).join("");
+    names.forEach(function (n, i) {
+      var labels = dates.map(function (d) { return d.slice(5); });
+      var series = Object.keys(charts[n]);
+      var ds = series.map(function (s, si) {
+        return { label: s, data: dates.map(function (d) { return charts[n][s][d] || 0; }),
+          borderColor: TREND_COLORS[si % TREND_COLORS.length], backgroundColor: "transparent", tension: 0.3, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4 };
+      });
+      mkChart("trendChart" + i, { type: "line", data: { labels: labels, datasets: ds },
+        options: { responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
+          plugins: { legend: { display: true, position: "bottom", labels: { boxWidth: 12, usePointStyle: true, font: { size: 10 } } },
+            tooltip: { callbacks: { label: function (c) { return c.dataset.label + ": " + fmtInt(c.parsed.y); } } } },
+          scales: { x: { grid: { display: false }, ticks: { maxRotation: 0, autoSkip: true, maxTicksLimit: 8, font: { size: 10 } } },
+            y: { beginAtZero: true, ticks: { font: { size: 10 }, callback: function (v) { return fmtInt(v); } }, grid: { color: "#eef1f5" } } } } });
+    });
+  }
+
   function renderFunnels() {
+    populateFunnelRange();
     var env = populateFunnelEnv();
     var platform = populateFunnelPlatform(env);
     var fs = funnelsData(env, platform);
@@ -985,6 +1052,7 @@
     }).join("") || '<div class="muted">No funnel data.</div>';
     renderProductMetrics(env, metricFs);
     renderPathSankey(env);
+    renderTrends();
   }
 
   // ---------- Product Health metrics (Supply/Demand, Engagement, Time-to-step, weekly supply) ----------
@@ -1869,11 +1937,13 @@
       sbSelect("fact_api_requests").catch(function () { return []; }),
       sbSelect("fact_retro").catch(function () { return []; }),
       sbSelect("fact_appstore_metrics").catch(function () { return []; }),
+      sbSelect("fact_trends").catch(function () { return []; }),
     ]).then(function (res) {
       data.items = res[0]; data.sprints = res[1]; data.flow = res[2]; data.risks = res[3];
       data.burndown = res[4]; data.repos = res[5]; data.vulns = res[6]; data.funnels = res[7]; data.paths = res[8];
       data.unreviewedPrs = res[9]; data.abandoned = res[10]; data.reengage = res[11];
       data.apiEndpoints = res[12]; data.apiRequests = res[13]; data.retro = res[14]; data.appstore = res[15];
+      data.trends = res[16];
       loadedOnce = true;
       var def = populateSprintSelect();
       var anySample = data.items.some(function (i) { return String(i.story_points_is_sample) === "1"; });
