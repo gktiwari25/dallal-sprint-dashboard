@@ -133,15 +133,8 @@ header.topbar #updated{ font-size:10.5px; color:rgba(233,236,255,.5); padding:8p
 .grid > .card:nth-child(5n+4) .icon{ background:var(--chip-4); }
 .grid > .card:nth-child(5n+5) .icon{ background:var(--chip-5); }
 
-/* Gradient HERO KPI — first tile of the main metric rows pops in accent colour */
-#healthGrid > .card:first-child, #appstoreKpis > .card:first-child, #engGrid > .card:first-child{
-  background:var(--accent-grad) !important; border:0 !important; color:#fff !important;
-  box-shadow:0 16px 36px rgba(90,91,230,.42) !important;
-}
-#healthGrid > .card:first-child .label, #appstoreKpis > .card:first-child .label, #engGrid > .card:first-child .label,
-#healthGrid > .card:first-child .value, #appstoreKpis > .card:first-child .value, #engGrid > .card:first-child .value{ color:#fff !important; }
-#healthGrid > .card:first-child .icon, #appstoreKpis > .card:first-child .icon, #engGrid > .card:first-child .icon{ background:rgba(255,255,255,.22) !important; }
-#healthGrid > .card:first-child .tip, #appstoreKpis > .card:first-child .tip, #engGrid > .card:first-child .tip{ background:rgba(255,255,255,.35) !important; color:#fff !important; }
+/* (Gradient hero removed — highlighting the first tile was arbitrary. All KPI
+   tiles are now consistent; colour comes from the multicolour chips + charts.) */
 
 /* Chart cards */
 .chartcard{ border-radius:18px !important; box-shadow:var(--sh-sm) !important; border:1px solid var(--line); background:var(--card); }
