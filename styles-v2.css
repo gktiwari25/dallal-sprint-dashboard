@@ -100,11 +100,8 @@ header.topbar #updated{ font-size:10.5px; color:rgba(233,236,255,.5); padding:8p
 .chartcard:hover{ box-shadow:var(--sh-md) !important; }
 .chartcard h3{ font-weight:700; font-size:13px; display:flex; align-items:center; gap:9px; }
 .chartcard h3::before{ content:""; width:8px; height:8px; border-radius:3px; background:var(--accent-grad); flex:0 0 auto; }
-.chartbox{ height:262px !important; }
 
-/* Gauges (donut rings) */
-.gauges{ gap:16px; }
-.gwrap{ filter:drop-shadow(0 6px 14px rgba(90,91,230,.14)); }
+/* Gauges (donut rings) — leave sizing/rendering to app.js; just polish labels */
 .gctr{ font-weight:800 !important; }
 .glabel{ font-weight:600; color:var(--muted); }
 
