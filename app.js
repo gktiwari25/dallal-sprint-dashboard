@@ -801,13 +801,17 @@
   }
   function funnelsData(env, platform) {
     platform = platform || "All";
-    var live = rowsFor(data.funnels, env, platform);
+    // Filter to the calendar's selected funnel window (window_days); retention /
+    // always-on rows are tagged window_days=0 and show for any window.
+    var w = (typeof funnelWindow === "function") ? funnelWindow() : 30;
+    var byWin = function (r) { var wd = num(r.window_days); return wd === w || wd === 0; };
+    var live = rowsFor(data.funnels, env, platform).filter(byWin);
     var rows = live.length ? live : rowsFor(window.DALLAL_FUNNELS, env, platform);
     if (!rows.length) return [];
     var isLive = live.length > 0;
     var g = {};
     rows.forEach(function (r) { (g[r.funnel] = g[r.funnel] || []).push(r); });
-    var src = "Amplitude · Dallal-" + env + (platform === "All" ? "" : " · " + (PLATFORM_LABEL[platform] || platform)) + (isLive ? " · live" : " · last 30d");
+    var src = "Amplitude · Dallal-" + env + (platform === "All" ? "" : " · " + (PLATFORM_LABEL[platform] || platform)) + (isLive ? " · " + funnelRangeLabel() : " · last 30d");
     return Object.keys(g).map(function (fn) {
       var steps = g[fn].slice().sort(function (a, b) { return num(a.step_index) - num(b.step_index); })
         .map(function (r) { return { name: r.step_name, users: num(r.users) }; });
@@ -904,13 +908,26 @@
 
   // ---------- Funnels date-range calendar + Trends (event segmentation) ----------
   var funnelRangeDays = 30, funnelCustom = false, funnelFrom = "", funnelTo = "";
+  var FUNNEL_WINDOWS = [7, 14, 30, 90];
   function trendAllDates() {
     var s = {}; (data.trends || []).forEach(function (r) { if (r.date) s[r.date] = 1; });
     return Object.keys(s).sort();
   }
+  // The precomputed funnel window (window_days) the calendar selects. A custom
+  // range snaps to the nearest available window (funnels can't be recomputed live).
+  function funnelWindow() {
+    if (funnelCustom && funnelFrom && funnelTo) {
+      var span = Math.round((new Date(funnelTo) - new Date(funnelFrom)) / 86400000) + 1;
+      return FUNNEL_WINDOWS.reduce(function (a, b) { return Math.abs(b - span) < Math.abs(a - span) ? b : a; });
+    }
+    return funnelRangeDays;
+  }
+  function funnelRangeLabel() {
+    return (funnelCustom && funnelFrom && funnelTo) ? (funnelFrom + " to " + funnelTo) : ("last " + funnelRangeDays + " days");
+  }
   function populateFunnelRange() {
     var sel = el("funnelRange"); if (!sel || sel.options.length) return;
-    [[7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"], ["custom", "Custom range…"]].forEach(function (o) {
+    [[7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"], [90, "Last 90 days"], ["custom", "Custom range…"]].forEach(function (o) {
       var opt = document.createElement("option"); opt.value = o[0]; opt.textContent = o[1];
       if (o[0] === funnelRangeDays) opt.selected = true; sel.appendChild(opt);
     });
@@ -920,15 +937,15 @@
         var ad = trendAllDates();
         if (ad.length) {
           if (!funnelTo) { funnelTo = ad[ad.length - 1]; el("funnelTo").value = funnelTo; }
-          if (!funnelFrom) { funnelFrom = ad[Math.max(0, ad.length - 14)]; el("funnelFrom").value = funnelFrom; }
+          if (!funnelFrom) { funnelFrom = ad[Math.max(0, ad.length - 30)]; el("funnelFrom").value = funnelFrom; }
           el("funnelFrom").min = ad[0]; el("funnelFrom").max = ad[ad.length - 1];
           el("funnelTo").min = ad[0]; el("funnelTo").max = ad[ad.length - 1];
         }
       } else { funnelCustom = false; el("funnelCustom").style.display = "none"; funnelRangeDays = parseInt(sel.value, 10) || 30; }
-      renderTrends();
+      renderFunnels();
     });
-    el("funnelFrom").addEventListener("change", function () { funnelFrom = el("funnelFrom").value; renderTrends(); });
-    el("funnelTo").addEventListener("change", function () { funnelTo = el("funnelTo").value; renderTrends(); });
+    el("funnelFrom").addEventListener("change", function () { funnelFrom = el("funnelFrom").value; renderFunnels(); });
+    el("funnelTo").addEventListener("change", function () { funnelTo = el("funnelTo").value; renderFunnels(); });
   }
   function trendWindowDates(dates) {
     if (funnelCustom && funnelFrom && funnelTo) {
@@ -978,8 +995,8 @@
     var realFs = fs.filter(function (f) { return !METRIC[f.funnel]; });
     var platLabel = PLATFORM_LABEL[platform] || platform;
     var envNote = env === "PROD"
-      ? "<b>Dallal PRODUCTION</b> — real users, last 30 days."
-      : "<b>Dallal UAT</b> (test environment), last 30 days. Volumes are low by design — read the <b>shape and drop-off points</b>, not the absolute counts.";
+      ? "<b>Dallal PRODUCTION</b> — real users, " + funnelRangeLabel() + "."
+      : "<b>Dallal UAT</b> (test environment), " + funnelRangeLabel() + ". Volumes are low by design — read the <b>shape and drop-off points</b>, not the absolute counts.";
     var platNote = platform === "All"
       ? "All platforms combined."
       : "Filtered to <b>" + esc(platLabel) + "</b> (from the <code>platform</code> event property). For a single platform, Discovery starts at <b>View Details</b> — its Search step isn't platform-tagged.";

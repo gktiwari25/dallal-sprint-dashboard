@@ -138,6 +138,7 @@ PROJECTS = [
 ]
 
 CONVERSION_SECONDS = 86400   # 1-day window, matching the saved Amplitude funnel charts
+WINDOWS = [7, 14, 30, 90]   # funnel lookback windows the calendar can pick
 
 
 def build_events(steps, platform):
@@ -225,7 +226,7 @@ def sb_upsert(rows):
     if not url or not key:
         sys.exit("ERROR: SUPABASE_URL / SUPABASE_SERVICE_KEY required for --supabase.")
     req = urllib.request.Request(
-        url + "/rest/v1/fact_funnels?on_conflict=env,platform,funnel,step_index",
+        url + "/rest/v1/fact_funnels?on_conflict=env,platform,funnel,step_index,window_days",
         data=json.dumps(rows).encode(), method="POST",
         headers={"apikey": key, "Authorization": "Bearer " + key, "Content-Type": "application/json",
                  "Prefer": "resolution=merge-duplicates,return=minimal"})
@@ -254,20 +255,25 @@ def main():
             print(f"[{p['env']}] skipped - no credentials set.", file=sys.stderr)
             continue
         print(f"[{p['env']}] app {p['app']} ...", file=sys.stderr)
-        for f in p["funnels"]:
-            for plat in p["platforms"]:
-                sub, events = build_events(f["steps"], plat)
-                try:
-                    counts = query_funnel(p["key"], p["secret"], events, s, e)
-                except Exception as ex:
-                    print(f"  [{p['env']}] {f['name']} / {plat}: FAILED ({ex}) - skipped", file=sys.stderr)
-                    continue
-                for i, (label, _) in enumerate(sub):
-                    rows.append({"env": p["env"], "platform": plat, "funnel": f["name"],
-                                 "step_index": i, "step_name": label,
-                                 "users": counts[i] if i < len(counts) else 0, "updated_at": now})
-                got = [counts[i] if i < len(counts) else 0 for i in range(len(sub))]
-                print(f"  [{p['env']}] {f['name']} / {plat}: {got}", file=sys.stderr)
+        # Compute each funnel for several lookback WINDOWS so the dashboard's
+        # date-range calendar can switch funnel windows (window_days column).
+        for w in WINDOWS:
+            ws = (end - timedelta(days=w)).strftime("%Y%m%d")
+            for f in p["funnels"]:
+                for plat in p["platforms"]:
+                    sub, events = build_events(f["steps"], plat)
+                    try:
+                        counts = query_funnel(p["key"], p["secret"], events, ws, e)
+                    except Exception as ex:
+                        print(f"  [{p['env']}] {f['name']} / {plat} / {w}d: FAILED ({ex})", file=sys.stderr)
+                        continue
+                    for i, (label, _) in enumerate(sub):
+                        rows.append({"env": p["env"], "platform": plat, "funnel": f["name"],
+                                     "step_index": i, "step_name": label, "window_days": w,
+                                     "users": counts[i] if i < len(counts) else 0, "updated_at": now})
+                    if w == 30:
+                        got = [counts[i] if i < len(counts) else 0 for i in range(len(sub))]
+                        print(f"  [{p['env']}] {f['name']} / {plat} (30d): {got}", file=sys.stderr)
 
         # New-user retention curve (stored as a pseudo-funnel so it renders in the
         # existing Funnels tab with no schema change). Platform "All" only.
@@ -275,7 +281,8 @@ def main():
             ret = query_retention(p["key"], p["secret"], rs, e)
             for i, (label, users) in enumerate(ret):
                 rows.append({"env": p["env"], "platform": "All", "funnel": "New-User Retention",
-                             "step_index": i, "step_name": label, "users": users, "updated_at": now})
+                             "step_index": i, "step_name": label, "users": users,
+                             "window_days": 0, "updated_at": now})
             print(f"  [{p['env']}] New-User Retention: {[u for _, u in ret]}", file=sys.stderr)
         except Exception as ex:
             print(f"  [{p['env']}] retention: FAILED ({ex}) - skipped", file=sys.stderr)

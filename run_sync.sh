@@ -73,7 +73,7 @@ if [ -n "${AMPLITUDE_PROD_API_KEY:-}" ]; then
   run_step "amplitude" "$PY" "$DIR/etl_amplitude.py" --supabase
   run_step "marketing" "$PY" "$DIR/etl_marketing.py" --supabase
   run_step "paths"     "$PY" "$DIR/etl_paths.py" --supabase
-  run_step "trends"    "$PY" "$DIR/etl_trends.py" --supabase
+  run_step "trends"    "$PY" "$DIR/etl_trends.py" --supabase --days 90
 else
   log "SKIP  amplitude/marketing/paths — AMPLITUDE_PROD_API_KEY not set in .env"
 fi
