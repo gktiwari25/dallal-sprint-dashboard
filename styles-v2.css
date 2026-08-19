@@ -1,49 +1,63 @@
 /* ============================================================================
-   Dallal Dashboard — REDESIGN PREVIEW (v2)
-   Senior-UX redesign inspired by the Dabang (light) + Vision UI references:
-   left sidebar nav, soft tinted canvas, elevated rounded cards with icon chips.
-   Layered ON TOP of styles.css — reuses every class name + app.js element ID, so
-   nothing in app.js changes. Loaded only by index-v2.html (live is untouched).
+   Dallal Dashboard — REDESIGN PREVIEW (v2.2)
+   Senior-UX redesign inspired by Sunny Rathod's LifeStats + Dabang references:
+   rich gradient nav rail, gradient hero KPI, multicolor stat chips, big bold
+   numbers, deep rounded cards with layered depth. Fully light + dark aware.
+   Layered over styles.css — reuses every class name + app.js element ID, so
+   app.js is unchanged. Loaded only by index-v2.html (live is untouched).
    ========================================================================== */
 
 :root{
-  --side-w:244px;
-  --accent:#5a5be6; --accent-2:#6f6ef2;         /* friendlier indigo */
-  --accent-grad:linear-gradient(135deg,#5a5be6,#8a74f4);
+  --side-w:246px;
+  --accent:#5a5be6; --accent-2:#7c74f4;
+  --accent-grad:linear-gradient(135deg,#5a5be6 0%,#8a74f4 60%,#a06bf0 100%);
+  --rail-grad:linear-gradient(168deg,#171d4d 0%,#231a58 52%,#2f1c63 100%);
   --r-md:14px; --r-lg:18px; --r-xl:22px;
-  --sh-sm:0 4px 16px rgba(23,31,58,.06);
-  --sh-md:0 12px 32px rgba(23,31,58,.09);
-  --sh-lg:0 24px 60px rgba(23,31,58,.16);
+  --sh-sm:0 4px 16px rgba(23,31,58,.07);
+  --sh-md:0 14px 34px rgba(23,31,58,.10);
+  --sh-lg:0 26px 64px rgba(23,31,58,.18);
+  /* stat-chip palette (translucent so it reads on light AND dark cards) */
+  --chip-1:rgba(90,91,230,.16); --chip-2:rgba(14,168,150,.18);
+  --chip-3:rgba(245,140,72,.20); --chip-4:rgba(31,120,235,.16);
+  --chip-5:rgba(236,72,153,.16);
 }
 
-/* Soft, airy canvas (indigo + mint wash like the Dabang reference) */
+/* Airy canvas with a soft colour wash (works over light OR dark --bg) */
 body{
   background:
-    radial-gradient(1200px 620px at 100% -12%, rgba(90,91,230,.10), transparent 60%),
-    radial-gradient(1000px 560px at -6% 112%, rgba(16,185,129,.09), transparent 55%),
-    #eef1f9 !important;
+    radial-gradient(1200px 640px at 100% -12%, rgba(124,116,244,.14), transparent 60%),
+    radial-gradient(1000px 560px at -6% 112%, rgba(14,168,150,.10), transparent 55%),
+    var(--bg) !important;
+}
+@media (prefers-color-scheme: dark){
+  :root{ --sh-sm:0 4px 16px rgba(0,0,0,.4); --sh-md:0 14px 34px rgba(0,0,0,.5); --sh-lg:0 26px 64px rgba(0,0,0,.6); }
+  body{
+    background:
+      radial-gradient(1200px 640px at 100% -12%, rgba(124,116,244,.20), transparent 60%),
+      radial-gradient(1000px 560px at -6% 112%, rgba(14,168,150,.14), transparent 55%),
+      var(--bg) !important;
+  }
 }
 
 /* =========================================================================
-   SIDEBAR  (was header.topbar — reshaped to a vertical rail, purely in CSS)
+   NAVIGATION RAIL  (was header.topbar) — rich gradient, works in both themes
    ========================================================================= */
 header.topbar{
   position:fixed !important; left:16px; top:16px; bottom:16px; right:auto;
   width:var(--side-w); z-index:60;
   flex-direction:column !important; align-items:stretch; flex-wrap:nowrap !important; gap:6px;
-  background:#fff !important; color:var(--ink) !important;
-  border:1px solid var(--line); border-radius:24px;
-  box-shadow:var(--sh-md); padding:18px 14px 16px; overflow-y:auto;
+  background:var(--rail-grad) !important; color:#eef0ff !important;
+  border:1px solid rgba(255,255,255,.08) !important; border-radius:26px;
+  box-shadow:var(--sh-lg); padding:20px 14px 16px; overflow-y:auto;
 }
 header.topbar .title{
-  font-size:17px !important; color:var(--ink) !important; font-weight:800;
-  padding:4px 10px 14px; display:flex; align-items:center; gap:10px; line-height:1.2;
+  font-size:17px !important; color:#fff !important; font-weight:800;
+  padding:4px 8px 16px; display:flex; align-items:center; gap:11px; line-height:1.2;
 }
 header.topbar .title::before{
-  content:""; width:30px; height:30px; border-radius:9px; flex:0 0 auto;
-  background:var(--accent-grad); box-shadow:0 6px 16px rgba(90,91,230,.4);
+  content:""; width:32px; height:32px; border-radius:10px; flex:0 0 auto;
+  background:linear-gradient(135deg,#8a74f4,#5a5be6); box-shadow:0 8px 18px rgba(138,116,244,.55);
 }
-/* first spacer (title↔nav) collapses; second spacer pushes controls to bottom */
 header.topbar > .spacer:first-of-type{ display:none; }
 header.topbar > .spacer{ flex:1 1 auto; min-height:8px; }
 
@@ -52,72 +66,86 @@ nav.tabs{
   background:transparent !important; border:0 !important; padding:0 !important; border-radius:0 !important;
 }
 nav.tabs .tab{
-  width:100%; text-align:left; justify-content:flex-start !important;
-  padding:11px 14px !important; border-radius:12px !important; font-size:13.5px; font-weight:600;
-  color:var(--ink-2) !important; background:transparent !important; border:0 !important; letter-spacing:0;
+  width:100%; text-align:left; justify-content:flex-start !important; display:flex; align-items:center;
+  padding:11px 14px !important; border-radius:13px !important; font-size:13.5px; font-weight:600;
+  color:rgba(233,236,255,.72) !important; background:transparent !important; border:0 !important;
 }
 nav.tabs .tab::before{
-  content:""; width:7px; height:7px; border-radius:50%; margin-right:11px; flex:0 0 auto;
-  background:var(--line-strong); transition:background var(--dur) var(--ease);
+  content:""; width:7px; height:7px; border-radius:50%; margin-right:12px; flex:0 0 auto;
+  background:rgba(255,255,255,.28); transition:all var(--dur) var(--ease);
 }
-nav.tabs .tab:hover{ background:var(--surface-3) !important; }
+nav.tabs .tab:hover{ background:rgba(255,255,255,.08) !important; color:#fff !important; }
 nav.tabs .tab.active{
-  background:var(--accent-grad) !important; color:#fff !important;
-  box-shadow:0 8px 20px rgba(90,91,230,.34);
+  background:linear-gradient(135deg,rgba(138,116,244,.95),rgba(90,91,230,.95)) !important; color:#fff !important;
+  box-shadow:0 10px 22px rgba(90,91,230,.5);
 }
-nav.tabs .tab.active::before{ background:#fff; }
+nav.tabs .tab.active::before{ background:#fff; box-shadow:0 0 10px rgba(255,255,255,.9); }
 
-/* Sprint + refresh + sign-out grouped at the bottom of the rail */
-header.topbar #sprintLbl{ padding:2px 10px 4px; color:var(--muted); font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; }
+header.topbar #sprintLbl{ padding:2px 10px 4px; color:rgba(233,236,255,.55); font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.07em; }
 header.topbar #sprintSel{
-  width:100%; margin:0 0 8px; background:var(--surface-2) !important; color:var(--ink) !important;
-  border:1px solid var(--line) !important; border-radius:10px; padding:9px 11px; font-weight:600;
+  width:100%; margin:0 0 8px; background:rgba(255,255,255,.1) !important; color:#fff !important;
+  border:1px solid rgba(255,255,255,.16) !important; border-radius:11px; padding:9px 11px; font-weight:600;
 }
+header.topbar #sprintSel option{ color:#12213a; }
 header.topbar #refreshBtn{
-  width:100%; justify-content:center; margin:0 0 8px; background:var(--accent) !important; color:#fff !important;
-  border:0 !important; border-radius:11px; padding:10px 12px; font-weight:700; box-shadow:0 8px 18px rgba(90,91,230,.3);
+  width:100%; justify-content:center; margin:0 0 8px; color:#fff !important; border:0 !important; border-radius:12px;
+  padding:11px 12px; font-weight:700; background:linear-gradient(135deg,#8a74f4,#5a5be6) !important;
+  box-shadow:0 10px 22px rgba(90,91,230,.45);
 }
-header.topbar #refreshBtn:hover{ filter:brightness(1.05); }
+header.topbar #refreshBtn:hover{ filter:brightness(1.08); }
 header.topbar #signOut{
-  width:100%; justify-content:center; background:transparent !important; color:var(--muted) !important;
-  border:1px solid var(--line) !important; border-radius:11px; padding:8px 12px; font-weight:600;
+  width:100%; justify-content:center; background:rgba(255,255,255,.06) !important; color:rgba(233,236,255,.8) !important;
+  border:1px solid rgba(255,255,255,.16) !important; border-radius:12px; padding:9px 12px; font-weight:600;
 }
-header.topbar #signOut:hover{ background:var(--surface-3) !important; color:var(--ink-2) !important; }
-header.topbar #updated{ font-size:10.5px; color:var(--muted); padding:8px 10px 0; opacity:.85; line-height:1.4; }
+header.topbar #signOut:hover{ background:rgba(255,255,255,.12) !important; color:#fff !important; }
+header.topbar #updated{ font-size:10.5px; color:rgba(233,236,255,.5); padding:8px 10px 0; line-height:1.4; }
 
 /* =========================================================================
-   CONTENT — shifted right of the rail, roomier
+   CONTENT — shifted right of the rail
    ========================================================================= */
 .wrap{ margin-left:calc(var(--side-w) + 30px) !important; margin-right:16px !important; max-width:none !important; padding-top:20px; }
 #sampleFlag{ margin-left:calc(var(--side-w) + 30px); margin-right:16px; }
-
-/* Sub-tabs (User Flow / iOS·Android) — pill row, lighter */
-.subtabs{ background:#fff; border:1px solid var(--line); border-radius:14px; box-shadow:var(--sh-sm); padding:5px; }
-.subtabs .subtab.active{ background:var(--accent-grad) !important; color:#fff !important; }
+.subtabs{ background:var(--card); border:1px solid var(--line); border-radius:14px; box-shadow:var(--sh-sm); padding:5px; }
+.subtabs .subtab.active{ background:var(--accent-grad) !important; color:#fff !important; box-shadow:0 6px 16px rgba(90,91,230,.34); }
 
 /* =========================================================================
-   CARDS — elevated, rounded, with a soft icon chip (Dabang stat tiles)
+   SECTIONS + CARDS — deep rounding, layered depth, colour
    ========================================================================= */
 .section{ border-radius:22px !important; box-shadow:var(--sh-sm); border:1px solid var(--line); }
-.section > h2{ letter-spacing:-.01em; }
-.card{ border-radius:18px !important; padding:18px !important; box-shadow:var(--sh-sm) !important; border:1px solid #eef1f7 !important; }
+.section > h2{ letter-spacing:-.01em; display:flex; align-items:center; gap:10px; }
+.section > h2::before{ content:""; width:5px; height:18px; border-radius:3px; background:var(--accent-grad); flex:0 0 auto; }
+
+.card{ border-radius:18px !important; padding:18px !important; box-shadow:var(--sh-sm) !important; border:1px solid var(--line) !important; background:var(--card) !important; }
 .card::before{ display:none !important; }
-.card:hover{ box-shadow:var(--sh-md) !important; transform:translateY(-3px); border-color:var(--line) !important; }
+.card:hover{ box-shadow:var(--sh-md) !important; transform:translateY(-3px); }
 .card .icon{
   top:15px !important; right:15px !important; width:38px; height:38px; border-radius:12px;
-  display:grid; place-items:center; font-size:18px !important; opacity:1 !important;
-  background:linear-gradient(135deg,rgba(90,91,230,.12),rgba(138,116,244,.12));
+  display:grid; place-items:center; font-size:18px !important; opacity:1 !important; background:var(--chip-1);
 }
 .card:has(.icon) .label{ padding-right:50px; }
 .card .label{ font-size:11px !important; }
 .card .value{ font-size:30px !important; letter-spacing:-.02em; }
 
-/* Chart cards */
-.chartcard{ border-radius:18px !important; box-shadow:var(--sh-sm) !important; border:1px solid var(--line); }
-.chartcard h3{ font-weight:700; }
+/* Multicolour stat chips — cycle so a KPI row reads like the reference */
+.grid > .card:nth-child(5n+1) .icon{ background:var(--chip-1); }
+.grid > .card:nth-child(5n+2) .icon{ background:var(--chip-2); }
+.grid > .card:nth-child(5n+3) .icon{ background:var(--chip-3); }
+.grid > .card:nth-child(5n+4) .icon{ background:var(--chip-4); }
+.grid > .card:nth-child(5n+5) .icon{ background:var(--chip-5); }
 
-/* Refresh/export secondary buttons in content keep their look; just round them */
-.section button, .btn{ border-radius:11px; }
+/* Gradient HERO KPI — first tile of the main metric rows pops in accent colour */
+#healthGrid > .card:first-child, #appstoreKpis > .card:first-child, #engGrid > .card:first-child{
+  background:var(--accent-grad) !important; border:0 !important; color:#fff !important;
+  box-shadow:0 16px 36px rgba(90,91,230,.42) !important;
+}
+#healthGrid > .card:first-child .label, #appstoreKpis > .card:first-child .label, #engGrid > .card:first-child .label,
+#healthGrid > .card:first-child .value, #appstoreKpis > .card:first-child .value, #engGrid > .card:first-child .value{ color:#fff !important; }
+#healthGrid > .card:first-child .icon, #appstoreKpis > .card:first-child .icon, #engGrid > .card:first-child .icon{ background:rgba(255,255,255,.22) !important; }
+#healthGrid > .card:first-child .tip, #appstoreKpis > .card:first-child .tip, #engGrid > .card:first-child .tip{ background:rgba(255,255,255,.35) !important; color:#fff !important; }
+
+/* Chart cards */
+.chartcard{ border-radius:18px !important; box-shadow:var(--sh-sm) !important; border:1px solid var(--line); background:var(--card); }
+.chartcard h3{ font-weight:700; }
 
 /* =========================================================================
    RESPONSIVE — collapse the rail back to a top bar on narrow screens
@@ -126,7 +154,7 @@ header.topbar #updated{ font-size:10.5px; color:var(--muted); padding:8px 10px 0
   header.topbar{
     position:sticky !important; left:0; top:0; right:0; bottom:auto; width:auto;
     flex-direction:row !important; flex-wrap:wrap !important; align-items:center;
-    border-radius:0; margin:0; border:0; border-bottom:1px solid var(--line);
+    border-radius:0; margin:0; border:0;
   }
   header.topbar .title::before{ display:none; }
   header.topbar > .spacer{ flex:1; }
