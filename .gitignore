@@ -19,3 +19,7 @@ logs/*.log
 logs/*.err
 logs/*.out
 .DS_Store
+
+# supabase CLI local
+supabase/.branches/
+supabase/.temp/
