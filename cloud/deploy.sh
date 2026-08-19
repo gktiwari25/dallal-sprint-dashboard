@@ -70,6 +70,6 @@ sched() { # sched NAME CRON JOB
     --http-method=POST --oauth-service-account-email="$SA"
 }
 sched dallal-hourly  "15 * * * *"  dallal-etl-hourly
-sched dallal-derived "30 */12 * * *" dallal-etl-derived
+sched dallal-derived "30 * * * *"  dallal-etl-derived   # hourly: story points ≤1h lag
 
 echo "Deployed. Run once now:  gcloud run jobs execute dallal-etl-hourly --region $REGION"
