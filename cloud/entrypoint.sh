@@ -31,7 +31,8 @@ case "${1:-hourly}" in
     step "marketing" python3 etl_marketing.py --supabase
     step "paths"     python3 etl_paths.py     --supabase
     step "trends"    python3 etl_trends.py     --supabase --days 90
-    step "impr-check" python3 check_impressions.py
+    step "impr-check"    python3 check_impressions.py
+    step "android-check" python3 check_android.py
     ;;
 esac
 echo "done: ${1:-hourly}"
