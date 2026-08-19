@@ -159,6 +159,33 @@ def fetch_play(client, bucket_id, pkg, since_day, months):
             got = parse_rows(text, specs, since_day, territory_mode=terr)
             rows += got
             print(f"  {name}: {len(got)} rows")
+    # Traffic-source acquisitions (store_performance _traffic_source.csv). Dimension
+    # is the source name (Play organic / Google Search / third-party / Other), which
+    # we keep untruncated in `territory` under a dedicated metric.
+    for blob in client.list_blobs(bucket_id, prefix="stats/store_performance/"):
+        name = blob.name
+        if pkg not in name or not name.endswith("_traffic_source.csv"):
+            continue
+        if not any(m in name for m in months):
+            continue
+        reader = csv.DictReader(io.StringIO(decode_report(blob.download_as_bytes())))
+        header = reader.fieldnames or []
+        dcol = find_col(header, DATE_COLS)
+        scol = find_col(header, ["Traffic source", "Traffic Source"])
+        vcol = find_col(header, ["Total store acquisitions", "Store acquisitions", "Acquisitions"])
+        if not (dcol and scol and vcol):
+            continue
+        got = 0
+        for row in reader:
+            day = (row.get(dcol) or "").strip()[:10]
+            if not day or day < since_day:
+                continue
+            src = (row.get(scol) or "").strip() or "Other"
+            v = to_int(row.get(vcol))
+            if v is not None:
+                rows.append(dict(date=day, metric="traffic_source", value=v, territory=src, platform="android", app_version=None)); got += 1
+        print(f"  {name}: {got} traffic-source rows")
+
     # collapse WW aggregates to one value per (date, metric); keep per-territory downloads
     agg = {}
     for r in rows:
