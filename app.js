@@ -952,7 +952,7 @@
     return dates.slice(-funnelRangeDays);
   }
   var TREND_COLORS = ["#0f8b8d", "#1f6feb", "#7c5cbf", "#f29f05", "#2e7d32", "#c62828", "#12a3a5", "#b9820a"];
-  function renderTrends() {
+  function renderFunnelTrends() {
     var host = el("funnelTrends"); if (!host) return;
     var rows = (data.trends || []).filter(function (r) { return (r.env || "PROD") === "PROD"; });
     if (!rows.length) { host.innerHTML = '<div class="muted">No trend data yet.</div>'; return; }
@@ -1066,7 +1066,7 @@
     }).join("") || '<div class="muted">No funnel data.</div>';
     renderProductMetrics(env, metricFs);
     renderPathSankey(env);
-    renderTrends();
+    renderFunnelTrends();
   }
 
   // ---------- Product Health metrics (Supply/Demand, Engagement, Time-to-step, weekly supply) ----------
