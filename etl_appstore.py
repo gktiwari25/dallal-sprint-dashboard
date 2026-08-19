@@ -170,12 +170,26 @@ DLTYPE_METRIC = {
 DOWNLOAD_REPORT_HINTS = ["install", "download", "acquisition"]
 # Single-metric reports: (report-name substring, our metric, value-column candidates)
 ANALYTICS_SINGLE = [
-    ("impress", "impressions", ["Impressions", "Impressions Unique Device", "Counts", "Value"]),
-    ("page view", "product_page_views", ["Product Page Views", "Counts", "Value"]),
     ("session", "sessions", ["Sessions", "Counts", "Value"]),
-    ("active device", "active_devices", ["Active Devices", "Unique Devices", "Counts", "Value"]),
     ("crash", "crashes", ["Crashes", "Counts", "Value"]),
 ]
+# App Store Discovery and Engagement report: Impressions and Product Page Views
+# aren't separate reports — they're Event-dimension rows inside this one report
+# (exactly like Download Type inside the install report). Match the report by
+# name, then map the Event value to our metric. Exact-match the total-count
+# events only (skip "… Unique Devices" variants) so we don't double-count.
+ENGAGEMENT_REPORT_HINTS = ["discovery and engagement"]
+IMPRESSION_EVENTS = {"impression", "impressions"}
+PAGEVIEW_EVENTS = {"product page view", "product page views", "page view", "page views"}
+
+
+def _engagement_metric(event):
+    e = (event or "").strip().lower()
+    if e in IMPRESSION_EVENTS:
+        return "impressions"
+    if e in PAGEVIEW_EVENTS:
+        return "product_page_views"
+    return None
 
 
 def _to_int(v):
@@ -258,7 +272,9 @@ def _parse_segment(text, report_name, since_day):
         return []
     name_l = report_name.lower()
     is_dl = any(h in name_l for h in DOWNLOAD_REPORT_HINTS)
+    is_eng = any(h in name_l for h in ENGAGEMENT_REPORT_HINTS)
     dltype_col = _find_col(header, DLTYPE_COLS) if is_dl else None
+    event_col = _find_col(header, ["Event"]) if is_eng else None
     count_col = _find_col(header, COUNT_COLS)
     single = next((s for s in ANALYTICS_SINGLE if s[0] in name_l), None)
     single_col = _find_col(header, single[2]) if single else None
@@ -270,6 +286,11 @@ def _parse_segment(text, report_name, since_day):
             continue
         if is_dl and dltype_col and count_col:
             metric = DLTYPE_METRIC.get((row.get(dltype_col) or "").strip().lower())
+            v = _to_int(row.get(count_col))
+            if metric and v is not None:
+                out.append(dict(date=day, metric=metric, value=v))
+        elif is_eng and event_col and count_col:
+            metric = _engagement_metric(row.get(event_col))
             v = _to_int(row.get(count_col))
             if metric and v is not None:
                 out.append(dict(date=day, metric=metric, value=v))

@@ -1688,7 +1688,7 @@
   }
   function populateAppstoreRange() {
     var sel = el("appstoreRange"); if (!sel || sel.options.length) return;
-    [[7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"], [90, "Last 90 days"], ["custom", "Custom range…"]].forEach(function (o) {
+    [[1, "Last 24 hours"], [7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"], [90, "Last 90 days"], ["custom", "Custom range…"]].forEach(function (o) {
       var opt = document.createElement("option"); opt.value = o[0]; opt.textContent = o[1];
       if (o[0] === asRange) opt.selected = true; sel.appendChild(opt);
     });
@@ -1721,7 +1721,8 @@
     return ds.slice(-asRange);
   }
   function asRangeLabel() {
-    return (asCustom && asFrom && asTo) ? (asFrom + " to " + asTo) : ("last " + asRange + " days");
+    if (asCustom && asFrom && asTo) return asFrom + " to " + asTo;
+    return asRange === 1 ? "last 24 hours" : ("last " + asRange + " days");
   }
 
   // sum a metric per date across territories -> { 'YYYY-MM-DD': total }
@@ -1856,7 +1857,7 @@
     // and page views often lag sessions by a day or more). Gate each card on ITS OWN
     // data so a metric that hasn't arrived shows "—", not a misleading 0.
     var impLive = hasMetric("impressions"), pvLive = hasMetric("product_page_views");
-    var engLive = ["sessions", "active_devices", "crashes"].some(hasMetric);
+    var sesLive = hasMetric("sessions"), actLive = hasMetric("active_devices"), crLive = hasMetric("crashes");
     var convLive = impLive && totImp > 0;
     var PEND = '<span style="opacity:.4;font-weight:600">—</span>';
     var PEND_TIP = "Waiting on Apple's App Analytics feed — this metric usually lands 24–48h after setup, then fills in automatically.";
@@ -1870,9 +1871,9 @@
       card("Impressions", pv2(fmtInt(totImp), impLive), { icon: "👁️", accent: pcol(AS_BLUE, impLive), tip: impLive ? "Times the app appeared in the App Store (search, browse, referrals)." : PEND_TIP }) +
       card("Product Page Views", pv2(fmtInt(totPv), pvLive), { icon: "📄", accent: pcol(AS_PURPLE, pvLive), tip: pvLive ? "Views of the app's App Store product page." : PEND_TIP }) +
       card("Conversion Rate", pv2((Math.round(conv * 1000) / 10) + "%", convLive), { icon: "🎯", accent: pcol(conv >= 0.35 ? "#2e7d32" : conv >= 0.2 ? AS_AMBER : AS_RED, convLive), tip: convLive ? "First-time downloads ÷ impressions — App Store Connect's Conversion Rate." : "Waiting on Impressions from Apple's App Analytics feed (needed to compute Conversion Rate)." }) +
-      card("Sessions", pv2(fmtInt(totSes), engLive), { icon: "📲", accent: pcol(AS_TEAL, engLive), tip: engLive ? "App sessions recorded by App Analytics in the window." : PEND_TIP }) +
-      card("Active Devices / day", pv2(fmtInt(avgAct), engLive), { icon: "📱", accent: pcol(AS_BLUE, engLive), tip: engLive ? "Average distinct devices active per day over the window." : PEND_TIP }) +
-      card("Crashes", pv2(fmtInt(totCr), engLive), { icon: "💥", accent: pcol(totCr > 100 ? AS_RED : totCr > 30 ? AS_AMBER : "#2e7d32", engLive), tip: engLive ? "Crash count from App Analytics. Spikes here correlate with Sentry crash issues (e.g. DALLAL-RN-3Q)." : PEND_TIP });
+      card("Sessions", pv2(fmtInt(totSes), sesLive), { icon: "📲", accent: pcol(AS_TEAL, sesLive), tip: sesLive ? "App sessions recorded by App Analytics in the window." : PEND_TIP }) +
+      card("Active Devices / day", pv2(fmtInt(avgAct), actLive), { icon: "📱", accent: pcol(AS_BLUE, actLive), tip: actLive ? "Average distinct devices active per day over the window." : PEND_TIP }) +
+      card("Crashes", pv2(fmtInt(totCr), crLive), { icon: "💥", accent: pcol(totCr > 100 ? AS_RED : totCr > 30 ? AS_AMBER : "#2e7d32", crLive), tip: crLive ? "Crash count from App Analytics. Spikes here correlate with Sentry crash issues (e.g. DALLAL-RN-3Q)." : PEND_TIP });
 
     var pendNote = el("appstorePending");
     if (pendNote) {
