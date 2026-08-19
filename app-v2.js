@@ -1877,8 +1877,12 @@
     mkChart(id, {
       type: "line",
       data: { labels: labels, datasets: series.map(function (s) {
+        // Show points when the window is short OR the series has few data points,
+        // so sparse/single-day data isn't an invisible line.
+        var pts = (s.data || []).filter(function (v) { return v != null && v > 0; }).length;
+        var pr = (labels.length <= 12 || pts <= 3) ? 3.5 : 0;
         return { label: s.label, data: s.data, borderColor: s.color, backgroundColor: (s.fill ? s.color + "22" : "transparent"),
-          fill: !!s.fill, tension: 0.32, borderWidth: 2, pointRadius: 0, pointHoverRadius: 4, yAxisID: s.axis || "y" };
+          fill: !!s.fill, tension: 0.32, borderWidth: 2, pointRadius: pr, pointBackgroundColor: s.color, pointHoverRadius: 5, yAxisID: s.axis || "y" };
       }) },
       options: {
         responsive: true, maintainAspectRatio: false, interaction: { mode: "index", intersect: false },
@@ -2053,20 +2057,28 @@
       }
     }
 
+    // Show/hide a chart card (Apple-only charts are hidden on the Android tab).
+    var showCard = function (cid, on) { var c = el(cid); if (c) { var card = c.closest(".chartcard"); if (card) card.style.display = on ? "" : "none"; } };
+    showCard("asImpressionsChart", !isAndroid);
+    showCard("asSessionsChart", !isAndroid);
+    showCard("asConversionChart", !isAndroid);
+
     asLineChart("asDownloadsChart", dates, [
-      { label: "Downloads", data: sDl, color: AS_TEAL, fill: true },
-      { label: "Redownloads", data: sRe, color: AS_BLUE }
-    ]);
-    asLineChart("asImpressionsChart", dates, [
-      { label: "Impressions", data: sImp, color: AS_BLUE, fill: true },
-      { label: "Page views", data: sPv, color: AS_PURPLE, axis: "y2" }
-    ], { y2: true });
-    asLineChart("asSessionsChart", dates, [
-      { label: "Sessions", data: sSes, color: AS_TEAL, fill: true },
-      { label: "Active devices", data: sAct, color: AS_BLUE, axis: "y2" }
-    ], { y2: true });
-    var convSeries = dates.map(function (d) { return (pv[d] ? (dl[d] || 0) / pv[d] : 0) * 100; });
-    asLineChart("asConversionChart", dates, [{ label: "Conversion %", data: convSeries, color: "#2e7d32", fill: true }], { pct: true });
+      { label: isAndroid ? "Installs" : "Downloads", data: sDl, color: AS_TEAL, fill: true }
+    ].concat(isAndroid ? [] : [{ label: "Redownloads", data: sRe, color: AS_BLUE }]));
+    if (!isAndroid) {
+      asLineChart("asImpressionsChart", dates, [
+        { label: "Impressions", data: sImp, color: AS_BLUE, fill: true },
+        { label: "Page views", data: sPv, color: AS_PURPLE, axis: "y2" }
+      ], { y2: true });
+      asLineChart("asSessionsChart", dates, [
+        { label: "Sessions", data: sSes, color: AS_TEAL, fill: true },
+        { label: "Active devices", data: sAct, color: AS_BLUE, axis: "y2" }
+      ], { y2: true });
+      // Conversion = first-time downloads ÷ impressions (matches the KPI + App Store Connect).
+      var convSeries = dates.map(function (d) { return (imp[d] ? (dl[d] || 0) / imp[d] : 0) * 100; });
+      asLineChart("asConversionChart", dates, [{ label: "Conversion %", data: convSeries, color: "#2e7d32", fill: true }], { pct: true });
+    }
     asLineChart("asCrashChart", dates, [{ label: "Crashes", data: sCr, color: AS_RED, fill: true }]);
 
     // Top territories by downloads over the window
