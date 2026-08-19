@@ -2364,13 +2364,12 @@
     document.addEventListener("visibilitychange", function () { if (!document.hidden && sbc && loadedOnce) loadAll(); });
     setTimeout(subscribeRealtime, 1500);
     el("googleBtn").addEventListener("click", doGoogle);
-    var _ms = el("msBtn"); if (_ms) _ms.addEventListener("click", function () { loginError("Microsoft SSO isn't enabled yet — sign in with Google or use the magic link."); });
     el("magicBtn").addEventListener("click", function (e) { if (e && e.preventDefault) e.preventDefault(); doMagicLink(); });
-    el("loginEmail").addEventListener("keydown", function (e) { if (e.key === "Enter") doLogin(); });
+    el("loginEmail").addEventListener("keydown", function (e) { if (e.key === "Enter") doMagicLink(); });
     el("loginBtn").addEventListener("click", doLogin);
     el("loginPass").addEventListener("keydown", function (e) { if (e.key === "Enter") doLogin(); });
-    // Eye toggle now shows/hides the password text (the field is always visible).
-    el("pwToggle").addEventListener("click", function (e) { e.preventDefault(); var p = el("loginPass"); if (p) p.type = p.type === "password" ? "text" : "password"; });
+    // "Use a password instead" reveals the password block.
+    el("pwToggle").addEventListener("click", function (e) { e.preventDefault(); var pb = el("pwBlock"); if (pb) pb.classList.toggle("hidden"); var lp = el("loginPass"); if (lp && !pb.classList.contains("hidden")) lp.focus(); });
     el("signOut").addEventListener("click", function () { if (sbc) sbc.auth.signOut(); });
     // Optional legacy modal controls (guarded — the split login has no modal).
     var _cta = el("ctaLogin"); if (_cta) _cta.addEventListener("click", function () { var e = el("loginEmail"); if (e) e.focus(); });

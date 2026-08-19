@@ -10,7 +10,7 @@
 <link rel="icon" type="image/png" href="dallal-favicon.png?v=237" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
 <link rel="stylesheet" href="styles.css?v=237" />
-<link rel="stylesheet" href="styles-v2.css?v=16" /><!-- REDESIGN PREVIEW theme layer -->
+<link rel="stylesheet" href="styles-v2.css?v=17" /><!-- REDESIGN PREVIEW theme layer -->
 </head>
 <body>
 
@@ -52,32 +52,54 @@
       <div class="llfeat"><span class="llfic">&#128200;</span><b>Data Driven</b><span>DORA metrics, velocity &amp; insights</span></div>
       <div class="llfeat"><span class="llfic">&#128101;</span><b>Team Focused</b><span>Churn trends &amp; at-risk users</span></div>
     </div>
+    <!-- decorative dashboard preview -->
+    <div class="llpreview">
+      <div class="llp-top">
+        <div class="llp-card llp-sprint">
+          <div class="llp-h">Sprint Progress</div>
+          <div class="llp-srow">
+            <div class="llp-ring" style="--p:78"><b>78%</b></div>
+            <div class="llp-stats">
+              <div class="llp-stat"><span>Stories Completed</span><div class="llp-line"><b>42 / 54</b><i>&uarr; 12%</i></div><div class="llp-bar"><span style="width:78%"></span></div></div>
+              <div class="llp-stat"><span>Bugs Closed</span><div class="llp-line"><b>93 / 112</b><i>&uarr; 8%</i></div><div class="llp-bar"><span style="width:83%;background:linear-gradient(90deg,#5a5be6,#3b82f6)"></span></div></div>
+            </div>
+          </div>
+          <div class="llp-ontrack">On Track</div>
+        </div>
+        <div class="llp-side">
+          <div class="llp-card"><div class="llp-h">Velocity (SP)</div><div class="llp-big">156 <i>&uarr; 15%</i></div>
+            <svg class="llp-spark" viewBox="0 0 120 34" preserveAspectRatio="none"><polyline points="0,28 20,24 40,26 60,18 80,20 100,10 120,4" fill="none" stroke="#7c74f4" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+          <div class="llp-card"><div class="llp-h">Test Coverage</div><div class="llp-big">87% <i>&uarr; 6%</i></div>
+            <svg class="llp-spark" viewBox="0 0 120 34" preserveAspectRatio="none"><polyline points="0,26 20,22 40,24 60,16 80,18 100,10 120,6" fill="none" stroke="#22c55e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        </div>
+      </div>
+      <div class="llp-card llp-dev"><div><div class="llp-h">Active Devices (Est.)</div><div class="llp-big">~128 <i>&uarr; 9%</i></div></div><div class="llp-people">&#128101;&#128101;&#128101;</div></div>
+    </div>
   </div>
   <div class="lspane-right">
     <div class="lform">
       <h2 class="lfh">Welcome back &#128075;</h2>
       <p class="lfsub">Sign in to access your Dallal dashboard</p>
 
-      <label class="lflabel">Email address</label>
-      <div class="lfield"><span class="lfi">&#9993;</span><input id="loginEmail" type="email" autocomplete="username" placeholder="Enter your email" /></div>
+      <button id="googleBtn" class="lfsso-b lfgoogle"><span class="g">G</span> Sign in with Google</button>
 
-      <label class="lflabel">Password</label>
-      <div class="lfield"><span class="lfi">&#128274;</span><input id="loginPass" type="password" autocomplete="current-password" placeholder="Enter your password" /><a id="pwToggle" class="lfeye" href="#" title="Show / hide">&#128065;</a></div>
-      <div class="lfforgot"><a id="magicBtn" href="#">Forgot password?</a></div>
+      <div class="lfdiv"><span>or</span></div>
+
+      <label class="lflabel">Work email</label>
+      <div class="lfield"><span class="lfi">&#9993;</span><input id="loginEmail" type="email" autocomplete="username" placeholder="you@dallal.com.kw" /></div>
+      <button id="magicBtn" class="lfbtn lfmagic">Email me a magic link</button>
+
+      <a id="pwToggle" class="lfpwlink" href="#">Use a password instead</a>
+      <div id="pwBlock" class="hidden">
+        <label class="lflabel">Password</label>
+        <div class="lfield"><span class="lfi">&#128274;</span><input id="loginPass" type="password" autocomplete="current-password" placeholder="Enter your password" /></div>
+        <button id="loginBtn" class="lfbtn">Sign in</button>
+      </div>
 
       <div id="loginInfo" class="info hidden"></div>
       <div id="loginErr" class="err hidden"></div>
 
-      <button id="loginBtn" class="lfbtn">Login to Dashboard &rarr;</button>
-
-      <div class="lfdiv"><span>or continue with</span></div>
-      <div class="lfsso">
-        <button id="googleBtn" class="lfsso-b"><span class="g">G</span> Continue with Google</button>
-        <button id="msBtn" class="lfsso-b"><span class="ms">&#9638;</span> Continue with Microsoft</button>
-      </div>
-
-      <div class="lfsec"><span class="lfsec-ic">&#128737;</span><div><b>Secure &middot; Private &middot; Role-based access</b><span>Your data is safe with enterprise-grade security.</span></div></div>
-      <div class="lfcontact">Don't have access? <a href="mailto:ali.b@dallal.com.kw">Contact your administrator</a></div>
+      <div class="lfsecline">&#128274; Secure access &middot; @dallal.com.kw</div>
     </div>
   </div>
 </div>
@@ -369,6 +391,6 @@
 <script src="config.js?v=237"></script>
 <script src="sample-data.js?v=237"></script>
 <script src="funnels-data.js?v=237"></script>
-<script src="app-v2.js?v=10"></script>
+<script src="app-v2.js?v=11"></script>
 </body>
 </html>
