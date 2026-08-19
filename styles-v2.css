@@ -371,7 +371,7 @@ details.lb{ border-radius:16px; }
 /* =========================================================================
    ANIMATED LOGIN BACKGROUND (original landing)
    ========================================================================= */
-#login{ position:fixed; inset:0; overflow:hidden; }
+#login:not(.hidden){ position:fixed; inset:0; overflow:hidden; }
 .landing{ position:relative; z-index:2; }
 .lbg-orbs{ position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:0; }
 .lbg-orbs i{ position:absolute; border-radius:50%; filter:blur(70px); opacity:.55; }
@@ -396,7 +396,7 @@ details.lb{ border-radius:16px; }
 @media (prefers-reduced-motion: reduce){ .lbg-orbs i,.loginbg,.lbg-ring,.lbg-bars rect,.lbg-curve{ animation:none !important; } }
 
 /* Fit the login landing to the viewport (no scroll) */
-#login{ display:flex !important; align-items:center; justify-content:center; }
+#login:not(.hidden){ display:flex !important; align-items:center; justify-content:center; }
 .landing{ width:min(1040px,100%); margin:0 !important; padding:20px 26px !important; }
 .lnav{ margin-bottom:18px !important; }
 .hero{ padding:14px 10px 6px !important; }
