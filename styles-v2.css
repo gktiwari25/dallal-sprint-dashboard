@@ -95,6 +95,44 @@ header.topbar #updated{ font-size:10.5px; color:rgba(233,236,255,.5); padding:8p
 .grid > .card:nth-child(5n+4) .icon{ background:var(--chip-4); }
 .grid > .card:nth-child(5n+5) .icon{ background:var(--chip-5); }
 
+/* ===== Sprint Health hero (progress cards + At-a-Glance) — matches ref ===== */
+#healthGrid{ display:grid !important; grid-template-columns:minmax(0,2.5fr) minmax(0,1.25fr) minmax(0,1fr); gap:16px; align-items:start; }
+.hero3{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; }
+.minigrid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; align-content:start; }
+.minigrid .card{ padding:15px 16px !important; }
+.minigrid .card .value{ font-size:24px !important; }
+
+.hcard{ background:var(--card); border:1px solid var(--line); border-radius:20px; padding:18px 20px; box-shadow:var(--sh-sm); display:flex; flex-direction:column; gap:13px; transition:box-shadow var(--dur) var(--ease),transform var(--dur) var(--ease); }
+.hcard:hover{ box-shadow:var(--sh-md); transform:translateY(-3px); }
+.hcard-top{ display:flex; align-items:center; justify-content:space-between; }
+.hcard-title{ font-size:11px; font-weight:800; letter-spacing:.06em; color:var(--hc); }
+.hcard-ic{ width:34px; height:34px; border-radius:11px; display:grid; place-items:center; font-size:16px; background:color-mix(in srgb,var(--hc) 15%,transparent); }
+.hcard-mid{ display:flex; align-items:flex-end; justify-content:space-between; gap:8px; }
+.hcard-frac{ font-size:13px; font-weight:700; color:var(--ink-2); }
+.hcard-pct{ font-size:34px; font-weight:800; color:var(--hc); letter-spacing:-.02em; line-height:.95; }
+.hbar{ height:9px; border-radius:99px; background:color-mix(in srgb,var(--hc) 14%,var(--surface-3)); overflow:hidden; }
+.hbar > span{ display:block; height:100%; border-radius:99px; background:linear-gradient(90deg,var(--hc),color-mix(in srgb,var(--hc) 55%,#fff)); box-shadow:0 2px 8px color-mix(in srgb,var(--hc) 40%,transparent); }
+.hcard-cap{ font-size:11px; color:var(--muted); }
+
+.glance{ background:var(--card); border:1px solid var(--line); border-radius:20px; padding:16px 18px; box-shadow:var(--sh-sm); display:flex; flex-direction:column; }
+.glance-h{ font-size:11px; font-weight:800; letter-spacing:.06em; color:var(--ink-2); display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+.glance-h span{ color:#f5a623; }
+.grow{ display:flex; align-items:center; gap:12px; padding:10px 0; border-bottom:1px solid var(--line); }
+.grow:last-child{ border-bottom:0; }
+.gic{ width:38px; height:38px; border-radius:11px; display:grid; place-items:center; font-size:16px; background:var(--surface-3); flex:0 0 auto; }
+.gtext{ display:flex; flex-direction:column; flex:1; min-width:0; }
+.gval{ font-size:17px; font-weight:800; color:var(--ink); line-height:1.1; }
+.gsub{ font-size:11px; color:var(--muted); }
+.gring{ width:46px; height:46px; border-radius:50%; display:grid; place-items:center; flex:0 0 auto; background:conic-gradient(var(--accent) calc(var(--p)*1%), var(--surface-3) 0); }
+.gring i{ width:36px; height:36px; border-radius:50%; background:var(--card); display:grid; place-items:center; font-style:normal; font-size:10px; font-weight:800; color:var(--accent); }
+
+/* Explanation banner under the hero */
+#healthNote{ background:color-mix(in srgb,var(--accent) 7%,var(--card)) !important; border:1px solid var(--line); border-radius:16px; padding:15px 18px 15px 48px !important; position:relative; color:var(--ink-2) !important; font-size:12.5px; margin-top:16px !important; box-shadow:var(--sh-xs); line-height:1.6; }
+#healthNote::before{ content:"i"; position:absolute; left:14px; top:15px; width:24px; height:24px; border-radius:8px; background:var(--accent); color:#fff; display:grid; place-items:center; font-size:13px; font-style:italic; font-weight:700; font-family:Georgia,serif; }
+
+@media (max-width:1120px){ #healthGrid{ grid-template-columns:1fr; } .hero3{ grid-template-columns:repeat(3,1fr); } }
+@media (max-width:640px){ .hero3, .minigrid{ grid-template-columns:1fr; } }
+
 /* Chart cards — bigger, elevated, titled */
 .chartcard{ border-radius:20px !important; box-shadow:var(--sh-sm) !important; border:1px solid var(--line) !important; background:var(--card) !important; padding:18px 18px 14px !important; }
 .chartcard:hover{ box-shadow:var(--sh-md) !important; }
