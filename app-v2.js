@@ -2002,8 +2002,11 @@
     var sesLive = hasMetric("sessions"), crLive = hasMetric("crashes");
     var actEst = !hasMetric("active_devices") && hasMetric("active_devices_est");
     var actLive = hasMetric("active_devices") || actEst;
-    var convLive = impLive && totImp > 0;
     var isAndroid = asPlatform === "android";
+    // Conversion: iOS = downloads ÷ impressions; Android = installs ÷ store-listing
+    // views (Google Play's store conversion). Recompute conv for Android.
+    if (isAndroid) conv = totPv ? totDl / totPv : 0;
+    var convLive = isAndroid ? (pvLive && totPv > 0) : (impLive && totImp > 0);
     var PEND = '<span style="opacity:.4;font-weight:600">—</span>';
     var PEND_TIP = isAndroid
       ? "Not reported by Google Play — this metric comes from Apple's App Analytics (iOS only)."
@@ -2031,9 +2034,10 @@
         mcard("Redownloads", fmtInt(totRe), "🔁", COL.re, sparkBox("sp_re", sRe, COL.re, true), null, "Re-installs by users who previously downloaded the app.")) +
       mcard("Downloads — This Week vs Last", fmtInt(wowThis) + wowBadge, "📅", COL.wk, sparkBox("sp_wk", sDl.slice(-14), COL.wk, true), (maxDlDate ? "Last week: " + fmtInt(wowLast) : ""), (isAndroid ? "Installs" : "First-time downloads") + " last 7 days vs previous 7. Independent of the Range selector.") +
       (isAndroid ? "" :
-        mcard("Impressions", pv2(fmtInt(totImp), impLive), "👁️", COL.imp, sparkBox("sp_imp", sImp, COL.imp, impLive), null, impLive ? "Times the app appeared in the App Store." : PEND_TIP) +
-        mcard("Product Page Views", pv2(fmtInt(totPv), pvLive), "📄", COL.pv, sparkBox("sp_pv", sPv, COL.pv, pvLive), null, pvLive ? "Views of the app's product page." : PEND_TIP) +
-        mcard("Conversion Rate", pv2((Math.round(conv * 1000) / 10) + "%", convLive), "🎯", COL.conv, sparkBox("sp_cv", [], COL.conv, false), null, convLive ? "First-time downloads ÷ impressions." : "Waiting on Impressions from Apple's App Analytics feed.") +
+        mcard("Impressions", pv2(fmtInt(totImp), impLive), "👁️", COL.imp, sparkBox("sp_imp", sImp, COL.imp, impLive), null, impLive ? "Times the app appeared in the App Store." : PEND_TIP)) +
+      mcard(isAndroid ? "Store Listing Views" : "Product Page Views", pv2(fmtInt(totPv), pvLive), "📄", COL.pv, sparkBox("sp_pv", sPv, COL.pv, pvLive), null, pvLive ? (isAndroid ? "Unique visitors to your Google Play store listing." : "Views of the app's product page.") : PEND_TIP) +
+      mcard("Conversion Rate", pv2((Math.round(conv * 1000) / 10) + "%", convLive), "🎯", COL.conv, sparkBox("sp_cv", [], COL.conv, false), null, convLive ? (isAndroid ? "Installs ÷ store-listing views — Google Play's store conversion." : "First-time downloads ÷ impressions.") : (isAndroid ? "Needs store-listing views from Google Play." : "Waiting on Impressions from Apple's App Analytics feed.")) +
+      (isAndroid ? "" :
         mcard("Sessions", pv2(fmtInt(totSes), sesLive), "📲", COL.ses, sparkBox("sp_ses", sSes, COL.ses, sesLive), (actLive ? "Active Devices: " + (actEst ? "~" : "") + fmtInt(avgAct) : ""), sesLive ? "App sessions recorded by App Analytics." : PEND_TIP)) +
       mcard("Active Devices / Day" + (actEst ? " (est.)" : ""), pv2((actEst ? "~" : "") + fmtInt(avgAct), actLive), "📱", COL.act, sparkBox("sp_act", sAct, COL.act, actLive), null, actLive ? (isAndroid ? "Active device installs reported by Google Play." : "Average distinct devices active per day.") : PEND_TIP) +
       mcard("Crashes", pv2(fmtInt(totCr), crLive), "💥", COL.cr, sparkBox("sp_cr", sCr, COL.cr, crLive), (crLive ? "" : "No crash data"), crLive ? "Crash count." : (isAndroid ? "No crashes reported by Google Play in this window." : PEND_TIP));
@@ -2059,9 +2063,9 @@
 
     // Show/hide a chart card (Apple-only charts are hidden on the Android tab).
     var showCard = function (cid, on) { var c = el(cid); if (c) { var card = c.closest(".chartcard"); if (card) card.style.display = on ? "" : "none"; } };
-    showCard("asImpressionsChart", !isAndroid);
-    showCard("asSessionsChart", !isAndroid);
-    showCard("asConversionChart", !isAndroid);
+    showCard("asImpressionsChart", !isAndroid);   // impressions are Apple-only
+    showCard("asSessionsChart", !isAndroid);       // sessions are Apple-only
+    showCard("asConversionChart", true);           // both (iOS ÷ impressions, Android ÷ store views)
 
     asLineChart("asDownloadsChart", dates, [
       { label: isAndroid ? "Installs" : "Downloads", data: sDl, color: AS_TEAL, fill: true }
@@ -2075,10 +2079,12 @@
         { label: "Sessions", data: sSes, color: AS_TEAL, fill: true },
         { label: "Active devices", data: sAct, color: AS_BLUE, axis: "y2" }
       ], { y2: true });
-      // Conversion = first-time downloads ÷ impressions (matches the KPI + App Store Connect).
-      var convSeries = dates.map(function (d) { return (imp[d] ? (dl[d] || 0) / imp[d] : 0) * 100; });
-      asLineChart("asConversionChart", dates, [{ label: "Conversion %", data: convSeries, color: "#2e7d32", fill: true }], { pct: true });
     }
+    // Conversion: iOS = downloads ÷ impressions; Android = installs ÷ store views.
+    var convDen = isAndroid ? pv : imp;
+    var convSeries = dates.map(function (d) { return (convDen[d] ? (dl[d] || 0) / convDen[d] : 0) * 100; });
+    asLineChart("asConversionChart", dates, [{ label: "Conversion %", data: convSeries, color: "#2e7d32", fill: true }], { pct: true });
+
     asLineChart("asCrashChart", dates, [{ label: "Crashes", data: sCr, color: AS_RED, fill: true }]);
 
     // Top territories by downloads over the window
