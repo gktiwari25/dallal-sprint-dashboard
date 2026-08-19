@@ -381,7 +381,7 @@ details.lb{ border-radius:16px; }
 @keyframes lbg-d1{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(70px,50px) scale(1.10); } }
 @keyframes lbg-d2{ 0%,100%{ transform:translate(0,0) scale(1); } 50%{ transform:translate(-60px,-40px) scale(1.08); } }
 @keyframes lbg-d3{ 0%,100%{ transform:translate(0,0); } 50%{ transform:translate(-50px,60px); } }
-.loginbg{ position:relative; z-index:1; animation:lbg-breathe 16s ease-in-out infinite; }
+.loginbg{ position:absolute !important; inset:0; z-index:1; animation:lbg-breathe 16s ease-in-out infinite; }
 @keyframes lbg-breathe{ 0%,100%{ opacity:.92; transform:scale(1); } 50%{ opacity:1; transform:scale(1.02); } }
 .lbg-ring{ transform-box:fill-box; transform-origin:center; animation:lbg-spin 16s linear infinite; }
 @keyframes lbg-spin{ to{ transform:rotate(360deg); } }
