@@ -2078,7 +2078,7 @@
       else if (cx - half < m) dx = m - (cx - half);
       t.style.setProperty("--tipdx", Math.round(dx) + "px");
     });
-    el("exportApi").addEventListener("click", exportApi);
+    var _exApi = el("exportApi"); if (_exApi) _exApi.addEventListener("click", exportApi);
     (function () {
       var epc = el("apiEndpoints");
       if (!epc) return;
