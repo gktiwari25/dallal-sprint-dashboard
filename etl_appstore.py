@@ -278,6 +278,12 @@ def _parse_segment(text, report_name, since_day):
     count_col = _find_col(header, COUNT_COLS)
     single = next((s for s in ANALYTICS_SINGLE if s[0] in name_l), None)
     single_col = _find_col(header, single[2]) if single else None
+    # Active-devices ESTIMATE: Apple exposes no clean, summable Active Devices
+    # report, so approximate it from the Unique Devices column of the App Sessions
+    # report. Summing over the report's slices over-counts slightly (a device can
+    # appear under multiple source/territory/version rows), so this is an
+    # upper-bound estimate — surfaced separately as `active_devices_est`.
+    uniq_col = _find_col(header, ["Unique Devices"]) if "session" in name_l else None
 
     out = []
     for row in reader:
@@ -298,6 +304,10 @@ def _parse_segment(text, report_name, since_day):
             v = _to_int(row.get(single_col))
             if v is not None:
                 out.append(dict(date=day, metric=single[1], value=v))
+        if uniq_col:
+            u = _to_int(row.get(uniq_col))
+            if u is not None:
+                out.append(dict(date=day, metric="active_devices_est", value=u))
     return out
 
 
