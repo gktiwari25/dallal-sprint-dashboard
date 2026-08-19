@@ -2399,18 +2399,29 @@
       }
     } catch (e) {}
 
-    // Pin auth behaviour explicitly: implicit flow (tokens arrive in the URL
-    // hash), detect them on load, and persist + auto-refresh the session. This
-    // also guards against a future supabase-js defaulting to PKCE, which would
-    // break this hash-based redirect flow (no exchangeCodeForSession call here).
+    // PKCE flow (modern supabase-js default): OAuth returns a ?code= which
+    // detectSessionInUrl exchanges for a session on load. (The old implicit pin
+    // broke with newer supabase-js — Google would return and drop back to the
+    // landing with no session.)
     sbc = window.supabase.createClient(URL_, KEY_, {
       auth: {
-        flowType: "implicit",
+        flowType: "pkce",
         detectSessionInUrl: true,
         persistSession: true,
         autoRefreshToken: true
       }
     });
+
+    // Belt-and-suspenders: if a ?code= is still present after load, exchange it.
+    try {
+      var _q = new URLSearchParams(window.location.search);
+      if (_q.get("code")) {
+        sbc.auth.exchangeCodeForSession(window.location.href).then(function (res) {
+          try { history.replaceState(null, "", window.location.pathname); } catch (e) {}
+          if (res && res.data && res.data.session) onAuth(res.data.session);
+        }).catch(function () {});
+      }
+    } catch (e) {}
 
     if (!REQUIRE_AUTH) { showAppUI(); loadAll(); return; }   // intentional public mode
     // #app/#topbar start hidden in the HTML; reveal only after the session check
