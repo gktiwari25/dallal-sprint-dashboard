@@ -317,6 +317,21 @@
       '</div></div>';
   }
 
+  function pctOf(a, b) { return b ? Math.round(100 * a / b) : 0; }
+  // Icon-left stat card (Delivery + Scope Creep) — big chip, title, number, sub.
+  function statCard(title, value, sub, subColor, icon, chip, tip) {
+    var t = tip ? ' <span class="tip" data-tip="' + escAttr(tip) + '">i</span>' : '';
+    return '<div class="scard" style="--sc:' + chip + '">' +
+      '<div class="scard-ic">' + icon + '</div>' +
+      '<div class="scard-b"><div class="scard-t">' + title + t + '</div>' +
+      '<div class="scard-v">' + value + '</div>' +
+      (sub != null ? '<div class="scard-s" style="color:' + subColor + '">' + sub + '</div>' : '') + '</div></div>';
+  }
+  function roundRect(ctx, x, y, w, h, r) {
+    if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); return; }
+    ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath();
+  }
+
   // ---------- render ----------
   function render(sprint) {
     var m = compute(sprint), rag = goalRag(m);
@@ -344,12 +359,12 @@
       : "Story Points not set in Asana for this sprint — Sprint Health is showing item counts. It switches to SP automatically once tasks are estimated.";
 
     el("deliveryGrid").innerHTML =
-      card("Stories Planned", m.planned, { icon: "📋", accent: "#3f7fce" }) +
-      card("In Development", m.inDev, { icon: "🛠️", accent: "#7b61ff", tip: "Stories in the 'In Development' / Code Review board column (based on the board section, not the stale Status field)." }) +
-      card("In QA", m.inQA, { icon: "🧪", accent: "#1f6feb", tip: "Stories in a testing column: QA on Dev / Ready for UAT / QA on UAT / In UAT." }) +
-      card("Completed", m.completed, { icon: "✅", accent: "#2e7d32" }) +
-      card("Blocked", m.blocked, { icon: "⛔", accent: "#c62828" }) +
-      card("Released", m.released, { icon: "🚀", accent: "#0f8b8d", tip: "Stories in the 'Released' board column in Asana (shipped to production). 'Completed' above counts every delivered state — reached UAT or beyond (Ready for UAT / QA on UAT / In UAT / UAT Passed / Ready for Production / Released)." });
+      statCard("Stories Planned", m.planned, "Total", "var(--muted)", "📋", "#7b61ff") +
+      statCard("In Development", m.inDev, pctOf(m.inDev, m.planned) + "% of total", "#0ea89a", "🛠️", "#0ea89a", "In Development / Code Review board column (board section, not the stale Status field).") +
+      statCard("In QA", m.inQA, pctOf(m.inQA, m.planned) + "% of total", "#f5883f", "📝", "#f5883f", "A testing column: QA on Dev / Ready for UAT / QA on UAT / In UAT.") +
+      statCard("Completed", m.completed, pctOf(m.completed, m.planned) + "% of total", "#22a565", "✅", "#22a565") +
+      statCard("Blocked", m.blocked, pctOf(m.blocked, m.planned) + "% of total", "#ef4444", "⛔", "#ef4444") +
+      statCard("Released", m.released, pctOf(m.released, m.planned) + "% of total", "#7b61ff", "🚀", "#7b61ff", "Released board column (shipped to production).");
     var openItems = m.its.filter(function (i) { return !isDone(i) && !isOnHold(i); });
     var onHoldCount = m.its.filter(function (i) { return !isDone(i) && isOnHold(i); }).length;
     el("openList").innerHTML = listBlock("open", "Not yet completed &middot; " + openItems.length + " of " + m.planned + " stories" +
@@ -432,10 +447,10 @@
     var creepPct = baseCount > 0 ? addCount / baseCount : null;
     var creepTip = "Non-bug stories added after the sprint start date (approximated by ticket creation date vs sprint start). Bugs are excluded — they're raised while testing delivered work, not scope creep. High = lots of unplanned work entered the sprint.";
     el("scopeGrid").innerHTML =
-      card("Baseline scope", baseCount + ' <small>stories</small>', { icon: "📌", accent: "#3f7fce", tip: "Stories committed at sprint start (created on/before the start date, bugs excluded). ≈ " + Math.round(baseSP) + " SP." }) +
-      card("Added mid-sprint", "+" + addCount + ' <small>tickets</small>', { icon: "➕", accent: "#f29f05", tip: creepTip }) +
-      card("Scope Creep", creepPct == null ? "--" : "+" + Math.round(creepPct * 100) + "%", { icon: "📈", accent: (creepPct && creepPct > 0.1) ? "#c62828" : "#2e7d32", tip: "Added tickets ÷ baseline tickets." }) +
-      card("Added story points", "+" + Math.round(addSP) + ' <small>SP</small>', { icon: "🔢", tip: "Story points of the added tickets — 0 if they aren't estimated yet." });
+      statCard("Baseline Scope", baseCount, "stories", "var(--muted)", "🎯", "#7b61ff", "Stories committed at sprint start (created on/before the start date, bugs excluded). ≈ " + Math.round(baseSP) + " SP.") +
+      statCard("Added Mid-Sprint", "+" + addCount, "tickets", "var(--muted)", "➕", "#0ea89a", creepTip) +
+      statCard("Scope Creep", creepPct == null ? "--" : "+" + Math.round(creepPct * 100) + "%", "vs baseline", (creepPct && creepPct > 0.1) ? "#ef4444" : "#22a565", "📈", "#f5883f", "Added tickets ÷ baseline tickets.") +
+      statCard("Added Story Points", "+" + Math.round(addSP), "SP", "var(--muted)", "🔢", "#7b61ff", "Story points of the added tickets — 0 if they aren't estimated yet.");
 
     var addedItems = stories.filter(function (i) { var cd = (i.created_at || "").slice(0, 10); return start && cd && cd > start; });
     el("scopeList").innerHTML = listBlock("scope", "Added mid-sprint &middot; " + addedItems.length + " stories (bugs excluded)",
@@ -445,11 +460,28 @@
     var days = isoDays(start, end);
     var cum = days.map(function (d) { var n = 0; stories.forEach(function (i) { var cd = (i.created_at || "").slice(0, 10); if (cd && cd <= d) n++; }); return n; });
     var baseArr = days.map(function () { return baseCount; });
-    mkChart("scopeChart", { type: "line",
+    var scopePills = { id: "scopePills", afterDatasetsDraw: function (chart) {
+      var ctx = chart.ctx, meta = chart.getDatasetMeta(0), dd = chart.data.datasets[0].data;
+      meta.data.forEach(function (pt, i) {
+        var v = dd[i]; if (v == null) return;
+        ctx.save(); ctx.font = "700 10px 'Fira Sans',sans-serif"; ctx.textAlign = "center";
+        var txt = String(v), w = ctx.measureText(txt).width + 12;
+        ctx.fillStyle = "#e94b6a"; roundRect(ctx, pt.x - w / 2, pt.y - 26, w, 16, 6); ctx.fill();
+        ctx.fillStyle = "#fff"; ctx.fillText(txt, pt.x, pt.y - 15); ctx.restore();
+      });
+    } };
+    mkChart("scopeChart", {
+      type: "line",
       data: { labels: days.map(function (d) { return d.slice(5); }), datasets: [
-        { label: "Stories (bugs excluded)", data: cum, borderColor: "#c62828", backgroundColor: "rgba(242,159,5,.18)", fill: 1, tension: .1, stepped: true },
-        { label: "Baseline (at start)", data: baseArr, borderColor: "#6b7a8d", borderDash: [6, 4], pointRadius: 0, fill: false } ] },
-      options: { plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true, title: { display: true, text: "tickets" } } } } });
+        { label: "Committed scope", data: cum, borderColor: "#e94b6a", borderWidth: 2.6, tension: .25, fill: true, pointRadius: 4, pointBackgroundColor: "#e94b6a", pointBorderColor: "#fff", pointBorderWidth: 2, pointHoverRadius: 6,
+          backgroundColor: function (c) { var a = c.chart.chartArea; if (!a) return "rgba(233,75,106,.12)"; var g = c.chart.ctx.createLinearGradient(0, a.top, 0, a.bottom); g.addColorStop(0, "rgba(233,75,106,.26)"); g.addColorStop(1, "rgba(233,75,106,.02)"); return g; } },
+        { label: "Baseline (at start)", data: baseArr, borderColor: "#6c5ce7", borderDash: [6, 5], borderWidth: 1.8, pointRadius: 0, fill: false, tension: 0 } ] },
+      options: { responsive: true, maintainAspectRatio: false, layout: { padding: { top: 28 } },
+        plugins: { legend: { position: "top", align: "end", labels: { usePointStyle: true, pointStyle: "circle", boxWidth: 8, padding: 14, color: "#8f9fb5", font: { size: 11.5, weight: "600" } } } },
+        scales: { y: { beginAtZero: true, title: { display: true, text: "Tickets", color: "#8f9fb5" }, grid: { color: "rgba(125,142,170,.14)" }, border: { display: false }, ticks: { color: "#8f9fb5" } },
+          x: { grid: { display: false }, border: { display: false }, ticks: { color: "#8f9fb5" } } } },
+      plugins: [scopePills],
+    });
   }
 
   function isoDays(start, end) {
