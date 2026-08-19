@@ -188,7 +188,10 @@ h2.sech > .expbtn,h2.sech > button{margin-left:auto}
 .card:has(.tip:hover){z-index:60}
 .card:hover::before{background:linear-gradient(180deg,var(--teal),var(--accent))}
 .card .icon{position:absolute;top:12px;right:13px;font-size:15px;opacity:.55;line-height:1}
+/* Reserve the top-right icon column so long / two-line titles never run under
+   the emoji. Only when an icon is present. */
 .card .label{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);margin-bottom:7px;font-weight:600}
+.card:has(.icon) .label{padding-right:24px}
 .card .value{font-size:27px;font-weight:700;line-height:1.05;font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.02em;color:var(--ink)}
 .card .value small{font-size:12px;font-weight:500;color:var(--muted);font-family:var(--font)}
 .card .bar{height:7px;background:var(--surface-3);border-radius:6px;margin-top:10px;overflow:hidden}
