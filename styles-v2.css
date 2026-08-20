@@ -272,8 +272,10 @@ details.lb{ border-radius:16px; }
 /* Info-icon chips + status pills a touch rounder */
 .tip{ font-weight:700; }
 .rag{ border-radius:999px; font-weight:700; }
-/* Edge-anchored hero tooltips: open toward the card centre so the box never
-   overflows/clips at the outer card edges (rightmost card opens leftward). */
+/* Hero-card tooltips: the (i) sits at the top of the card, so open the box
+   UPWARD into the empty space above — never covering the bars or the % badge —
+   and edge-anchor it horizontally so it stays within the card row. */
+.hcard .tip::after{ top:auto; bottom:calc(100% + 10px); }
 .hcard .tip.tip-l::after{ left:0; right:auto; transform:none; }
 .hcard .tip.tip-r::after{ left:auto; right:0; transform:none; }
 
