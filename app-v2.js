@@ -2186,11 +2186,31 @@
       el("appstoreWindow").textContent = "Sample data (" + platLabel + ") — this is how it will look once the store APIs are wired up";
     }
 
-    // Google Play not-connected note (Android tab selected but no Android data yet).
+    // Google Play not-connected note + data-staleness banner. Normal store lag is
+    // 1–3 days; anything older means the store's feed is delayed/frozen, and the
+    // "Last 24 hours" tile is actually showing an old day — say so, don't fake it.
     var playNote = el("appstorePlayNote");
     if (playNote) {
+      var latestDate = "";
+      rows.forEach(function (r) { if (r.date && r.date > latestDate) latestDate = r.date; });
+      var todayStr = new Date().toISOString().slice(0, 10);
+      var daysStale = latestDate ? Math.floor((Date.parse(todayStr) - Date.parse(latestDate)) / 86400000) : null;
+      var STALE_AFTER = 4;   // days; normal Apple/Play reporting lag is 1–3 days
+      function noteStyle(tone) {
+        if (tone === "warn") { playNote.style.background = "#fff5e6"; playNote.style.borderColor = "#f0c67a"; playNote.style.color = "#7a4e05"; }
+        else { playNote.style.background = "#eaf2ff"; playNote.style.borderColor = "#b6cdf2"; playNote.style.color = "#1c3a63"; }
+      }
       if (live && asPlatform === "android" && !hasAndroid) {
+        noteStyle("info");
         playNote.innerHTML = "🤖 <b>Google Play (Android) isn't connected yet.</b> Android metrics will appear here once the Play Store ETL is wired up (needs a Google Play service-account key). iOS is live on the other tab.";
+        playNote.classList.remove("hidden");
+      } else if (live && daysStale != null && daysStale > STALE_AFTER) {
+        var storeNm = asPlatform === "android" ? "Google Play" : "App Store";
+        var extra = asPlatform === "android"
+          ? " Google has stopped refreshing the Play <b>install</b> statistics export (crashes/ratings/reviews are still current), so no newer install data is available to pull. The figures below — including any “Last 24 hours” tile — reflect <b>" + esc(latestDate) + "</b>, not today."
+          : " The figures below reflect the latest available reporting day.";
+        noteStyle("warn");
+        playNote.innerHTML = "⏳ <b>" + storeNm + " data is delayed.</b> Latest available day is <b>" + esc(latestDate) + "</b> (" + daysStale + " days ago)." + extra;
         playNote.classList.remove("hidden");
       } else {
         playNote.classList.add("hidden");
