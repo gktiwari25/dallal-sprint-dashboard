@@ -325,14 +325,18 @@
     var compHex = comp == null ? "#0f8b8d" : comp >= 0.85 ? "#2e7d32" : comp >= 0.6 ? "#b9820a" : "#c62828";
 
     el("retroSprint").textContent = sprint || "—";
+    var muted = "var(--muted)";
+    var reworkHex = (m.reopenedPct || 0) <= 0.1 ? "#2e7d32" : (m.reopenedPct || 0) <= 0.25 ? "#b9820a" : "#c62828";
+    // Icon-left stat cards (same component as the Delivery tab) — consistent number
+    // alignment: one big value line + a muted sub-line, no wrapping mixed units.
     el("retroGrid").innerHTML =
-      card("Committed", committed + " " + unit, { icon: "🎯", accent: "#1f6feb", tip: "Scope committed for this sprint (still-ideating columns excluded)." }) +
-      card("Delivered", delivered + " " + unit, { icon: "✅", accent: "#2e7d32", tip: "Work that reached the UAT pipeline or shipped this sprint (Ready for UAT / QA on UAT / UAT Passed / Released)." }) +
-      card("Completion", pct(comp), { icon: "📈", accent: compHex, tip: "Delivered ÷ committed." }) +
-      card("Carryover", carriedItems + ' <span style="font-size:13px;color:var(--muted,#5b6577)">items · ' + carry + " " + unit + "</span>", { icon: "↪️", accent: carriedItems ? "#b9820a" : "#2e7d32", tip: "Committed work still in development or not yet started at sprint end. Items already in the QA/UAT pipeline (Ready for UAT / QA on UAT / UAT Passed) count as delivered, not carried over." }) +
-      card("Velocity", m.velocity + " " + m.velocityUnit, { icon: "⚡", accent: "#0f8b8d", tip: "Throughput delivered this sprint." }) +
-      card("Bugs Closed", m.bugsClosed + " / " + m.bugs, { icon: "🐞", accent: "#7c5cd6", tip: "Bugs resolved out of bugs in the sprint." }) +
-      card("Rework", m.reopenedPct == null ? "--" : pct(m.reopenedPct), { icon: "🔁", accent: (m.reopenedPct || 0) <= 0.1 ? "#2e7d32" : (m.reopenedPct || 0) <= 0.25 ? "#b9820a" : "#c62828", tip: "Delivered items that were reopened at least once." });
+      statCard("Committed", committed + " " + unit, "scope committed", muted, "🎯", "#1f6feb", "Scope committed for this sprint (still-ideating columns excluded).") +
+      statCard("Delivered", delivered + " " + unit, "reached UAT pipeline or shipped", "#2e7d32", "✅", "#2e7d32", "Work that reached the UAT pipeline or shipped this sprint (Ready for UAT / QA on UAT / UAT Passed / Released).") +
+      statCard("Completion", pct(comp), "delivered ÷ committed", compHex, "📈", compHex, "Delivered ÷ committed.") +
+      statCard("Carryover", carry + " " + unit, carriedItems + " item" + (carriedItems === 1 ? "" : "s") + " carried over", muted, "↪️", carriedItems ? "#b9820a" : "#2e7d32", "Committed work still in development or not yet started at sprint end. Items already in the QA/UAT pipeline (Ready for UAT / QA on UAT / UAT Passed) count as delivered, not carried over.") +
+      statCard("Velocity", m.velocity + " " + m.velocityUnit, "delivered this sprint", muted, "⚡", "#0f8b8d", "Throughput delivered this sprint.") +
+      statCard("Bugs Closed", m.bugsClosed + " / " + m.bugs, "resolved / total", muted, "🐞", "#7c5cd6", "Bugs resolved out of bugs in the sprint.") +
+      statCard("Rework", m.reopenedPct == null ? "--" : pct(m.reopenedPct), "reopened after delivery", muted, "🔁", reworkHex, "Delivered items that were reopened at least once.");
 
     var ins = [];
     if (comp != null) ins.push({ k: comp >= 0.85 ? "good" : comp >= 0.6 ? "watch" : "bad", t: "Delivered " + delivered + " of " + committed + " " + unit + " committed (" + pct(comp) + ")." });
@@ -552,7 +556,7 @@
           { icon: "🔄", accent: "#0f8b8d", tip: "Total active build + test time per task — from 'In Development' to Done. Lower is faster delivery." }) +
         card("Blocked Hours", (m.blockedHours != null ? m.blockedHours.toFixed(0) : "--"),
           { icon: "⛔", accent: "#c62828", tip: "Total hours tasks sat in the 'Blocked' board section this sprint. 0 means tasks weren't moved into Blocked (blocking tracked elsewhere)." });
-      mkChart("flowChart", { type: "bar",
+      if (el("flowChart")) mkChart("flowChart", { type: "bar",
         data: { labels: ["Avg Dev", "Avg QA", "Cycle"],
           datasets: [{ data: [m.devDays || 0, m.qaDays || 0, m.cycleDays || 0],
             backgroundColor: ["#3f7fce", "#1f6feb", "#0f8b8d"], borderRadius: 6, barThickness: 28 }] },
@@ -685,30 +689,23 @@
 
   function renderRisks(sprint) {
     // Delivery Risks: manually-curated list (Supabase `risks` table). Repo/security
-    // risks live on Engineering. The RAG count cards show overall posture across ALL
-    // delivery risks; the list is sprint-AWARE — risks tagged to the selected sprint
-    // (or left untagged, i.e. always-on) show first, then carryover from other sprints.
+    // risks live on Engineering. The whole Risks section is HIDDEN unless the selected
+    // sprint has a live risk — a risk tagged to this sprint, or left untagged (always-on).
+    // Stale risks from OTHER sprints are no longer shown (they read as "old data").
+    var section = el("risksSection");
     var rs = data.risks.filter(function (r) { return !isEngRisk(r); });
+    var isCurrent = function (r) { var s = String(r.sprint == null ? "" : r.sprint).trim(); return s === "" || s === String(sprint); };
+    var current = rs.filter(isCurrent);
+    if (section) section.classList.toggle("hidden", current.length === 0);
+    if (!current.length) return;   // nothing to render; section hidden above
+
     var counts = { red: 0, amber: 0, green: 0 };
-    rs.forEach(function (r) { var k = (r.rag || "").toLowerCase(); if (counts[k] != null) counts[k]++; });
-    el("riskCards").innerHTML =
+    current.forEach(function (r) { var k = (r.rag || "").toLowerCase(); if (counts[k] != null) counts[k]++; });
+    if (el("riskCards")) el("riskCards").innerHTML =
       card("Red", '<span class="dot red"></span> ' + counts.red) +
       card("Amber", '<span class="dot amber"></span> ' + counts.amber) +
       card("Green", '<span class="dot green"></span> ' + counts.green);
-
-    // Current = tagged to this sprint OR untagged (untagged risks are always-on).
-    var isCurrent = function (r) { var s = String(r.sprint == null ? "" : r.sprint).trim(); return s === "" || s === String(sprint); };
-    var current = rs.filter(isCurrent);
-    var carry = rs.filter(function (r) { return !isCurrent(r); })
-      .sort(function (a, b) { return num(b.sprint) - num(a.sprint); });
-    var groupH = function (label) {
-      return '<div style="font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin:14px 0 8px">' + label + "</div>";
-    };
-    var html = "";
-    if (current.length) html += groupH("Sprint " + esc(String(sprint)) + " &middot; " + current.length) + current.map(riskCardHtml).join("");
-    if (carry.length) html += groupH("Carryover &middot; other sprints &middot; " + carry.length) + carry.map(riskCardHtml).join("");
-    el("riskList").innerHTML = html ||
-      '<div class="muted">No delivery risks logged. Risks are a <b>manually-curated</b> list (the Supabase <code>risks</code> table) — add rows there to surface them here. (Security/repo risks live on the Engineering tab.)</div>';
+    if (el("riskList")) el("riskList").innerHTML = current.map(riskCardHtml).join("");
   }
 
   // Escape text, then turn any URL into a clickable link (e.g. Asana story links).
@@ -772,13 +769,16 @@
     var avgAge = ages.length ? ages.reduce(function (a, b) { return a + b; }, 0) / ages.length : null;
     var maxAge = ages.length ? Math.max.apply(null, ages) : null;
     var avgVel = agg.length ? agg.reduce(function (a, x) { return a + x.delivered; }, 0) / agg.length : 0;
-    el("trendKpiGrid").innerHTML =
-      card("Avg Velocity", Math.round(avgVel) + ' <small>SP/sprint</small>', { icon: "⚡", accent: "#0f8b8d", tip: "Mean delivered story points across the last " + agg.length + " sprints — the number to forecast future capacity with." }) +
-      card("Flow Efficiency", flowEff != null ? pct(flowEff) : "--", { icon: "🌊", accent: "#1f6feb", tip: "Active build+test time ÷ (active + blocked) time. Higher = less time stuck waiting. Needs the --with-flow sync." }) +
-      card("Avg Age (open)", avgAge != null ? avgAge.toFixed(1) + ' <small>days</small>' : "--", { icon: "⏳", accent: "#f29f05", tip: "Average days the still-open stories have been alive (created → now). Rising = work is aging." }) +
-      card("Oldest Open", maxAge != null ? Math.round(maxAge) + ' <small>days</small>' : "--", { icon: "🕰️", accent: "#c62828", tip: "Age of the oldest still-open story in this sprint — a candidate to unblock or split." });
-
-    mkChart("predictChart", {
+    // Delivery Trends & Flow section was removed — only render its KPI grid + chart
+    // if those DOM nodes still exist (the rest of this fn drives Sprint Health charts).
+    if (el("trendKpiGrid")) {
+      el("trendKpiGrid").innerHTML =
+        card("Avg Velocity", Math.round(avgVel) + ' <small>SP/sprint</small>', { icon: "⚡", accent: "#0f8b8d", tip: "Mean delivered story points across the last " + agg.length + " sprints — the number to forecast future capacity with." }) +
+        card("Flow Efficiency", flowEff != null ? pct(flowEff) : "--", { icon: "🌊", accent: "#1f6feb", tip: "Active build+test time ÷ (active + blocked) time. Higher = less time stuck waiting. Needs the --with-flow sync." }) +
+        card("Avg Age (open)", avgAge != null ? avgAge.toFixed(1) + ' <small>days</small>' : "--", { icon: "⏳", accent: "#f29f05", tip: "Average days the still-open stories have been alive (created → now). Rising = work is aging." }) +
+        card("Oldest Open", maxAge != null ? Math.round(maxAge) + ' <small>days</small>' : "--", { icon: "🕰️", accent: "#c62828", tip: "Age of the oldest still-open story in this sprint — a candidate to unblock or split." });
+    }
+    if (el("predictChart")) mkChart("predictChart", {
       type: "bar",
       data: { labels: labels, datasets: [
         { type: "bar", label: "Carryover SP", data: agg.map(function (a) { return a.carry; }), backgroundColor: "#f29f05", borderRadius: 5, yAxisID: "y" },
