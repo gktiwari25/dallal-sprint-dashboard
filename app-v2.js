@@ -2309,11 +2309,14 @@
     // Apple-only metrics (Impressions / Page Views / Conversion / Sessions /
     // Redownloads) don't exist in Google Play's reports — omit those tiles on Android.
     el("appstoreKpis").innerHTML =
-      mcard(isAndroid ? "Installs" : "First-Time Downloads", fmtInt(totDl), "⬇️", COL.dl, sparkBox("sp_dl", sDl, COL.dl, true),
-        (isAndroid && totDev ? "by user · " + fmtInt(totDev) + " by device" : null),
-        (isAndroid
-          ? "Google Play installs shown two ways. By UNIQUE USER (Google account) = " + fmtInt(totDl) + " — this is Play Console's default \"Installs\" and matches Apple's App Units (also per-account), so iOS & Android stay comparable. By DEVICE = " + fmtInt(totDev) + " — counts each device, so a user who installs on 2 devices counts twice; the gap is multi-device users."
-          : "First-time downloads. Source: " + acqSource + ".")) +
+      (isAndroid
+        ? mcard("User Installs", fmtInt(totDl), "👤", COL.dl, sparkBox("sp_dl", sDl, COL.dl, true), "per unique user",
+            "Daily User Installs = " + fmtInt(totDl) + " — counted per unique user / Google account, de-duping anyone who installed on more than one device."
+            + (totDev > totDl ? " The " + (totDev - totDl) + "-unit gap vs Device Installs = those installs were the same users on a second device." : "")
+            + " This is Play Console's default \"Installs\" and matches Apple App Units (also per-account).")
+          + mcard("Device Installs", fmtInt(totDev), "📱", "#0891b2", sparkBox("sp_dev", sDev, "#0891b2", true), "per device",
+            "Daily Device Installs = " + fmtInt(totDev) + " — counted per device (each device that installed). A user who installs on more than one device is counted more than once.")
+        : mcard("First-Time Downloads", fmtInt(totDl), "⬇️", COL.dl, sparkBox("sp_dl", sDl, COL.dl, true), null, "First-time downloads. Source: " + acqSource + ".")) +
       (isAndroid ? "" :
         mcard("Redownloads", fmtInt(totRe), "🔁", COL.re, sparkBox("sp_re", sRe, COL.re, true), null, "Re-installs by users who previously downloaded the app.")) +
       mcard("Downloads — This Week vs Last", fmtInt(wowThis) + wowBadge, "📅", COL.wk, sparkBox("sp_wk", sDl.slice(-14), COL.wk, true), (maxDlDate ? "Last week: " + fmtInt(wowLast) : ""), (isAndroid ? "Installs" : "First-time downloads") + " last 7 days vs previous 7. Independent of the Range selector.") +
