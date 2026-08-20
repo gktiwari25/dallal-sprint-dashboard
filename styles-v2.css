@@ -482,3 +482,79 @@ details.retro-panel[open] .retro-chev{ transform:rotate(90deg); }
 #login > .lnav .lbrand{ padding:11px 20px !important; border-radius:16px !important; box-shadow:0 10px 26px rgba(0,0,0,.28) !important; }
 #login > .lnav .lbrand img{ height:38px !important; }
 @media (max-height:720px){ #login > .lnav{ top:16px; } #login > .lnav .lbrand img{ height:32px !important; } }
+
+/* =========================================================================
+   FUNNEL ANALYTICS — full redesign (header, about, KPIs, overview rows,
+   insights). Sits on the existing funnel data + step-bar (.funnel/.fstep) CSS.
+   ========================================================================= */
+.fa-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; margin:0 0 18px; }
+.fa-title h2{ font-size:22px; font-weight:800; color:var(--ink); margin:0; }
+.fa-title h2::before{ display:none !important; }
+.fa-title p{ margin:3px 0 0; color:var(--muted); font-size:13px; }
+.fa-filters{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.fa-fgrp{ display:inline-flex; align-items:center; gap:6px; }
+.fa-fgrp .sub{ color:var(--muted); font-size:12px; }
+
+/* About card */
+.fa-about{ display:grid; grid-template-columns:1fr auto; gap:18px; align-items:center; background:linear-gradient(180deg,color-mix(in srgb,var(--accent,#5a5be6) 6%,var(--card)),var(--card)); border:1px solid var(--line); border-radius:20px; box-shadow:var(--sh-sm); padding:20px 22px; margin:0 0 16px; }
+.fa-about-h{ display:flex; align-items:center; gap:9px; font-size:15px; font-weight:800; color:var(--ink); }
+.fa-abadge{ font-size:16px; }
+.fa-about-sub{ margin:8px 0 14px; color:var(--muted); font-size:13px; max-width:70ch; }
+.fa-arows{ display:grid; grid-template-columns:1fr 1fr; gap:10px 22px; }
+.fa-arow{ display:flex; align-items:flex-start; gap:10px; font-size:13px; color:var(--ink); }
+.fa-aic{ flex:0 0 auto; width:28px; height:28px; border-radius:8px; display:grid; place-items:center; background:var(--surface-2); font-size:14px; }
+.fa-atxt b{ color:var(--ink); }
+.fa-about-src{ margin-top:14px; font-size:11.5px; }
+.fa-about-ill{ flex:0 0 auto; opacity:.92; }
+@media (max-width:820px){ .fa-about{ grid-template-columns:1fr; } .fa-about-ill{ display:none; } .fa-arows{ grid-template-columns:1fr; } }
+
+/* KPI row */
+.fa-kpis{ display:grid; grid-template-columns:repeat(5,1fr); gap:14px; margin:0 0 22px; }
+.fa-kpi{ background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--sh-sm); padding:16px 18px; transition:box-shadow var(--dur) var(--ease),transform var(--dur) var(--ease); }
+.fa-kpi:hover{ box-shadow:var(--sh-md); transform:translateY(-2px); }
+.fa-kpi-h{ display:flex; align-items:center; gap:8px; }
+.fa-kpi-ic{ width:30px; height:30px; border-radius:9px; display:grid; place-items:center; font-size:15px; background:color-mix(in srgb,var(--k) 15%,transparent); }
+.fa-kpi-l{ font-size:11.5px; font-weight:700; color:var(--muted); }
+.fa-kpi-v{ font-size:26px; font-weight:800; color:var(--ink); margin-top:9px; letter-spacing:-.01em; }
+.fa-kpi-s{ font-size:11.5px; color:var(--muted); margin-top:2px; }
+@media (max-width:1000px){ .fa-kpis{ grid-template-columns:repeat(2,1fr); } }
+@media (max-width:560px){ .fa-kpis{ grid-template-columns:1fr; } }
+
+/* Overview rows */
+.fo-legend{ display:flex; gap:16px; flex-wrap:wrap; justify-content:flex-end; margin:-4px 0 12px; }
+.fo-lg{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; color:var(--muted); font-weight:600; }
+.fo-lg i{ width:9px; height:9px; border-radius:50%; }
+details.fo-row{ background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:var(--sh-sm); margin-bottom:10px; overflow:hidden; }
+.fo-sum{ list-style:none; cursor:pointer; display:flex; align-items:center; gap:16px; padding:15px 18px; }
+.fo-sum::-webkit-details-marker{ display:none; }
+.fo-sum:hover{ background:var(--surface-2); }
+.fo-num{ flex:0 0 auto; width:26px; height:26px; border-radius:8px; display:grid; place-items:center; font-size:12px; font-weight:800; color:var(--muted); background:var(--surface-2); }
+.fo-name{ flex:1 1 220px; min-width:170px; display:flex; flex-direction:column; gap:4px; }
+.fo-nt{ display:flex; align-items:center; gap:9px; font-size:14px; color:var(--ink); }
+.fo-tag{ font-size:10.5px; font-weight:700; padding:3px 9px; border-radius:999px; white-space:nowrap; }
+.fo-tag.green{ background:rgba(34,165,101,.14); color:#1c9a5e; }
+.fo-tag.amber{ background:rgba(245,158,11,.16); color:#c07d09; }
+.fo-tag.red{ background:rgba(233,75,106,.14); color:#d33b5c; }
+.fo-desc{ font-size:12px; color:var(--muted); }
+.fo-metric{ flex:0 0 auto; width:76px; text-align:center; display:flex; flex-direction:column; gap:2px; }
+.fo-metric b{ font-size:15px; font-weight:800; color:var(--ink); }
+.fo-metric b.cv{ color:#f5883f; }
+.fo-metric b.dp{ color:#e94b6a; }
+.fo-metric span{ font-size:11px; color:var(--muted); }
+.fo-spark{ flex:0 0 auto; width:96px; height:34px; display:grid; place-items:center; }
+.fo-chev{ flex:0 0 auto; color:var(--muted); font-size:13px; transition:transform var(--dur) var(--ease); }
+details.fo-row[open] .fo-chev{ transform:rotate(180deg); }
+.fo-body{ padding:6px 18px 18px; border-top:1px solid var(--line); }
+@media (max-width:900px){ .fo-sum{ flex-wrap:wrap; gap:12px; } .fo-spark{ display:none; } .fo-metric{ width:70px; } }
+
+/* Insights & recommendations */
+.fa-insights{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; }
+.fa-inscard{ background:var(--card); border:1px solid var(--line); border-top:3px solid var(--tone,#7b61ff); border-radius:16px; box-shadow:var(--sh-sm); padding:16px 17px; display:flex; flex-direction:column; gap:7px; }
+.fa-inscard.red{ --tone:#e94b6a; } .fa-inscard.amber{ --tone:#f5a623; } .fa-inscard.green{ --tone:#22a565; } .fa-inscard.blue{ --tone:#3b82f6; }
+.fa-ins-ic{ width:34px; height:34px; border-radius:10px; display:grid; place-items:center; font-size:16px; background:color-mix(in srgb,var(--tone) 14%,transparent); }
+.fa-ins-t{ font-size:13.5px; font-weight:800; color:var(--ink); }
+.fa-ins-s{ font-size:12.5px; color:var(--ink); }
+.fa-ins-r{ font-size:12.5px; color:var(--muted); flex:1; }
+.fa-ins-link{ font-size:12.5px; font-weight:700; color:var(--tone); margin-top:2px; }
+@media (max-width:1000px){ .fa-insights{ grid-template-columns:repeat(2,1fr); } }
+@media (max-width:560px){ .fa-insights{ grid-template-columns:1fr; } }

@@ -1282,91 +1282,182 @@
     });
   }
 
+  var METRIC_FUNNELS = { "Supply & Demand": 1, "Engagement": 1, "Time to Reach Step (sec)": 1, "Listings Published (weekly)": 1 };
+  // Short leadership-facing one-liners for the overview rows.
+  var FUNNEL_DESC = {
+    "Listing Flow": "Track the journey from creating a listing to publishing it live",
+    "Listing Creation": "Track the journey from creating a listing to publishing it live",
+    "Licensed broker Registration": "Monitor broker registration and verification completion",
+    "Company Registration": "Track company sign-up and verification process",
+    "User Registration": "Analyze sign-up journey and verification completion",
+    "Property Discovery": "How buyers search, view and contact agents",
+    "New-User Retention": "Understand how users return and stay engaged"
+  };
+  function funnelHealth(conv) {
+    return conv >= 40 ? ["Healthy", "green"] : conv >= 15 ? ["Needs attention", "amber"] : ["At risk", "red"];
+  }
+  function fmtInt2(n) { return (typeof fmtInt === "function") ? fmtInt(n) : String(Math.round(num(n))); }
+  // Tiny inline sparkline of a funnel's step counts (shows the drop-off shape).
+  function sparkSVG(vals, rag) {
+    var col = rag === "green" ? "#22a565" : rag === "amber" ? "#f29f05" : "#e94b6a";
+    vals = (vals || []).map(function (v) { return num(v); });
+    if (vals.length < 2) vals = [num(vals[0]) || 0, num(vals[0]) || 0];
+    var mx = Math.max.apply(null, vals) || 1, w = 96, h = 34, n = vals.length;
+    var pts = vals.map(function (v, i) { var x = n > 1 ? i / (n - 1) * w : 0; var y = h - 2 - (v / mx) * (h - 6); return x.toFixed(1) + "," + y.toFixed(1); }).join(" ");
+    return '<svg viewBox="0 0 ' + w + ' ' + h + '" width="' + w + '" height="' + h + '" preserveAspectRatio="none">' +
+      '<polyline points="' + pts + '" fill="none" stroke="' + col + '" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  }
+  // Detailed step bars for one funnel (used inside an expanded overview row).
+  function funnelStepsHTML(f) {
+    var users = f.steps.map(function (s) { return s.users; });
+    var top = users[0] || 0;
+    var worstIdx = (function () { var b = 1, bd = -1; for (var k = 1; k < users.length; k++) { var d = users[k - 1] - users[k]; if (d > bd) { bd = d; b = k; } } return b; })();
+    return f.steps.map(function (s, i) {
+      var w = top ? Math.max(2, Math.round(1000 * s.users / top) / 10) : 0;
+      var ofStart = top ? Math.round(1000 * s.users / top) / 10 : 0;
+      var conv = i === 0 ? 100 : (users[i - 1] ? Math.round(1000 * s.users / users[i - 1]) / 10 : 0);
+      var drop = i === 0 ? 0 : (users[i - 1] - s.users);
+      var isWorst = (i === worstIdx && drop > 0);
+      var gl = STEP_GLOSSARY[s.name] || "";
+      var meta = i === 0
+        ? '<span class="fm">entry point · 100% of start</span>'
+        : '<span class="fm">' + ofStart + '% of start</span><span class="fm">step conversion ' + conv + '%</span>' +
+          (drop > 0 ? '<span class="fm drop">−' + drop + ' lost here</span>' : '');
+      return '<div class="fstep' + (isWorst ? ' worst' : '') + '">' +
+        '<div class="fstep-top"><span class="fnum">' + (i + 1) + '</span>' +
+        '<span class="fstep-name">' + esc(s.name) + '</span>' +
+        '<span class="fstep-users">' + s.users + ' <span class="fu">users</span></span></div>' +
+        '<div class="ftrack"><div class="ffill' + (isWorst ? ' bad' : '') + '" style="width:' + w + '%"></div></div>' +
+        '<div class="fstep-meta">' + meta + (isWorst ? '<span class="worsttag">◀ biggest drop-off</span>' : '') + '</div>' +
+        (gl ? '<div class="fstep-gloss">' + esc(gl) + '</div>' : '') +
+        '</div>';
+    }).join("");
+  }
+
   function renderFunnels() {
     populateFunnelRange();
     var env = populateFunnelEnv();
     var platform = populateFunnelPlatform(env);
     var fs = funnelsData(env, platform);
-    var METRIC = { "Supply & Demand": 1, "Engagement": 1, "Time to Reach Step (sec)": 1, "Listings Published (weekly)": 1 };
-    var metricFs = fs.filter(function (f) { return METRIC[f.funnel]; });
-    var realFs = fs.filter(function (f) { return !METRIC[f.funnel]; });
-    var platLabel = PLATFORM_LABEL[platform] || platform;
-    var envNote = env === "PROD"
-      ? "<b>Dallal PRODUCTION</b> — real users, " + funnelRangeLabel() + "."
-      : "<b>Dallal UAT</b> (test environment), " + funnelRangeLabel() + ". Volumes are low by design — read the <b>shape and drop-off points</b>, not the absolute counts.";
-    var platNote = platform === "All"
-      ? "All platforms combined."
-      : "Filtered to <b>" + esc(platLabel) + "</b> (from the <code>platform</code> event property). For a single platform, Discovery starts at <b>View Details</b> — its Search step isn't platform-tagged.";
-    var intro =
-      '<div class="ftabhead">' +
-        '<h3>User Funnel Analytics — how leadership should read this</h3>' +
-        '<p>A <b>funnel</b> is a journey users take, one step at a time. The bars show <b>how many people reach each step</b>; the gap between two bars is <b>where we lose them</b>. We track three journeys:</p>' +
-        '<ul class="ftablist">' +
-          '<li><b>🏠 Listing Creation</b> — owners/agents publishing property → marketplace <i>supply</i>.</li>' +
-          '<li><b>🔎 Property Discovery</b> — buyers searching → contacting agents → marketplace <i>demand</i>.</li>' +
-          '<li><b>👤 User Registration</b> — new users signing up → account <i>growth</i>.</li>' +
-          '<li><b>🔁 New-User Retention</b> — how many new users <i>come back</i> each week → <i>churn</i>. Here each “step” is a week, and the gap is who we lost.</li>' +
-        '</ul>' +
-        '<p class="muted">Source: Amplitude · ' + envNote + ' ' + platNote +
-        ' Switch <b>Environment</b> (UAT / PROD) and <b>Platform</b> (Web / Android / iOS) above to slice each funnel.</p>' +
-      '</div>';
-
-    if (!fs.length) {
-      el("funnelList").innerHTML = intro + '<div class="finsight">No funnel data for <b>Dallal ' + esc(env) +
-        '</b> · <b>' + esc(platLabel) + '</b> yet — either no events in the last 30 days, or this platform isn\'t instrumented for these steps.</div>';
-      renderProductMetrics(env, metricFs);
-      renderPathSankey(env);
-      return;
-    }
-    el("funnelList").innerHTML = intro + realFs.map(function (f) {
-      var users = f.steps.map(function (s) { return s.users; });
-      var top = users[0] || 0;
-      var ins = funnelInsight(f);
-      var info = FUNNEL_INFO[f.funnel] || { icon: "📈", tag: "", what: "", biz: "", lens: "" };
-      var oc = ins.overall >= 40 ? "green" : ins.overall >= 15 ? "amber" : "red";
-      var worstIdx = (function () { var b = 1, bd = -1; for (var k = 1; k < users.length; k++) { var d = users[k - 1] - users[k]; if (d > bd) { bd = d; b = k; } } return b; })();
-      var bars = f.steps.map(function (s, i) {
-        var w = top ? Math.max(2, Math.round(1000 * s.users / top) / 10) : 0;
-        var ofStart = top ? Math.round(1000 * s.users / top) / 10 : 0;
-        var conv = i === 0 ? 100 : (users[i - 1] ? Math.round(1000 * s.users / users[i - 1]) / 10 : 0);
-        var drop = i === 0 ? 0 : (users[i - 1] - s.users);
-        var isWorst = (i === worstIdx && drop > 0);
-        var gl = STEP_GLOSSARY[s.name] || "";
-        var meta = i === 0
-          ? '<span class="fm">entry point · 100% of start</span>'
-          : '<span class="fm">' + ofStart + '% of start</span><span class="fm">step conversion ' + conv + '%</span>' +
-            (drop > 0 ? '<span class="fm drop">−' + drop + ' lost here</span>' : '');
-        return '<div class="fstep' + (isWorst ? ' worst' : '') + '">' +
-          '<div class="fstep-top"><span class="fnum">' + (i + 1) + '</span>' +
-          '<span class="fstep-name">' + esc(s.name) + '</span>' +
-          '<span class="fstep-users">' + s.users + ' <span class="fu">users</span></span></div>' +
-          '<div class="ftrack"><div class="ffill' + (isWorst ? ' bad' : '') + '" style="width:' + w + '%"></div></div>' +
-          '<div class="fstep-meta">' + meta + (isWorst ? '<span class="worsttag">◀ biggest drop-off</span>' : '') + '</div>' +
-          (gl ? '<div class="fstep-gloss">' + esc(gl) + '</div>' : '') +
-          '</div>';
-      }).join("");
-      var read = "Of <b>" + ins.entered + "</b> who started, <b>" + ins.completed + "</b> reached the end — a <b>" + ins.overall + "% completion rate</b>. " +
-        "The biggest single fall-off is <b>" + esc(ins.fromName) + " → " + esc(ins.toName) + "</b>, losing <b>" + ins.dropPct + "%</b> of the people at that point (" + ins.fromN + " → " + ins.toN + " users).";
-      return '<div class="funnelcard">' +
-        '<div class="fh"><span class="fname">' + info.icon + ' ' + esc(f.funnel) +
-          (info.tag ? ' <span class="ftag">' + info.tag + '</span>' : '') + '</span>' +
-          '<span class="rag ' + oc + '">' + ins.overall + '% complete</span></div>' +
-        '<div class="fwhat">' + info.what + ' <br>' + info.biz + '</div>' +
-        '<div class="fkpis">' +
-          '<div class="fkpi"><span class="fkn">' + ins.entered + '</span><span class="fkl">Entered</span></div>' +
-          '<div class="fkpi arrow">→</div>' +
-          '<div class="fkpi"><span class="fkn">' + ins.completed + '</span><span class="fkl">Completed</span></div>' +
-          '<div class="fkpi"><span class="fkn ' + oc + '">' + ins.overall + '%</span><span class="fkl">Completion</span></div>' +
-          '<div class="fkpi"><span class="fkn red">' + ins.dropPct + '%</span><span class="fkl">Biggest drop</span></div>' +
-        '</div>' +
-        '<div class="funnel">' + bars + '</div>' +
-        '<div class="finsight"><b>📊 What the data says:</b> ' + read + '<br><b>👉 Where to look:</b> ' + info.lens + '</div>' +
-        '<div class="muted" style="font-size:11px;margin-top:8px">' + esc(f.source) + ' · each step shows its plain-language meaning · the red step is the biggest drop-off.</div>' +
-        '</div>';
-    }).join("") || '<div class="muted">No funnel data.</div>';
-    renderProductMetrics(env, metricFs);
+    var metricFs = fs.filter(function (f) { return METRIC_FUNNELS[f.funnel]; });
+    var realFs = fs.filter(function (f) { return !METRIC_FUNNELS[f.funnel]; });
+    renderFunnelAbout(env, platform);
+    renderFunnelKpis(realFs, metricFs);
+    renderFunnelOverview(realFs);
     renderPathSankey(env);
     renderFunnelTrends();
+    renderFunnelInsights(realFs);
+    renderProductMetrics(env, metricFs);
+  }
+
+  function renderFunnelAbout(env, platform) {
+    var host = el("funnelAbout"); if (!host) return;
+    var envTxt = env === "PROD"
+      ? "Dallal PRODUCTION — real users, " + funnelRangeLabel()
+      : "Dallal UAT (test) — read the shape &amp; drop-off points, not absolute counts, " + funnelRangeLabel();
+    function row(ic, t, d) { return '<div class="fa-arow"><span class="fa-aic">' + ic + '</span><span class="fa-atxt"><b>' + t + ':</b> ' + d + '</span></div>'; }
+    host.innerHTML = '<div class="fa-about">' +
+      '<div class="fa-about-l">' +
+        '<div class="fa-about-h"><span class="fa-abadge">ℹ️</span> About Funnel Analytics</div>' +
+        '<p class="fa-about-sub">Funnel analytics helps you understand how users move through key actions and where they drop off.</p>' +
+        '<div class="fa-arows">' +
+          row("🔎", "Discovery", "Tracks user journey from discovery to primary action.") +
+          row("🏠", "Listing Flow", "Monitors property listing creation and publish success.") +
+          row("👤", "Registration", "Analyzes sign-up journey and verification completion.") +
+          row("🔁", "User Retention", "Measures how users return and stay active over time.") +
+        '</div>' +
+        '<div class="fa-about-src muted">Source: Amplitude · ' + envTxt + '. Switch <b>Data</b> (UAT / PROD) &amp; <b>Platform</b> above.</div>' +
+      '</div>' +
+      '<div class="fa-about-ill" aria-hidden="true">' +
+        '<svg viewBox="0 0 120 110" width="150" height="140">' +
+          '<defs><linearGradient id="faf" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7b8cff"/><stop offset="1" stop-color="#5a5be6"/></linearGradient></defs>' +
+          '<polygon points="14,16 106,16 84,52 36,52" fill="url(#faf)" opacity=".92"/>' +
+          '<polygon points="36,58 84,58 72,88 48,88" fill="url(#faf)" opacity=".72"/>' +
+          '<rect x="54" y="92" width="12" height="14" rx="2" fill="url(#faf)" opacity=".55"/>' +
+          '<circle cx="60" cy="104" r="4" fill="#5a5be6"/>' +
+        '</svg>' +
+      '</div>' +
+    '</div>';
+  }
+
+  function renderFunnelKpis(realFs, metricFs) {
+    var host = el("funnelKpis"); if (!host) return;
+    var entered = 0, completed = 0;
+    realFs.forEach(function (f) { var ins = funnelInsight(f); entered += ins.entered; completed += ins.completed; });
+    var conv = entered ? completed / entered * 100 : 0;
+    var drop = entered ? 100 - conv : 0;
+    var tt = metricFs.filter(function (f) { return f.funnel === "Time to Reach Step (sec)"; })[0];
+    var avgTime = (tt && tt.steps.length) ? fmtDur(tt.steps[tt.steps.length - 1].users) : "—";
+    function kpi(ic, label, val, sub, color) {
+      return '<div class="fa-kpi" style="--k:' + color + '">' +
+        '<div class="fa-kpi-h"><span class="fa-kpi-ic">' + ic + '</span><span class="fa-kpi-l">' + label + '</span></div>' +
+        '<div class="fa-kpi-v">' + val + '</div><div class="fa-kpi-s">' + sub + '</div></div>';
+    }
+    host.innerHTML = '<div class="fa-kpis">' +
+      kpi("👥", "Total Users Entered", fmtInt2(entered), "across all funnels", "#7b61ff") +
+      kpi("✅", "Completed", fmtInt2(completed), "reached the goal step", "#22a565") +
+      kpi("🎯", "Overall Conversion", (Math.round(conv * 10) / 10) + "%", "completed ÷ entered", "#f5883f") +
+      kpi("⏱️", "Avg. Time to Complete", avgTime, "median to goal step", "#2f6df6") +
+      kpi("📉", "Drop-off Rate", (Math.round(drop * 10) / 10) + "%", "left before completing", "#e94b6a") +
+    '</div>';
+  }
+
+  function renderFunnelOverview(realFs) {
+    var host = el("funnelList"); if (!host) return;
+    if (!realFs.length) { host.innerHTML = '<div class="muted" style="padding:10px 2px">No funnel data for this view yet — either no events in the selected window, or this platform isn\'t instrumented for these steps.</div>'; return; }
+    function dot(c, t) { return '<span class="fo-lg"><i style="background:' + c + '"></i>' + t + '</span>'; }
+    var legend = '<div class="fo-legend">' + dot("#7b61ff", "Entered") + dot("#22a565", "Completed") + dot("#f5883f", "Conversion") + dot("#e94b6a", "Drop-off") + '</div>';
+    host.innerHTML = legend + realFs.map(function (f, idx) {
+      var ins = funnelInsight(f);
+      var conv = ins.overall, drop = Math.round((100 - conv) * 10) / 10;
+      var health = funnelHealth(conv);
+      var info = FUNNEL_INFO[f.funnel] || { icon: "📈" };
+      var desc = FUNNEL_DESC[f.funnel] || "";
+      var open = _collapse["fo_" + idx] === true;
+      var read = "Of <b>" + ins.entered + "</b> who started, <b>" + ins.completed + "</b> reached the end — a <b>" + ins.overall + "%</b> completion rate. " +
+        "Biggest single fall-off: <b>" + esc(ins.fromName) + " → " + esc(ins.toName) + "</b>, losing <b>" + ins.dropPct + "%</b> (" + ins.fromN + " → " + ins.toN + " users). " +
+        '<br><b>👉 Where to look:</b> ' + (info.lens || "");
+      return '<details class="fo-row" data-lb="fo_' + idx + '"' + (open ? " open" : "") + '>' +
+        '<summary class="fo-sum">' +
+          '<span class="fo-num">' + (idx + 1) + '</span>' +
+          '<span class="fo-name"><span class="fo-nt"><b>' + esc(f.funnel) + '</b> <span class="fo-tag ' + health[1] + '">' + health[0] + '</span></span>' +
+            (desc ? '<span class="fo-desc">' + esc(desc) + '</span>' : '') + '</span>' +
+          '<span class="fo-metric"><b>' + fmtInt2(ins.entered) + '</b><span>Entered</span></span>' +
+          '<span class="fo-metric"><b>' + fmtInt2(ins.completed) + '</b><span>Completed</span></span>' +
+          '<span class="fo-metric"><b class="cv">' + conv + '%</b><span>Conversion</span></span>' +
+          '<span class="fo-metric"><b class="dp">' + drop + '%</b><span>Drop-off</span></span>' +
+          '<span class="fo-spark">' + sparkSVG(f.steps.map(function (s) { return s.users; }), health[1]) + '</span>' +
+          '<span class="fo-chev">&#9662;</span>' +
+        '</summary>' +
+        '<div class="fo-body"><div class="funnel">' + funnelStepsHTML(f) + '</div>' +
+          '<div class="finsight"><b>📊 What the data says:</b> ' + read + '</div>' +
+          '<div class="muted" style="font-size:11px;margin-top:8px">' + esc(f.source) + '</div></div>' +
+      '</details>';
+    }).join("");
+  }
+
+  function renderFunnelInsights(realFs) {
+    var host = el("funnelInsights"); if (!host) return;
+    if (!realFs.length) { host.innerHTML = ""; return; }
+    var scored = realFs.map(function (f) { var ins = funnelInsight(f); return { f: f, ins: ins, conv: ins.overall }; });
+    function card(ic, tone, title, stat, rec) {
+      return '<div class="fa-inscard ' + tone + '"><div class="fa-ins-ic">' + ic + '</div>' +
+        '<div class="fa-ins-t">' + esc(title) + '</div>' +
+        '<div class="fa-ins-s">' + stat + '</div>' +
+        '<div class="fa-ins-r">' + rec + '</div>' +
+        '<div class="fa-ins-link">View funnel &rarr;</div></div>';
+    }
+    var cards = [];
+    var worst = scored.slice().sort(function (a, b) { return a.conv - b.conv; })[0];
+    var best = scored.slice().sort(function (a, b) { return b.conv - a.conv; })[0];
+    if (worst) cards.push(card("⚠️", "red", "High Drop-off in " + worst.f.funnel, (Math.round((100 - worst.conv) * 10) / 10) + "% of users drop off.", "Improve onboarding &amp; engagement."));
+    var reg = scored.filter(function (s) { return /Registration/i.test(s.f.funnel); }).sort(function (a, b) { return b.ins.dropPct - a.ins.dropPct; })[0];
+    if (reg) cards.push(card("🔑", "amber", reg.f.funnel + " Bottleneck", reg.ins.dropPct + "% drop at " + esc(reg.ins.toName) + ".", "Simplify the verification steps."));
+    if (best && best !== worst) cards.push(card("✅", "green", "Good Performance: " + best.f.funnel, best.conv + "% conversion is healthy.", "Keep up the momentum!"));
+    var listing = scored.filter(function (s) { return /Listing/i.test(s.f.funnel); })[0];
+    if (listing) cards.push(card("🚀", "blue", "Listing Flow Needs Boost", "Only " + listing.conv + "% complete listings.", "Optimize the listing publish flow."));
+    host.innerHTML = '<div class="section"><h2>Insights &amp; Recommendations</h2><div class="body">' +
+      '<div class="fa-insights">' + cards.slice(0, 4).join("") + '</div></div></div>';
   }
 
   // ---------- Product Health metrics (Supply/Demand, Engagement, Time-to-step, weekly supply) ----------

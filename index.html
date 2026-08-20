@@ -10,7 +10,7 @@
 <link rel="icon" type="image/png" href="dallal-favicon.png?v=237" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
 <link rel="stylesheet" href="styles.css?v=237" />
-<link rel="stylesheet" href="styles-v2.css?v=31" /><!-- REDESIGN PREVIEW theme layer -->
+<link rel="stylesheet" href="styles-v2.css?v=32" /><!-- REDESIGN PREVIEW theme layer -->
 </head>
 <body>
 
@@ -226,31 +226,38 @@
 
   <!-- FUNNELS VIEW -->
   <div id="funnelView" class="hidden">
-    <div class="section"><h2>User Funnel Analytics</h2><div class="body">
-      <div style="display:flex;align-items:center;gap:10px;margin:0 0 12px;flex-wrap:wrap">
-        <label class="sub" for="funnelEnv" style="color:var(--muted)">Environment</label>
-        <select id="funnelEnv" class="fenv"></select>
-        <label class="sub" for="funnelPlatform" style="color:var(--muted);margin-left:6px">Platform</label>
-        <select id="funnelPlatform" class="fenv"></select>
-        <label class="sub" for="funnelRange" style="color:var(--muted);margin-left:6px">Date range</label>
-        <select id="funnelRange" class="fenv"></select>
+    <!-- header: title + filter controls -->
+    <div class="fa-top">
+      <div class="fa-title"><h2>Funnel Analytics</h2><p>Track user journey and conversion across key funnels</p></div>
+      <div class="fa-filters">
+        <span class="fa-fgrp"><label class="sub" for="funnelEnv">Data</label><select id="funnelEnv" class="fenv"></select></span>
+        <span class="fa-fgrp"><label class="sub" for="funnelPlatform">Platform</label><select id="funnelPlatform" class="fenv"></select></span>
+        <span class="fa-fgrp"><label class="sub" for="funnelRange">Date range</label><select id="funnelRange" class="fenv"></select></span>
         <span id="funnelCustom" style="display:none;align-items:center;gap:6px">
-          <label class="sub" for="funnelFrom" style="color:var(--muted)">From</label>
-          <input type="date" id="funnelFrom" class="fenv" />
-          <label class="sub" for="funnelTo" style="color:var(--muted)">To</label>
-          <input type="date" id="funnelTo" class="fenv" />
+          <label class="sub" for="funnelFrom">From</label><input type="date" id="funnelFrom" class="fenv" />
+          <label class="sub" for="funnelTo">To</label><input type="date" id="funnelTo" class="fenv" />
         </span>
       </div>
+    </div>
+
+    <div id="funnelAbout"></div>
+    <div id="funnelKpis"></div>
+
+    <div class="section"><h2>Funnels Overview</h2><div class="body">
+      <p class="muted" style="margin:0 0 12px;font-size:12.5px">Key funnel performance at a glance — click a row to expand its step-by-step breakdown.</p>
       <div id="funnelList"></div>
-      <div id="productMetrics"></div>
-      <div id="pathSankeyCard"></div>
     </div></div>
 
+    <div id="pathSankeyCard"></div>
+
     <!-- TRENDS (Amplitude event-segmentation charts) -->
-    <div class="section"><h2>Trends &mdash; daily unique users</h2><div class="body">
+    <div class="section"><h2>Trends &mdash; Daily Insights</h2><div class="body">
       <p class="muted" style="margin:0 0 10px;font-size:12.5px">Mirrors the saved Amplitude trend charts (daily unique users). Use the <b>Date range</b> filter above to zoom in.</p>
       <div id="funnelTrends"></div>
     </div></div>
+
+    <div id="funnelInsights"></div>
+    <div id="productMetrics"></div>
   </div><!-- /funnelView -->
 
   <!-- MARKETING VIEW -->
@@ -381,6 +388,6 @@
 <script src="config.js?v=237"></script>
 <script src="sample-data.js?v=237"></script>
 <script src="funnels-data.js?v=237"></script>
-<script src="app-v2.js?v=27"></script>
+<script src="app-v2.js?v=28"></script>
 </body>
 </html>
