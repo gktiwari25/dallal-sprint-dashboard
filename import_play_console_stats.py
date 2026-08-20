@@ -34,12 +34,15 @@ from datetime import datetime, timezone
 
 import requests
 
-# Header keyword -> our metric. Extend as you export other Console statistics.
+# Header keyword -> our metric (matched against the "All countries" column header,
+# lower-cased; first match wins, so order matters). Extend as needed.
 HEADER_METRIC = [
-    ("new users", "downloads"),          # "New users acquired"
+    ("new users", "downloads"),          # "User acquisition (New users…)" = installs by user
+    ("device acquisition", "device_installs"),  # installs by device
+    ("install base", "active_devices"),  # unique devices with the app installed
+    ("crashes", "crashes"),              # daily crashes (dimension is Android version)
     ("daily user installs", "downloads"),
     ("daily device installs", "device_installs"),
-    ("store listing acquisitions", "downloads"),
 ]
 
 
@@ -127,9 +130,16 @@ def main():
 
     if not rows:
         sys.exit("No parseable rows found.")
-    for r in rows:
-        print("  %s  %s = %d" % (r["date"], r["metric"], r["value"]))
-    print("Total: %d day-rows" % len(rows))
+    dts = [r["date"] for r in rows]
+    if len(rows) <= 14:
+        for r in rows:
+            print("  %s  %s = %d" % (r["date"], r["metric"], r["value"]))
+    else:
+        for r in rows[:3] + rows[-3:]:
+            print("  %s  %s = %d" % (r["date"], r["metric"], r["value"]))
+        print("  … (%d rows total)" % len(rows))
+    nz = sum(1 for r in rows if r["value"] != 0)
+    print("Total: %d day-rows  (%s → %s, %d non-zero)" % (len(rows), min(dts), max(dts), nz))
 
     if args.dry_run:
         print("(dry run — nothing written)")
@@ -141,10 +151,12 @@ def main():
     headers = {"apikey": key, "Authorization": "Bearer " + key,
                "Content-Type": "application/json",
                "Prefer": "resolution=merge-duplicates,return=minimal"}
-    resp = requests.post(url.rstrip("/") + "/rest/v1/fact_appstore_metrics?on_conflict=date,metric,territory,platform",
-                         headers=headers, json=rows, timeout=90)
-    if resp.status_code not in (200, 201, 204):
-        sys.exit("Upsert failed: %s %s" % (resp.status_code, resp.text[:300]))
+    for i in range(0, len(rows), 1000):   # chunk large multi-year files
+        chunk = rows[i:i + 1000]
+        resp = requests.post(url.rstrip("/") + "/rest/v1/fact_appstore_metrics?on_conflict=date,metric,territory,platform",
+                             headers=headers, json=chunk, timeout=120)
+        if resp.status_code not in (200, 201, 204):
+            sys.exit("Upsert failed [%d]: %s %s" % (i, resp.status_code, resp.text[:300]))
     print("Upserted %d rows into fact_appstore_metrics." % len(rows))
 
 
