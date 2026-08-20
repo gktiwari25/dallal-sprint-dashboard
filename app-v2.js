@@ -425,32 +425,28 @@
     var unit = m.usePts ? "SP" : "items";
     var hist = m.hist;
     // --- explanatory tooltips: exactly how each hero number is derived, with live figures ---
-    var progTip = "SPRINT PROGRESS = delivered ÷ committed, this sprint. "
-      + Math.round(m.usePts ? m.deliveredSP : m.completed) + " " + unit + " delivered ÷ "
-      + Math.round(m.usePts ? m.committedSP : m.planned) + " committed = " + pct(m.progress) + ". "
-      + "“Delivered” means the work reached the UAT pipeline or shipped (Ready for UAT → Released).";
+    var progTip = "delivered ÷ committed = " + Math.round(m.usePts ? m.deliveredSP : m.completed)
+      + "/" + Math.round(m.usePts ? m.committedSP : m.planned) + " " + unit + " = " + pct(m.progress)
+      + ". Delivered = reached UAT pipeline or shipped.";
     var predFracTxt, predTip;
     if (hist) {
       predFracTxt = "learns from " + hist.n + " sprint" + (hist.n > 1 ? "s" : "");
-      predTip = "PREDICTABILITY = how likely we are to deliver the WHOLE commitment — learned from the last "
-        + hist.n + " completed sprint" + (hist.n > 1 ? "s" : "") + " (#" + hist.sprints.slice().reverse().join(", #") + "). "
-        + "reliability " + pct(hist.reliability) + " (avg past hit-rate) × capacity-fit " + pct(m.capacityFit)
-        + " (avg velocity " + Math.round(hist.avgVelocity) + " SP ÷ committed " + Math.round(m.committedSP) + " SP)"
-        + ", floored at current progress " + pct(m.progress) + "  →  " + pct(m.predictability) + ". "
-        + "It moves as the team’s track record improves or the commitment fits our velocity — so it no longer mirrors Progress.";
+      predTip = "Forecast of hitting the full commitment, learned from " + hist.n + " past sprint" + (hist.n > 1 ? "s" : "")
+        + ": reliability " + pct(hist.reliability) + " × capacity-fit " + pct(m.capacityFit)
+        + " (velocity " + Math.round(hist.avgVelocity) + " ÷ committed " + Math.round(m.committedSP)
+        + "), floored at progress " + pct(m.progress) + " → " + pct(m.predictability) + ".";
     } else {
       predFracTxt = fracSP;
-      predTip = "PREDICTABILITY needs at least one past estimated sprint to learn from. Until then it mirrors Sprint Progress (" + pct(m.progress) + ").";
+      predTip = "Needs a past estimated sprint to learn from; until then mirrors Progress (" + pct(m.progress) + ").";
     }
     var carryTxt, carryTip;
     if (hist && m.usePts) {
       carryTxt = Math.round(m.carryFwdForecastSP) + " SP forecast";
-      carryTip = "CARRY FORWARD = committed − typical velocity: the SP our usual throughput won’t cover, forecast to spill into the next sprint. "
-        + "committed " + Math.round(m.committedSP) + " SP − avg velocity " + Math.round(hist.avgVelocity) + " SP = "
-        + Math.round(m.carryFwdForecastSP) + " SP (" + pct(m.carryFwd) + " of the commitment). Floored at 0 when velocity covers the commitment.";
+      carryTip = "committed − avg velocity = " + Math.round(m.committedSP) + " − " + Math.round(hist.avgVelocity)
+        + " = " + Math.round(m.carryFwdForecastSP) + " SP (" + pct(m.carryFwd) + ") forecast to spill next sprint. Floored at 0.";
     } else {
       carryTxt = m.usePts ? (Math.round(m.carryFwdSP) + " SP") : ((m.carryFwdItems || 0) + " items");
-      carryTip = "CARRY FORWARD = committed work not yet delivered (no sprint history yet to forecast from). " + carryTxt + " still In Development or not started.";
+      carryTip = "Committed work not yet delivered (no history yet to forecast from): " + carryTxt + ".";
     }
     // Days remaining from the sprint's SCHEDULED end (calendar cadence), not the
     // last-activity date. Only shown for the currently-running sprint.
