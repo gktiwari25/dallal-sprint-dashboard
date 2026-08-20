@@ -2237,6 +2237,7 @@
     };
 
     var dl = mergeDaily("downloads_analytics", "downloads"),
+        dev = asByDate(rows, "device_installs"),   // Android: Play "Daily Device Installs"
         redl = mergeDaily("redownloads_analytics", "redownloads"),
         imp = asByDate(rows, "impressions"), pv = asByDate(rows, "product_page_views"),
         ses = asByDate(rows, "sessions"),
@@ -2245,10 +2246,10 @@
 
     var sDl = asSeries(dl, dates), sRe = asSeries(redl, dates), sImp = asSeries(imp, dates),
         sPv = asSeries(pv, dates), sSes = asSeries(ses, dates), sAct = asSeries(act, dates),
-        sCr = asSeries(cr, dates);
+        sCr = asSeries(cr, dates), sDev = asSeries(dev, dates);
 
     var totDl = asSum(sDl), totRe = asSum(sRe), totImp = asSum(sImp), totPv = asSum(sPv),
-        totSes = asSum(sSes), totCr = asSum(sCr);
+        totSes = asSum(sSes), totCr = asSum(sCr), totDev = asSum(sDev);
     var conv = totImp ? totDl / totImp : 0;   // App Store Connect Conversion Rate = downloads ÷ impressions
     // Average over days that actually have data, NOT the whole window — Apple's
     // analytics only covers the most recent few days, and the rest aren't "0
@@ -2308,7 +2309,11 @@
     // Apple-only metrics (Impressions / Page Views / Conversion / Sessions /
     // Redownloads) don't exist in Google Play's reports — omit those tiles on Android.
     el("appstoreKpis").innerHTML =
-      mcard(isAndroid ? "Installs" : "First-Time Downloads", fmtInt(totDl), "⬇️", COL.dl, sparkBox("sp_dl", sDl, COL.dl, true), null, (isAndroid ? "New-user installs from Google Play. " : "First-time downloads. ") + "Source: " + acqSource + ".") +
+      mcard(isAndroid ? "Installs" : "First-Time Downloads", fmtInt(totDl), "⬇️", COL.dl, sparkBox("sp_dl", sDl, COL.dl, true),
+        (isAndroid && totDev ? "by user · " + fmtInt(totDev) + " by device" : null),
+        (isAndroid
+          ? "Google Play installs shown two ways. By UNIQUE USER (Google account) = " + fmtInt(totDl) + " — this is Play Console's default \"Installs\" and matches Apple's App Units (also per-account), so iOS & Android stay comparable. By DEVICE = " + fmtInt(totDev) + " — counts each device, so a user who installs on 2 devices counts twice; the gap is multi-device users."
+          : "First-time downloads. Source: " + acqSource + ".")) +
       (isAndroid ? "" :
         mcard("Redownloads", fmtInt(totRe), "🔁", COL.re, sparkBox("sp_re", sRe, COL.re, true), null, "Re-installs by users who previously downloaded the app.")) +
       mcard("Downloads — This Week vs Last", fmtInt(wowThis) + wowBadge, "📅", COL.wk, sparkBox("sp_wk", sDl.slice(-14), COL.wk, true), (maxDlDate ? "Last week: " + fmtInt(wowLast) : ""), (isAndroid ? "Installs" : "First-time downloads") + " last 7 days vs previous 7. Independent of the Range selector.") +

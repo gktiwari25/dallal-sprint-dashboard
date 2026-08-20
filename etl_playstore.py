@@ -52,7 +52,12 @@ DATE_COLS = ["Date"]
 COUNTRY_COLS = ["Country", "Country/Region", "Region"]
 # (report subdir, endswith filter, our metric, value-column candidates)
 INSTALL_METRICS = [
+    # downloads = Daily User Installs (by unique Google account — Play Console's
+    # default "Installs", and consistent with Apple App Units which are per-account).
     ("downloads", ["Daily User Installs", "Store Listing Acquisitions (Unique Users)", "Daily Device Installs"]),
+    # device_installs = Daily Device Installs (per device; a user on 2 devices = 2).
+    # Shown alongside downloads on the dashboard so both definitions are visible.
+    ("device_installs", ["Daily Device Installs"]),
     ("active_devices", ["Active Device Installs", "Active Devices"]),
 ]
 STORE_METRICS = [
