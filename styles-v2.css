@@ -274,6 +274,47 @@ details.lb{ border-radius:16px; }
 .wrap button:not(.subtab), .fenv, .expbtn{ border-radius:11px !important; }
 .wrap select, .wrap input[type="date"]{ border-radius:11px !important; }
 
+/* =========================================================================
+   SPRINT RETROSPECTIVE — insight panel + note cards
+   ========================================================================= */
+.retro-panel{ background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--sh-sm); padding:2px 6px 8px; }
+.retro-h{ display:flex; align-items:center; gap:9px; font-size:12px; font-weight:800; letter-spacing:.06em; color:#2f6df6; padding:15px 14px 9px; }
+.retro-h-ic{ font-size:15px; }
+.rins-list{ display:flex; flex-direction:column; }
+.rins{ display:flex; align-items:center; gap:14px; padding:12px 14px; border-radius:12px; transition:background var(--dur) var(--ease); }
+.rins + .rins{ border-top:1px solid var(--line); }
+.rins:hover{ background:var(--surface-2); }
+.rins-ic{ flex:0 0 auto; width:30px; height:30px; border-radius:50%; display:grid; place-items:center; font-size:14px; font-weight:800; }
+.rins.good .rins-ic{ background:rgba(34,165,101,.15); color:#1c9a5e; }
+.rins.watch .rins-ic{ background:rgba(245,158,11,.18); color:#c07d09; }
+.rins.bad .rins-ic{ background:rgba(233,75,106,.15); color:#d33b5c; }
+.rins-badge{ flex:0 0 auto; font-size:11.5px; font-weight:700; padding:5px 12px; border-radius:999px; white-space:nowrap; color:#fff; }
+.rins.good .rins-badge{ background:#1c9a5e; }
+.rins.watch .rins-badge{ background:#c07d09; }
+.rins.bad .rins-badge{ background:#c62f4b; }
+.rins-txt{ flex:1; font-size:13.5px; color:var(--ink); }
+.rins-end{ flex:0 0 auto; width:34px; height:34px; border-radius:50%; display:grid; place-items:center; font-size:15px; background:var(--surface-2); }
+.rins.good .rins-end{ background:rgba(34,165,101,.11); }
+.rins.watch .rins-end{ background:rgba(245,158,11,.12); }
+.rins.bad .rins-end{ background:rgba(233,75,106,.11); }
+/* Stories-to-split rows */
+.rbig-row{ display:flex; align-items:center; gap:13px; padding:12px 14px; }
+.rbig-row + .rbig-row{ border-top:1px solid var(--line); }
+.rbig-sp{ flex:0 0 auto; font-size:11.5px; font-weight:800; color:#c07d09; background:rgba(245,158,11,.16); border-radius:8px; padding:4px 10px; }
+.rbig-name{ flex:1; font-size:13px; color:var(--ink); }
+/* Note columns (What went well / to improve / actions) */
+.retro-note{ background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:var(--sh-sm); padding:15px 16px; height:100%; }
+.rnote-h{ display:flex; align-items:center; gap:9px; margin-bottom:6px; }
+.rnote-hic{ font-size:14px; }
+.rnote-title{ font-size:11.5px; font-weight:800; letter-spacing:.05em; color:var(--rn,#333); }
+.rnote-count{ font-size:11px; font-weight:800; color:var(--rn); background:color-mix(in srgb,var(--rn) 15%,transparent); border-radius:999px; padding:1px 9px; }
+.rnote-rule{ flex:1; border-top:1.5px dotted var(--line-strong); margin-left:6px; }
+.rnote-row{ display:flex; align-items:flex-start; gap:11px; padding:11px 0; }
+.rnote-row + .rnote-row{ border-top:1px solid var(--line); }
+.rnote-ic{ flex:0 0 auto; width:30px; height:30px; border-radius:9px; display:grid; place-items:center; font-size:14px; background:color-mix(in srgb,var(--rn) 13%,transparent); }
+.rnote-txt{ flex:1; font-size:13px; line-height:1.5; color:var(--ink); }
+.rnote-meta{ color:var(--muted); font-size:12px; font-weight:400; }
+
 /* Info-icon chips + status pills a touch rounder */
 .tip{ font-weight:700; }
 .rag{ border-radius:999px; font-weight:700; }

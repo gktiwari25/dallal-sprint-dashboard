@@ -338,48 +338,61 @@
       statCard("Bugs Closed", m.bugsClosed + " / " + m.bugs, "resolved / total", muted, "🐞", "#7c5cd6", "Bugs resolved out of bugs in the sprint.") +
       statCard("Rework", m.reopenedPct == null ? "--" : pct(m.reopenedPct), "reopened after delivery", muted, "🔁", reworkHex, "Delivered items that were reopened at least once.");
 
+    // "What the data says" — auto-generated observations. Each carries a severity
+    // (good / watch / bad → left status dot + pill) and a topic icon on the right.
     var ins = [];
-    if (comp != null) ins.push({ k: comp >= 0.85 ? "good" : comp >= 0.6 ? "watch" : "bad", t: "Delivered " + delivered + " of " + committed + " " + unit + " committed (" + pct(comp) + ")." });
-    if (carriedItems > 0) ins.push({ k: carriedItems <= 2 ? "watch" : "bad", t: carriedItems + " item(s) · " + carry + " " + unit + " carried over to the next sprint." });
-    else ins.push({ k: "good", t: "No carry-forward — all committed work reached the QA/UAT pipeline or shipped." });
-    if (m.predictability != null) ins.push({ k: m.predictability >= 0.85 ? "good" : m.predictability >= 0.6 ? "watch" : "bad", t: "Predictability vs the original commitment: " + pct(m.predictability) + "." });
-    if (m.reopenedPct != null) ins.push({ k: m.reopenedPct <= 0.1 ? "good" : m.reopenedPct <= 0.25 ? "watch" : "bad", t: "Rework rate: " + pct(m.reopenedPct) + " of delivered items were reopened." });
-    if (m.pCritical > 0) ins.push({ k: "bad", t: m.pCritical + " P1/Critical bug(s) were in this sprint." });
-    if (m.escapeReliable && m.defectEscape > 0) ins.push({ k: m.defectEscape <= 0.1 ? "watch" : "bad", t: pct(m.defectEscape) + " of classified bugs escaped to Prod (" + m.bugsClassified + " of " + m.bugs + " bugs classified)." });
-    if (m.cycleDays != null) ins.push({ k: m.cycleDays <= 5 ? "good" : m.cycleDays <= 10 ? "watch" : "bad", t: "Average cycle time: " + (Math.round(m.cycleDays * 10) / 10) + " days." });
+    if (comp != null) ins.push({ k: comp >= 0.85 ? "good" : comp >= 0.6 ? "watch" : "bad", ic: comp >= 0.85 ? "📈" : "📉", t: "Delivered " + delivered + " of " + committed + " " + unit + " committed (" + pct(comp) + ")." });
+    if (carriedItems > 0) ins.push({ k: carriedItems <= 2 ? "watch" : "bad", ic: "↪️", t: carriedItems + " item(s) · " + carry + " " + unit + " carried over to the next sprint." });
+    else ins.push({ k: "good", ic: "✅", t: "No carry-forward — all committed work reached the QA/UAT pipeline or shipped." });
+    if (m.predictability != null) ins.push({ k: m.predictability >= 0.85 ? "good" : m.predictability >= 0.6 ? "watch" : "bad", ic: "🎯", t: "Predictability vs the original commitment: " + pct(m.predictability) + "." });
+    if (m.reopenedPct != null) ins.push({ k: m.reopenedPct <= 0.1 ? "good" : m.reopenedPct <= 0.25 ? "watch" : "bad", ic: "🔁", t: "Rework rate: " + pct(m.reopenedPct) + " of delivered items were reopened." });
+    if (m.pCritical > 0) ins.push({ k: "bad", ic: "🐞", t: m.pCritical + " P1/Critical bug(s) were in this sprint." });
+    if (m.escapeReliable && m.defectEscape > 0) ins.push({ k: m.defectEscape <= 0.1 ? "watch" : "bad", ic: "🪲", t: pct(m.defectEscape) + " of classified bugs escaped to Prod (" + m.bugsClassified + " of " + m.bugs + " bugs classified)." });
+    if (m.cycleDays != null) ins.push({ k: m.cycleDays <= 5 ? "good" : m.cycleDays <= 10 ? "watch" : "bad", ic: "⏱️", t: "Average cycle time: " + (Math.round(m.cycleDays * 10) / 10) + " days." });
+    var badgeTxt = { good: "Went well", watch: "Watch", bad: "Needs attention" };
     var insRows = ins.map(function (x) {
-      return '<div class="taskrow"><div class="tasktitle" style="display:flex;align-items:center;gap:10px">' + retroBadge(x.k) + "<span>" + esc(x.t) + "</span></div></div>";
+      return '<div class="rins ' + x.k + '">' +
+        '<span class="rins-ic">' + (x.k === "good" ? "✓" : "!") + '</span>' +
+        '<span class="rins-badge">' + badgeTxt[x.k] + '</span>' +
+        '<span class="rins-txt">' + esc(x.t) + '</span>' +
+        '<span class="rins-end">' + x.ic + '</span></div>';
     }).join("");
-    el("retroInsights").innerHTML = listBlock("retroinsights", "What the data says &middot; " + ins.length, insRows || '<div class="muted">No sprint data.</div>');
+    el("retroInsights").innerHTML = '<div class="retro-panel">' +
+      '<div class="retro-h"><span class="retro-h-ic">📊</span> WHAT THE DATA SAYS</div>' +
+      '<div class="rins-list">' + (insRows || '<div class="muted" style="padding:6px 14px 14px">No sprint data.</div>') + '</div></div>';
 
-    // Stories to split — larger than 5 SP (action: slice at planning). Links to the Asana ticket.
+    // Stories to split — larger than 5 SP (action: slice at planning). Links to Asana.
     if (el("retroBig")) {
       var big = m.its.filter(function (i) { return num(i.story_points) > 5 && !/sub-?task/i.test(String(i.type || "")); })
         .sort(function (a, b) { return num(b.story_points) - num(a.story_points); });
       var bigRows = big.map(function (i) {
-        return '<div class="taskrow"><div class="tasktitle">' +
-          '<span class="rag amber" style="margin-right:8px">' + num(i.story_points) + " SP</span>" +
-          esc(i.name || i.task_gid) +
-          '<span class="muted" style="font-size:12px"> &middot; ' + esc(i.type || "—") + (i.status ? " &middot; " + esc(i.status) : "") + "</span> " +
-          '<a class="tasklink" href="' + ASANA_TASK + esc(i.task_gid) + '" target="_blank" rel="noopener">Open &#8599;</a>' +
-          "</div></div>";
+        return '<div class="rbig-row"><span class="rbig-sp">' + num(i.story_points) + ' SP</span>' +
+          '<span class="rbig-name">' + esc(i.name || i.task_gid) +
+          '<span class="rnote-meta"> &middot; ' + esc(i.type || "—") + (i.status ? " &middot; " + esc(i.status) : "") + '</span></span>' +
+          '<a class="tasklink" href="' + ASANA_TASK + esc(i.task_gid) + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
       }).join("");
-      el("retroBig").innerHTML = listBlock("retrobig", "Stories to split &middot; larger than 5 SP &middot; " + big.length, bigRows || '<div class="muted">No stories over 5 SP this sprint. 🎉</div>');
+      el("retroBig").innerHTML = '<div class="retro-panel">' +
+        '<div class="retro-h" style="color:#7c5cd6"><span class="retro-h-ic">✂️</span> STORIES TO SPLIT &middot; LARGER THAN 5 SP &middot; ' + big.length + '</div>' +
+        '<div class="rins-list">' + (bigRows || '<div class="muted" style="padding:6px 14px 14px">No stories over 5 SP this sprint. 🎉</div>') + '</div></div>';
     }
 
     var notes = (data.retro && data.retro.length ? data.retro : sampleRetro(sprint)).filter(function (r) { return String(r.sprint) === String(sprint); });
     if (!notes.length) notes = sampleRetro(sprint);
-    function noteList(dom, type, title) {
+    function noteList(dom, type, title, ic, color) {
       var sel = notes.filter(function (r) { return r.type === type; });
       var rows = sel.map(function (r) {
-        var meta = (r.owner || r.status) ? '<span class="muted" style="font-size:12px"> &middot; ' + esc([r.owner, r.status].filter(Boolean).join(" · ")) + "</span>" : "";
-        return '<div class="taskrow"><div class="tasktitle">' + esc(r.text) + meta + "</div></div>";
+        var meta = (r.owner || r.status) ? '<span class="rnote-meta"> &middot; ' + esc([r.owner, r.status].filter(Boolean).join(" · ")) + "</span>" : "";
+        return '<div class="rnote-row"><span class="rnote-ic">' + ic + '</span>' +
+          '<span class="rnote-txt">' + esc(r.text) + meta + '</span></div>';
       }).join("");
-      el(dom).innerHTML = listBlock("retro_" + type, title + " &middot; " + sel.length, rows || '<div class="muted">No notes yet.</div>');
+      el(dom).innerHTML = '<div class="retro-note" style="--rn:' + color + '">' +
+        '<div class="rnote-h"><span class="rnote-hic">' + ic + '</span><span class="rnote-title">' + title +
+        '</span><span class="rnote-count">' + sel.length + '</span><span class="rnote-rule"></span></div>' +
+        '<div class="rnote-body">' + (rows || '<div class="muted" style="padding:6px 2px">No notes yet.</div>') + '</div></div>';
     }
-    noteList("retroWell", "well", "✅ What went well");
-    noteList("retroImprove", "improve", "🔧 What to improve");
-    noteList("retroActions", "action", "🎯 Action items");
+    noteList("retroWell", "well", "WHAT WENT WELL", "✅", "#22a565");
+    noteList("retroImprove", "improve", "WHAT TO IMPROVE", "🔧", "#3b82f6");
+    noteList("retroActions", "action", "ACTION ITEMS", "🎯", "#7c5cd6");
   }
 
   // ---------- redesign helpers (v2) ----------
