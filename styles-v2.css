@@ -177,18 +177,23 @@ header.topbar #updated{ font-size:10.5px; color:rgba(233,236,255,.5); padding:8p
 .dleg i{ width:10px; height:10px; border-radius:50%; flex:0 0 auto; }
 @media (max-width:900px){ .terrkpis{ grid-template-columns:repeat(2,1fr); } .trow{ grid-template-columns:26px 24px 1fr 1.5fr auto 48px; gap:9px; } }
 
-/* ===== "Not yet completed" summary card (ring + bars, click to expand) ===== */
-.ncblock{ background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--sh-sm); overflow:hidden; }
-.ncblock > summary{ list-style:none; cursor:pointer; display:flex; align-items:center; gap:22px; padding:16px 22px; }
+/* ===== Summary card (ring + bars, click to expand) — used by NOT YET COMPLETED,
+   Bug tickets, Added mid-sprint, Needs-estimate. --nc sets the accent colour. ===== */
+.ncblock{ --nc:#6c5ce7; background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--sh-sm); overflow:hidden; margin-top:2px; }
+/* Reset the base details.lb summary chrome (border/background/margin/left-chevron)
+   so nothing leaks inside the rounded card as dead white space. */
+.ncblock > summary{ list-style:none; cursor:pointer; display:flex; align-items:center; gap:22px; padding:16px 22px; margin:0 !important; background:transparent !important; border:0 !important; border-radius:0 !important; }
+.ncblock > summary:hover{ background:var(--surface-2) !important; }
 .ncblock > summary::-webkit-details-marker{ display:none; }
-.ncring{ width:66px; height:66px; border-radius:50%; flex:0 0 auto; display:grid; place-items:center; background:conic-gradient(#6c5ce7 calc(var(--p)*1%), var(--surface-3) 0); }
-.ncring i{ width:52px; height:52px; border-radius:50%; background:var(--card); display:grid; place-items:center; font-style:normal; font-size:15px; font-weight:800; color:#6c5ce7; }
+.ncblock > summary::before{ display:none !important; }
+.ncring{ width:66px; height:66px; border-radius:50%; flex:0 0 auto; display:grid; place-items:center; background:conic-gradient(var(--nc) calc(var(--p)*1%), var(--surface-3) 0); }
+.ncring i{ width:52px; height:52px; border-radius:50%; background:var(--card); display:grid; place-items:center; font-style:normal; font-size:15px; font-weight:800; color:var(--nc); }
 .nctext{ display:flex; flex-direction:column; gap:3px; flex:0 0 auto; }
-.nctext b{ font-size:12px; font-weight:800; letter-spacing:.05em; color:#6c5ce7; }
+.nctext b{ font-size:12px; font-weight:800; letter-spacing:.05em; color:var(--nc); }
 .nctext > span{ font-size:14px; font-weight:700; color:var(--ink); }
 .ncbars{ flex:1; display:flex; align-items:center; gap:3px; height:34px; min-width:40px; overflow:hidden; }
 .ncbars i{ flex:1; height:100%; border-radius:3px; background:var(--surface-3); min-width:2px; }
-.ncbars i.on{ background:#6c5ce7; }
+.ncbars i.on{ background:var(--nc); }
 .ncchev{ flex:0 0 auto; color:var(--muted); font-size:15px; transition:transform var(--dur) var(--ease); }
 .ncblock[open] .ncchev{ transform:rotate(90deg); }
 .ncbody{ padding:2px 20px 16px; }

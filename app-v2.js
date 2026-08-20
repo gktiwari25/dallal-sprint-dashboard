@@ -444,19 +444,28 @@
   }
 
   // "Not yet completed" summary card (ring + activity bars) — click to expand list.
-  function notCompletedBlock(id, notDone, total, onHold, rowsHtml) {
+  // Card-style summary block: accent ring (%) + mini bar-strip + collapsible body.
+  // Generalises the NOT YET COMPLETED card so Bug tickets / Added mid-sprint /
+  // Needs-estimate share the same look. opts = {label, sub, pct, color, rows}.
+  function summaryBlock(id, opts) {
     var openC = _collapse[id] === true;
-    var pct = total ? Math.round(100 * notDone / total) : 0;
+    var pct = Math.max(0, Math.min(100, Math.round(opts.pct == null ? 0 : opts.pct)));
+    var color = opts.color || "#6c5ce7";
     var N = 48, filled = Math.round(pct / 100 * N), bars = "";
     for (var i = 0; i < N; i++) bars += '<i class="' + (i < filled ? "on" : "") + '"></i>';
-    var onHoldTxt = onHold ? ' &middot; ' + onHold + ' on hold' : '';
-    return '<details class="lb ncblock" data-lb="' + id + '"' + (openC ? " open" : "") + '>' +
+    return '<details class="lb ncblock" data-lb="' + id + '"' + (openC ? " open" : "") + ' style="--nc:' + color + '">' +
       '<summary class="ncsum">' +
         '<span class="ncring" style="--p:' + pct + '"><i>' + pct + '%</i></span>' +
-        '<span class="nctext"><b>NOT YET COMPLETED</b><span>' + notDone + ' of ' + total + ' stories' + onHoldTxt + '</span></span>' +
+        '<span class="nctext"><b>' + opts.label + '</b><span>' + opts.sub + '</span></span>' +
         '<span class="ncbars">' + bars + '</span>' +
         '<span class="ncchev">&#9656;</span>' +
-      '</summary><div class="ncbody">' + rowsHtml + '</div></details>';
+      '</summary><div class="ncbody">' + (opts.rows || "") + '</div></details>';
+  }
+  function notCompletedBlock(id, notDone, total, onHold, rowsHtml) {
+    var onHoldTxt = onHold ? ' &middot; ' + onHold + ' on hold' : '';
+    return summaryBlock(id, { label: "NOT YET COMPLETED", color: "#6c5ce7",
+      pct: total ? 100 * notDone / total : 0,
+      sub: notDone + ' of ' + total + ' stories' + onHoldTxt, rows: rowsHtml });
   }
 
   // ---------- render ----------
@@ -543,8 +552,13 @@
       card("Defect Escape", (m.escapeReliable ? pct(m.defectEscape) : "--") + ' <span style="font-size:13px;color:var(--muted,#5b6577)">' + m.bugsClassified + "/" + m.bugs + " classified</span>", { icon: "🪲", accent: m.escapeReliable ? undefined : "#5b6577", tip: "Share of bugs found in Prod, out of bugs that have a 'Found In' value (Dev/UAT/Prod). Bugs with no 'Found In' are excluded, and the rate shows '—' until at least 3 bugs and 50% of the sprint's bugs are classified in Asana." });
     // (Bugs by priority doughnut removed per design.)
     var bugItems = m.its.filter(isBug);
-    el("bugList").innerHTML = listBlock("bugs", "Bug tickets &middot; " + bugItems.length,
-      (bugItems.length ? bugItems.map(taskRow).join("") : '<div class="muted">No bug tickets this sprint.</div>'));
+    var bugsClosedN = bugItems.filter(isDone).length;
+    el("bugList").innerHTML = summaryBlock("bugs", {
+      label: "BUG TICKETS", color: "#e94b6a",
+      pct: bugItems.length ? 100 * bugsClosedN / bugItems.length : 100,
+      sub: bugItems.length ? (bugItems.length + " bugs &middot; " + bugsClosedN + " closed") : "No bug tickets this sprint",
+      rows: bugItems.length ? bugItems.map(taskRow).join("") : '<div class="muted">No bug tickets this sprint. 🎉</div>'
+    });
 
     if (m.hasFlow) {
       el("flowGrid").innerHTML =
@@ -577,8 +591,12 @@
       card("Missing Story Points", missing.length, { icon: "❓", accent: missing.length ? "#c62828" : "#2e7d32", tip: "Committed stories (excluding bugs & sub-tasks) with no Story Points set. They're invisible to velocity, burndown and Carry-Forward (all SP-based), so they make progress look worse than it is — estimate them in Asana." }) +
       card("Estimated", stories.length - missing.length, { icon: "✅", accent: "#2e7d32" }) +
       card("Estimation Coverage", pct(coverage), { icon: "📊", accent: coverage >= 0.9 ? "#2e7d32" : coverage >= 0.7 ? "#f29f05" : "#c62828", tip: "Share of committed stories that carry a Story Point estimate. Higher = more trustworthy SP metrics." });
-    el("missingSPList").innerHTML = listBlock("missSP", "Stories needing an estimate &middot; " + missing.length,
-      missing.length ? missing.map(taskRow).join("") : '<div class="muted">All committed stories are estimated. 🎉</div>');
+    el("missingSPList").innerHTML = summaryBlock("missSP", {
+      label: "NEEDS AN ESTIMATE", color: "#f5a623",
+      pct: stories.length ? 100 * missing.length / stories.length : 0,
+      sub: missing.length ? (missing.length + " of " + stories.length + " stories missing Story Points") : "All committed stories are estimated",
+      rows: missing.length ? missing.map(taskRow).join("") : '<div class="muted">All committed stories are estimated. 🎉</div>'
+    });
 
     renderRisks(sprint);
     renderCharts(sprint, m);
@@ -612,8 +630,12 @@
       statCard("Added Story Points", "+" + Math.round(addSP), "SP", "var(--muted)", "🔢", "#7b61ff", "Story points of the added tickets — 0 if they aren't estimated yet.");
 
     var addedItems = stories.filter(function (i) { var cd = (i.created_at || "").slice(0, 10); return start && cd && cd > start; });
-    el("scopeList").innerHTML = listBlock("scope", "Added mid-sprint &middot; " + addedItems.length + " stories (bugs excluded)",
-      (addedItems.length ? addedItems.map(taskRow).join("") : '<div class="muted">No mid-sprint story additions.</div>'));
+    el("scopeList").innerHTML = summaryBlock("scope", {
+      label: "ADDED MID-SPRINT", color: "#0ea89a",
+      pct: stories.length ? 100 * addedItems.length / stories.length : 0,
+      sub: addedItems.length ? (addedItems.length + " stories &middot; +" + Math.round(addSP) + " SP (bugs excluded)") : "No mid-sprint story additions",
+      rows: addedItems.length ? addedItems.map(taskRow).join("") : '<div class="muted">No mid-sprint story additions.</div>'
+    });
 
     if (!start || !end) { if (_charts.scopeChart) { _charts.scopeChart.destroy(); delete _charts.scopeChart; } var c = el("scopeChart"); if (c) c.getContext("2d").clearRect(0, 0, c.width, c.height); return; }
     var days = isoDays(start, end);
