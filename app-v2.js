@@ -2164,7 +2164,12 @@
     var PAGE = 1000, all = [];
     function page(from) {
       return sbc.from(table).select("*").range(from, from + PAGE - 1).then(function (r) {
-        if (r.error) throw new Error(table + ": " + r.error.message);
+        if (r.error) {
+          // A later page past the end (e.g. 416 when the row count is a multiple of
+          // PAGE) just means we're done — only a first-page error is a real failure.
+          if (from > 0) return all;
+          throw new Error(table + ": " + r.error.message);
+        }
         var got = r.data || [];
         all = all.concat(got);
         return got.length === PAGE ? page(from + PAGE) : all;
