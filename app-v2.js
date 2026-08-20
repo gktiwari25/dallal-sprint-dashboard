@@ -2078,11 +2078,22 @@
     return Object.keys(s).sort();
   }
   function populateAppstoreRange() {
-    var sel = el("appstoreRange"); if (!sel || sel.options.length) return;
-    [[1, "Last 24 hours"], [7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"], [90, "Last 90 days"], ["custom", "Custom range…"]].forEach(function (o) {
+    var sel = el("appstoreRange"); if (!sel) return;
+    // Google Play statistics have no 24-hour granularity — never offer "Last 24 hours"
+    // on Android; if it was selected, fall back to Last 7 days.
+    var isAndroidR = asPlatform === "android";
+    if (isAndroidR && asRange === 1) asRange = 7;
+    var opts = [[7, "Last 7 days"], [14, "Last 14 days"], [30, "Last 30 days"], [90, "Last 90 days"], ["custom", "Custom range…"]];
+    if (!isAndroidR) opts.unshift([1, "Last 24 hours"]);
+    // Rebuild options each render (platform-dependent), preserving the selection.
+    var cur = asCustom ? "custom" : String(asRange);
+    sel.innerHTML = "";
+    opts.forEach(function (o) {
       var opt = document.createElement("option"); opt.value = o[0]; opt.textContent = o[1];
-      if (o[0] === asRange) opt.selected = true; sel.appendChild(opt);
+      if (String(o[0]) === cur) opt.selected = true; sel.appendChild(opt);
     });
+    if (sel._wired) return;   // attach change listeners only once
+    sel._wired = true;
     sel.addEventListener("change", function () {
       if (sel.value === "custom") {
         asCustom = true; el("appstoreCustom").style.display = "inline-flex";
