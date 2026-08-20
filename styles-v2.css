@@ -279,9 +279,9 @@ details.lb{ border-radius:16px; }
 .tip::after, .tip::before{ display:none !important; }
 #gtip{
   position:fixed; z-index:9999; top:0; left:0;
-  max-width:min(320px,90vw); padding:10px 13px; border-radius:11px;
+  max-width:min(260px,88vw); padding:8px 11px; border-radius:10px;
   background:var(--navy,#0f2039); color:#fff;
-  font:400 13px/1.55 var(--font); text-transform:none; letter-spacing:normal;
+  font:400 11.5px/1.5 var(--font); text-transform:none; letter-spacing:.01em;
   white-space:normal; box-shadow:var(--sh-lg,0 12px 34px rgba(9,20,40,.28));
   opacity:0; visibility:hidden; transform:translateY(3px);
   transition:opacity .12s var(--ease,ease), transform .12s var(--ease,ease);
