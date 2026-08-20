@@ -357,9 +357,10 @@
         '<span class="rins-txt">' + esc(x.t) + '</span>' +
         '<span class="rins-end">' + x.ic + '</span></div>';
     }).join("");
-    el("retroInsights").innerHTML = '<div class="retro-panel">' +
-      '<div class="retro-h"><span class="retro-h-ic">📊</span> WHAT THE DATA SAYS</div>' +
-      '<div class="rins-list">' + (insRows || '<div class="muted" style="padding:6px 14px 14px">No sprint data.</div>') + '</div></div>';
+    var insOpen = _collapse["retroinsights"] === true;
+    el("retroInsights").innerHTML = '<details class="retro-panel" data-lb="retroinsights"' + (insOpen ? " open" : "") + '>' +
+      '<summary class="retro-h"><span class="retro-h-ic">📊</span> WHAT THE DATA SAYS &middot; ' + ins.length + '<span class="retro-chev">&#9656;</span></summary>' +
+      '<div class="rins-list">' + (insRows || '<div class="muted" style="padding:6px 14px 14px">No sprint data.</div>') + '</div></details>';
 
     // Stories to split — larger than 5 SP (action: slice at planning). Links to Asana.
     if (el("retroBig")) {
@@ -371,9 +372,10 @@
           '<span class="rnote-meta"> &middot; ' + esc(i.type || "—") + (i.status ? " &middot; " + esc(i.status) : "") + '</span></span>' +
           '<a class="tasklink" href="' + ASANA_TASK + esc(i.task_gid) + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
       }).join("");
-      el("retroBig").innerHTML = '<div class="retro-panel">' +
-        '<div class="retro-h" style="color:#7c5cd6"><span class="retro-h-ic">✂️</span> STORIES TO SPLIT &middot; LARGER THAN 5 SP &middot; ' + big.length + '</div>' +
-        '<div class="rins-list">' + (bigRows || '<div class="muted" style="padding:6px 14px 14px">No stories over 5 SP this sprint. 🎉</div>') + '</div></div>';
+      var bigOpen = _collapse["retrobig"] === true;
+      el("retroBig").innerHTML = '<details class="retro-panel" data-lb="retrobig"' + (bigOpen ? " open" : "") + '>' +
+        '<summary class="retro-h" style="color:#7c5cd6"><span class="retro-h-ic">✂️</span> STORIES TO SPLIT &middot; LARGER THAN 5 SP &middot; ' + big.length + '<span class="retro-chev">&#9656;</span></summary>' +
+        '<div class="rins-list">' + (bigRows || '<div class="muted" style="padding:6px 14px 14px">No stories over 5 SP this sprint. 🎉</div>') + '</div></details>';
     }
 
     var notes = (data.retro && data.retro.length ? data.retro : sampleRetro(sprint)).filter(function (r) { return String(r.sprint) === String(sprint); });

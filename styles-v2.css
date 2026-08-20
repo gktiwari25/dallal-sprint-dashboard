@@ -277,9 +277,15 @@ details.lb{ border-radius:16px; }
 /* =========================================================================
    SPRINT RETROSPECTIVE — insight panel + note cards
    ========================================================================= */
-.retro-panel{ background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--sh-sm); padding:2px 6px 8px; }
+.retro-panel{ background:var(--card); border:1px solid var(--line); border-radius:18px; box-shadow:var(--sh-sm); padding:2px 6px 8px; overflow:hidden; }
 .retro-h{ display:flex; align-items:center; gap:9px; font-size:12px; font-weight:800; letter-spacing:.06em; color:#2f6df6; padding:15px 14px 9px; }
 .retro-h-ic{ font-size:15px; }
+/* collapsible panels (What the data says / Stories to split) */
+details.retro-panel > summary.retro-h{ list-style:none; cursor:pointer; border-radius:14px; transition:background var(--dur) var(--ease); }
+details.retro-panel > summary.retro-h::-webkit-details-marker{ display:none; }
+details.retro-panel > summary.retro-h:hover{ background:var(--surface-2); }
+.retro-chev{ margin-left:auto; color:var(--muted); font-size:14px; transition:transform var(--dur) var(--ease); }
+details.retro-panel[open] .retro-chev{ transform:rotate(90deg); }
 .rins-list{ display:flex; flex-direction:column; }
 .rins{ display:flex; align-items:center; gap:14px; padding:12px 14px; border-radius:12px; transition:background var(--dur) var(--ease); }
 .rins + .rins{ border-top:1px solid var(--line); }
