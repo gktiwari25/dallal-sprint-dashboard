@@ -49,15 +49,34 @@ TRENDS = [
         ("Messages screen viewed", "messages_viewed"),
         ("Property Details Viewed", "view_details"),
     ]},
+    # --- Product insights shared by Rayan (Aug 2026) ---
+    # Kuwait Daily Active Users (any active event, filtered to country = Kuwait).
+    {"chart": "Kuwait — Daily Active Users",
+     "seg": [{"prop": "country", "op": "is", "values": ["Kuwait"]}],
+     "events": [("Daily Active Users · Kuwait", "_active")]},
+    # How seekers browse: searching via filters vs via the map (chart 9r2ga5vn).
+    {"chart": "Search — Filters vs Map", "events": [
+        ("Searching via Filters", "search_from_filters"),
+        ("Searching via Map", "search_from_map"),
+    ]},
+    # Marketplace liquidity: seekers messaging listers vs listers replying (yna8m93c).
+    {"chart": "Messaging — Seekers vs Listers", "events": [
+        ("Seekers → Listers", "message_lister"),
+        ("Listers → Seekers (replies)", "message_seeker"),
+    ]},
 ]
 
 
-def query_segmentation(key, secret, event, start, end):
-    """Daily unique users for one event -> [(YYYY-MM-DD, value), ...]."""
-    params = urllib.parse.urlencode({
+def query_segmentation(key, secret, event, start, end, seg=None):
+    """Daily unique users for one event -> [(YYYY-MM-DD, value), ...].
+    seg = optional Amplitude segment filter list (e.g. country = Kuwait)."""
+    q = {
         "e": json.dumps({"event_type": event}),
         "start": start, "end": end, "m": "uniques", "i": 1, "n": "active",
-    })
+    }
+    if seg:
+        q["s"] = json.dumps(seg)
+    params = urllib.parse.urlencode(q)
     req = urllib.request.Request(HOST + "/api/2/events/segmentation?" + params,
                                  headers={"Authorization": "Basic " + base64.b64encode(f"{key}:{secret}".encode()).decode()})
     try:
@@ -100,8 +119,9 @@ def main():
 
     rows = []
     for t in TRENDS:
+        seg = t.get("seg")
         for label, event in t["events"]:
-            for day, val in query_segmentation(key, secret, event, s, e):
+            for day, val in query_segmentation(key, secret, event, s, e, seg=seg):
                 rows.append({"env": "PROD", "chart": t["chart"], "series": label, "date": day, "value": int(val)})
         total = sum(r["value"] for r in rows if r["chart"] == t["chart"])
         print(f"[PROD] {t['chart']}: {total} total uniques across series", file=sys.stderr)

@@ -1261,7 +1261,7 @@
     var inWin = {}; dates.forEach(function (d) { inWin[d] = 1; });
     var charts = {};
     rows.forEach(function (r) { if (!inWin[r.date]) return; var c = charts[r.chart] = charts[r.chart] || {}; (c[r.series] = c[r.series] || {})[r.date] = num(r.value); });
-    var order = ["Registration and Log In", "Demand Side Activities", "Register Interest & Messaging"];
+    var order = ["Kuwait — Daily Active Users", "Registration and Log In", "Demand Side Activities", "Search — Filters vs Map", "Register Interest & Messaging", "Messaging — Seekers vs Listers"];
     var names = Object.keys(charts).sort(function (a, b) { var ia = order.indexOf(a), ib = order.indexOf(b); return (ia < 0 ? 99 : ia) - (ib < 0 ? 99 : ib); });
     host.innerHTML = names.map(function (n, i) {
       return '<div class="chartcard" style="margin-top:' + (i ? 14 : 0) + 'px"><h3>' + esc(n) + '</h3><div class="chartbox" style="height:280px"><canvas id="trendChart' + i + '"></canvas></div></div>';
