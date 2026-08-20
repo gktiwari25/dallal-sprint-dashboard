@@ -2250,6 +2250,20 @@
 
     var totDl = asSum(sDl), totRe = asSum(sRe), totImp = asSum(sImp), totPv = asSum(sPv),
         totSes = asSum(sSes), totCr = asSum(sCr), totDev = asSum(sDev);
+    // Extra Android engagement/quality metrics (imported from Play Console stats).
+    var sacB = asByDate(rows, "store_acquisitions"), retB = asByDate(rows, "returning_users"),
+        ulsB = asByDate(rows, "uninstalls"), dauB = asByDate(rows, "dau"),
+        dmauB = asByDate(rows, "dau_mau"), anrB = asByDate(rows, "anrs");
+    var sSac = asSeries(sacB, dates), sRet = asSeries(retB, dates), sUls = asSeries(ulsB, dates),
+        sDau = asSeries(dauB, dates), sDmau = asSeries(dmauB, dates), sAnr = asSeries(anrB, dates);
+    var totSac = asSum(sSac), totRet = asSum(sRet), totUls = asSum(sUls), totAnr = asSum(sAnr);
+    // DAU & stickiness are daily levels, not counts — average over days that have data.
+    function avgPresent(byDate) {
+      var vals = dates.filter(function (d) { return byDate[d] != null; }).map(function (d) { return byDate[d]; });
+      return vals.length ? vals.reduce(function (a, b) { return a + b; }, 0) / vals.length : null;
+    }
+    var avgDau = avgPresent(dauB), avgStick = avgPresent(dmauB);
+    var hasDau = avgDau != null, hasStick = avgStick != null;
     var conv = totImp ? totDl / totImp : 0;   // App Store Connect Conversion Rate = downloads ÷ impressions
     // Average over days that actually have data, NOT the whole window — Apple's
     // analytics only covers the most recent few days, and the rest aren't "0
@@ -2320,21 +2334,35 @@
       (isAndroid ? "" :
         mcard("Redownloads", fmtInt(totRe), "🔁", COL.re, sparkBox("sp_re", sRe, COL.re, true), null, "Re-installs by users who previously downloaded the app.")) +
       mcard("Downloads — This Week vs Last", fmtInt(wowThis) + wowBadge, "📅", COL.wk, sparkBox("sp_wk", sDl.slice(-14), COL.wk, true), (maxDlDate ? "Last week: " + fmtInt(wowLast) : ""), (isAndroid ? "Installs" : "First-time downloads") + " last 7 days vs previous 7. Independent of the Range selector.") +
-      (isAndroid ? "" :
-        mcard("Impressions", pv2(fmtInt(totImp), impLive), "👁️", COL.imp, sparkBox("sp_imp", sImp, COL.imp, impLive), null, impLive ? "Times the app appeared in the App Store." : PEND_TIP)) +
+      mcard("Impressions", pv2(fmtInt(totImp), impLive), "👁️", COL.imp, sparkBox("sp_imp", sImp, COL.imp, impLive), null, impLive ? (isAndroid ? "Times your listing appeared in Google Play (store-listing impressions)." : "Times the app appeared in the App Store.") : PEND_TIP) +
       mcard(isAndroid ? "Store Listing Views" : "Product Page Views", pv2(fmtInt(totPv), pvLive), "📄", COL.pv, sparkBox("sp_pv", sPv, COL.pv, pvLive), null, pvLive ? (isAndroid ? "Unique visitors to your Google Play store listing." : "Views of the app's product page.") : PEND_TIP) +
       mcard("Conversion Rate", pv2((Math.round(conv * 1000) / 10) + "%", convLive), "🎯", COL.conv, sparkBox("sp_cv", [], COL.conv, false), null, convLive ? (isAndroid ? "Installs ÷ store-listing views — Google Play's store conversion." : "First-time downloads ÷ impressions.") : (isAndroid ? "Needs store-listing views from Google Play." : "Waiting on Impressions from Apple's App Analytics feed.")) +
       (isAndroid ? "" :
         mcard("Sessions", pv2(fmtInt(totSes), sesLive), "📲", COL.ses, sparkBox("sp_ses", sSes, COL.ses, sesLive), (actLive ? "Active Devices: " + (actEst ? "~" : "") + fmtInt(avgAct) : ""), sesLive ? "App sessions recorded by App Analytics." : PEND_TIP)) +
       mcard("Active Devices / Day" + (actEst ? " (est.)" : ""), pv2((actEst ? "~" : "") + fmtInt(avgAct), actLive), "📱", COL.act, sparkBox("sp_act", sAct, COL.act, actLive), null, actLive ? (isAndroid ? "Active device installs reported by Google Play." : "Average distinct devices active per day.") : PEND_TIP) +
-      mcard("Crashes", pv2(fmtInt(totCr), crLive), "💥", COL.cr, sparkBox("sp_cr", sCr, COL.cr, crLive), (crLive ? "" : "No crash data"), crLive ? "Crash count." : (isAndroid ? "No crashes reported by Google Play in this window." : PEND_TIP));
+      mcard("Crashes", pv2(fmtInt(totCr), crLive), "💥", COL.cr, sparkBox("sp_cr", sCr, COL.cr, crLive), (crLive ? "" : "No crash data"), crLive ? "Crash count." : (isAndroid ? "No crashes reported by Google Play in this window." : PEND_TIP)) +
+      // ---- Android-only engagement & quality tiles (Play Console statistics) ----
+      (isAndroid ? (
+        mcard("Daily Active Users", hasDau ? fmtInt(Math.round(avgDau)) : "--", "🏃", "#0ea89a", sparkBox("sp_dau", sDau, "#0ea89a", hasDau), "avg / day",
+          "Daily Active Users — average unique users active per day over the selected window. Source: Play Console.")
+        + mcard("Stickiness", hasStick ? (Math.round(avgStick * 10) / 10) + "%" : "--", "🧲", "#8a74f4", sparkBox("sp_stk", sDmau, "#8a74f4", hasStick), "DAU ÷ MAU",
+          "DAU/MAU — the share of monthly users who open the app on an average day. Higher = more habitual use.")
+        + mcard("Store Acquisitions", fmtInt(totSac), "🛒", "#22c55e", sparkBox("sp_sac", sSac, "#22c55e", true), "installs via listing",
+          "Store-listing acquisitions — new users who installed after visiting your Google Play listing.")
+        + mcard("Returning Users", fmtInt(totRet), "🔄", "#3b82f6", sparkBox("sp_ret", sRet, "#3b82f6", true), "re-engaged",
+          "Users who came back and re-engaged in this window (Play Console: User acquisition → Returning users).")
+        + mcard("Uninstalls", fmtInt(totUls), "🗑️", "#ef4444", sparkBox("sp_uls", sUls, "#ef4444", true), "user loss",
+          "Users lost / uninstalls in this window (Play Console: User loss).")
+        + mcard("ANRs", fmtInt(totAnr), "⚠️", "#f5883f", sparkBox("sp_anr", sAnr, "#f5883f", totAnr > 0), (totAnr ? "" : "none"),
+          "App Not Responding events in this window (Play Console vitals) — the UI froze. Lower is better.")
+      ) : "");
     _sparks.forEach(function (s) { drawSpark(s[0], s[1], s[2]); });
 
     // Platform-aware source note.
     var srcNote = el("appstoreSource");
     if (srcNote) {
       srcNote.innerHTML = isAndroid
-        ? 'Source: <b>Google Play bulk reports</b> (Play Console). Installs, active devices, store performance &amp; crashes by day. Google Play doesn\'t report App Store-style impressions, product page views, conversion or sessions.'
+        ? 'Source: <b>Google Play</b> (Play Console statistics). Installs (by user &amp; device), active devices, impressions, store-listing acquisitions, DAU, stickiness, returning users, uninstalls, crashes &amp; ANRs by day. Some series are backfilled from Console CSV exports while Google\'s automated bulk export is delayed.'
         : 'Source: <b>App Store Connect API</b> (Sales &amp; Trends + App Analytics). Apple data has a 1&ndash;3 day reporting lag. <b>Conversion</b> = first-time downloads &divide; impressions (App Store Connect\'s Conversion Rate). <b>Active Devices</b> is estimated from the Sessions report. <b>Crashes</b> come from App Analytics.';
     }
 

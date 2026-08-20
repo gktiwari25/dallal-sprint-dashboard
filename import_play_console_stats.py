@@ -37,10 +37,18 @@ import requests
 # Header keyword -> our metric (matched against the "All countries" column header,
 # lower-cased; first match wins, so order matters). Extend as needed.
 HEADER_METRIC = [
-    ("new users", "downloads"),          # "User acquisition (New users…)" = installs by user
+    ("new users", "downloads"),                 # "User acquisition (New users…)" = installs by user
     ("device acquisition", "device_installs"),  # installs by device
-    ("install base", "active_devices"),  # unique devices with the app installed
-    ("crashes", "crashes"),              # daily crashes (dimension is Android version)
+    ("install base", "active_devices"),         # unique devices with the app installed
+    ("returning users", "returning_users"),     # re-engaged users
+    ("user loss", "uninstalls"),                # users who left / uninstalled
+    ("total impressions", "impressions"),       # store-listing impressions
+    ("store listing acquisitions", "store_acquisitions"),
+    ("daily active users", "dau"),
+    ("dau/mau", "dau_mau"),                      # stickiness %, stored as a number (8.72 = 8.72%)
+    ("installed audience", "installed_audience"),
+    ("anrs", "anrs"),
+    ("crashes", "crashes"),                     # daily crashes (dimension is Android version)
     ("daily user installs", "downloads"),
     ("daily device installs", "device_installs"),
 ]
@@ -70,11 +78,17 @@ def parse_date(s):
     return None
 
 
-def to_int(v):
+def to_num(v):
+    """Parse a Play Console cell → number. Handles commas, '%' (DAU/MAU) and '-'
+    (no data). Returns int for whole values, float otherwise, None if unparseable."""
+    s = str(v).replace(",", "").replace("%", "").strip()
+    if s in ("", "-", "N/A", "NaN"):
+        return None
     try:
-        return int(round(float(str(v).replace(",", "").strip())))
+        n = float(s)
     except (ValueError, TypeError):
         return None
+    return int(n) if n == int(n) else round(n, 4)
 
 
 def detect(header, forced_metric):
@@ -122,7 +136,7 @@ def main():
             if len(rec) <= max(di, vi):
                 continue
             d = parse_date(rec[di])
-            v = to_int(rec[vi])
+            v = to_num(rec[vi])
             if d is None or v is None:
                 continue
             rows.append({"date": d, "metric": metric, "value": v, "territory": "WW",
@@ -133,10 +147,10 @@ def main():
     dts = [r["date"] for r in rows]
     if len(rows) <= 14:
         for r in rows:
-            print("  %s  %s = %d" % (r["date"], r["metric"], r["value"]))
+            print("  %s  %s = %s" % (r["date"], r["metric"], r["value"]))
     else:
         for r in rows[:3] + rows[-3:]:
-            print("  %s  %s = %d" % (r["date"], r["metric"], r["value"]))
+            print("  %s  %s = %s" % (r["date"], r["metric"], r["value"]))
         print("  … (%d rows total)" % len(rows))
     nz = sum(1 for r in rows if r["value"] != 0)
     print("Total: %d day-rows  (%s → %s, %d non-zero)" % (len(rows), min(dts), max(dts), nz))
