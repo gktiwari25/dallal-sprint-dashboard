@@ -105,14 +105,17 @@ FUNNELS_UAT = [
 # 1-day conversion window, so the dashboard matches Amplitude exactly. "All Users"
 # (no platform split), so the PROD project below uses only the "All" platform.
 FUNNELS_PROD = [
+    # Mirrors the team's saved Amplitude chart "New Listing Flow Chart" (v7gx4l1s):
+    # exact events, order and step labels, 1-day conversion window. The old order
+    # had extra Address/Describe steps and mis-placed Category, which collapsed the
+    # funnel to near-zero after PACI — this is the correct 6-step definition.
     {"name": "Listing Flow", "steps": [
-        ("Listing Flow Started", "listing_started"),
+        ("Started Listing", "listing_started"),
         ("PACI stage", "listing_paci_number"),
-        ("Address Stage", "listing_address"),
-        ("Describe Property Stage", "listing_describe_property"),
-        ("Select Category Stage", "listing_category"),
-        ("Add Media Stage", "property_media_added"),
-        ("Publish Property Stage", "property_published"),
+        ("Select Category", "listing_category"),
+        ("Property Details", "property_details_saved"),
+        ("Media Upload", "property_media_added"),
+        ("Publishing", "property_published"),
     ]},
     {"name": "Licensed broker Registration", "steps": [
         ("Verification Started", "verification_started"),
