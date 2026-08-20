@@ -272,6 +272,10 @@ details.lb{ border-radius:16px; }
 /* Info-icon chips + status pills a touch rounder */
 .tip{ font-weight:700; }
 .rag{ border-radius:999px; font-weight:700; }
+/* Edge-anchored hero tooltips: open toward the card centre so the box never
+   overflows/clips at the outer card edges (rightmost card opens leftward). */
+.hcard .tip.tip-l::after{ left:0; right:auto; transform:none; }
+.hcard .tip.tip-r::after{ left:auto; right:0; transform:none; }
 
 /* =========================================================================
    SPLIT-SCREEN LOGIN — dark brand panel + white sign-in form

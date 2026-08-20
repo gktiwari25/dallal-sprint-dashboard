@@ -340,7 +340,7 @@
   }
 
   // ---------- redesign helpers (v2) ----------
-  function heroCard(title, icon, p, frac, cap, color, tip) {
+  function heroCard(title, icon, p, frac, cap, color, tip, tipPos) {
     var pc = (p == null || isNaN(p)) ? 0 : Math.round(p * 100);
     var N = 7, solid = Math.max(1, Math.round(pc / 100 * N)), bars = "";
     for (var i = 0; i < N; i++) {
@@ -348,7 +348,7 @@
       bars += '<i class="' + (i < solid ? "on" : "off") + '" style="height:' + h + '%"></i>';
     }
     var badgeLeft = Math.max(9, Math.min(84, (solid - 0.5) / N * 100));
-    var t = tip ? ' <span class="tip" data-tip="' + escAttr(tip) + '">i</span>' : '';
+    var t = tip ? ' <span class="tip' + (tipPos ? ' tip-' + tipPos : '') + '" data-tip="' + escAttr(tip) + '">i</span>' : '';
     return '<div class="hcard" style="--hc:' + color + '">' +
       '<div class="hcard-top"><span class="hcard-title">' + title + t + '</span><span class="hcard-ic">' + icon + '</span></div>' +
       '<div class="hbars"><span class="hbadge" style="left:' + badgeLeft + '%">' + pc + '%</span>' + bars + '</div>' +
@@ -430,7 +430,7 @@
       + ". Delivered = reached UAT pipeline or shipped.";
     var predFracTxt, predTip;
     if (hist) {
-      predFracTxt = "learns from " + hist.n + " sprint" + (hist.n > 1 ? "s" : "");
+      predFracTxt = "learns from previous sprints";
       predTip = "Forecast of hitting the full commitment, learned from " + hist.n + " past sprint" + (hist.n > 1 ? "s" : "")
         + ": reliability " + pct(hist.reliability) + " × capacity-fit " + pct(m.capacityFit)
         + " (velocity " + Math.round(hist.avgVelocity) + " ÷ committed " + Math.round(m.committedSP)
@@ -462,9 +462,9 @@
     })();
     el("healthGrid").innerHTML =
       '<div class="hero3">' +
-        heroCard("SPRINT PROGRESS", "📈", m.progress, fracSP, "delivered ÷ committed", "#f5883f", progTip) +
-        heroCard("PREDICTABILITY", "🎯", m.predictability, predFracTxt, "likely to hit commitment", "#2f6df6", predTip) +
-        heroCard("CARRY FORWARD", "⏱️", m.carryFwd, carryTxt, "forecast to next sprint", "#f5a623", carryTip) +
+        heroCard("SPRINT PROGRESS", "📈", m.progress, fracSP, "delivered ÷ committed", "#f5883f", progTip, "l") +
+        heroCard("PREDICTABILITY", "🎯", m.predictability, predFracTxt, "likely to hit commitment", "#2f6df6", predTip, "l") +
+        heroCard("CARRY FORWARD", "⏱️", m.carryFwd, carryTxt, "forecast to next sprint", "#f5a623", carryTip, "r") +
       "</div>" +
       '<div class="minigrid">' +
         card("Sprint Goal", "", { rag: rag[0], ragText: rag[1], icon: "🎯" }) +
