@@ -2117,10 +2117,22 @@
   }
 
   // sum a metric per date across territories -> { 'YYYY-MM-DD': total }
+  // Per-date total for a metric. WW is the authoritative total, so when a date has
+  // a WW row we use it and IGNORE per-country rows (they're a breakdown, not extra) —
+  // otherwise WW + per-country double-counts (e.g. Android installs). Dates without a
+  // WW row fall back to summing territories (that's how iOS downloads are stored).
   function asByDate(rows, metric) {
-    var m = {};
-    rows.forEach(function (r) { if ((r.metric || "") === metric) m[r.date] = (m[r.date] || 0) + num(r.value); });
-    return m;
+    var ww = {}, terr = {};
+    rows.forEach(function (r) {
+      if ((r.metric || "") !== metric) return;
+      var t = r.territory;
+      if (t === "WW" || t == null || t === "") ww[r.date] = (ww[r.date] || 0) + num(r.value);
+      else terr[r.date] = (terr[r.date] || 0) + num(r.value);
+    });
+    var out = {}, d;
+    for (d in terr) out[d] = terr[d];
+    for (d in ww) out[d] = ww[d];   // WW wins when present
+    return out;
   }
   function asDatesInWindow(rows, days) {
     var set = {}; rows.forEach(function (r) { if (r.date) set[r.date] = 1; });
@@ -2170,6 +2182,7 @@
     var allRows = live ? data.appstore : sampleAppStore();
     // Platform sub-tab: iOS / Android (rows carry platform 'ios' | 'android').
     var rows = allRows.filter(function (r) { return (r.platform || "ios") === asPlatform; });
+    var isAndroid = asPlatform === "android";
     var hasAndroid = allRows.some(function (r) { return (r.platform || "ios") === "android" && num(r.value) > 0; });
     var platLabel = asPlatform === "android" ? "Android · Google Play" : "iOS · App Store";
 
@@ -2271,6 +2284,12 @@
     // would dilute the daily average (e.g. 43 over 5 real days reads as ~1/30d).
     var actDays = dates.filter(function (d) { return act[d] != null; }).length;
     var avgAct = actDays ? Math.round(asSum(sAct) / actDays) : 0;
+    // Android active-devices = Play "Install base", a cumulative LEVEL (running total
+    // of installed devices), so the meaningful figure is the CURRENT value (latest
+    // day) — not the average of a growing curve. iOS = daily active count → average.
+    var latestAct = 0;
+    for (var _ai = dates.length - 1; _ai >= 0; _ai--) { if (act[dates[_ai]] != null) { latestAct = act[dates[_ai]]; break; } }
+    var actShown = isAndroid ? latestAct : avgAct;
 
     // Downloads this week vs last week — fixed 7d-vs-prior-7d, anchored on the
     // latest data date (independent of the Range selector above).
@@ -2296,11 +2315,16 @@
     var sesLive = hasMetric("sessions"), crLive = hasMetric("crashes");
     var actEst = !hasMetric("active_devices") && hasMetric("active_devices_est");
     var actLive = hasMetric("active_devices") || actEst;
-    var isAndroid = asPlatform === "android";
     // Conversion: iOS = downloads ÷ impressions; Android = installs ÷ store-listing
     // views (Google Play's store conversion). Recompute conv for Android.
     if (isAndroid) conv = totPv ? totDl / totPv : 0;
-    var convLive = isAndroid ? (pvLive && totPv > 0) : (impLive && totImp > 0);
+    // Android store-listing views (product_page_views) come from the frozen bulk
+    // export (stuck at ~Aug 4). If they lag the install data by >10 days, installs÷views
+    // spans mismatched windows and yields a nonsensical >100% rate — mark it unavailable.
+    var pvDates = Object.keys(pv).sort(), winEnd = dates.length ? dates[dates.length - 1] : "";
+    var pvLatest = pvDates.length ? pvDates[pvDates.length - 1] : "";
+    var pvStale = isAndroid && pvLatest && winEnd && (Date.parse(winEnd) - Date.parse(pvLatest) > 10 * 86400000);
+    var convLive = isAndroid ? (pvLive && totPv > 0 && !pvStale) : (impLive && totImp > 0);
     var PEND = '<span style="opacity:.4;font-weight:600">—</span>';
     var PEND_TIP = isAndroid
       ? "Not reported by Google Play — this metric comes from Apple's App Analytics (iOS only)."
@@ -2336,10 +2360,10 @@
       mcard("Downloads — This Week vs Last", fmtInt(wowThis) + wowBadge, "📅", COL.wk, sparkBox("sp_wk", sDl.slice(-14), COL.wk, true), (maxDlDate ? "Last week: " + fmtInt(wowLast) : ""), (isAndroid ? "Installs" : "First-time downloads") + " last 7 days vs previous 7. Independent of the Range selector.") +
       mcard("Impressions", pv2(fmtInt(totImp), impLive), "👁️", COL.imp, sparkBox("sp_imp", sImp, COL.imp, impLive), null, impLive ? (isAndroid ? "Times your listing appeared in Google Play (store-listing impressions)." : "Times the app appeared in the App Store.") : PEND_TIP) +
       mcard(isAndroid ? "Store Listing Views" : "Product Page Views", pv2(fmtInt(totPv), pvLive), "📄", COL.pv, sparkBox("sp_pv", sPv, COL.pv, pvLive), null, pvLive ? (isAndroid ? "Unique visitors to your Google Play store listing." : "Views of the app's product page.") : PEND_TIP) +
-      mcard("Conversion Rate", pv2((Math.round(conv * 1000) / 10) + "%", convLive), "🎯", COL.conv, sparkBox("sp_cv", [], COL.conv, false), null, convLive ? (isAndroid ? "Installs ÷ store-listing views — Google Play's store conversion." : "First-time downloads ÷ impressions.") : (isAndroid ? "Needs store-listing views from Google Play." : "Waiting on Impressions from Apple's App Analytics feed.")) +
+      mcard("Conversion Rate", pv2((Math.round(conv * 1000) / 10) + "%", convLive), "🎯", COL.conv, sparkBox("sp_cv", [], COL.conv, false), null, convLive ? (isAndroid ? "Installs ÷ store-listing views — Google Play's store conversion." : "First-time downloads ÷ impressions.") : (isAndroid ? (pvStale ? "Unavailable — Store Listing Views are stale (Google's export is frozen at " + esc(pvLatest || "—") + "), so installs÷views would span mismatched windows. Export 'Store listing visitors' from Play Console to restore it." : "Needs store-listing views from Google Play.") : "Waiting on Impressions from Apple's App Analytics feed.")) +
       (isAndroid ? "" :
         mcard("Sessions", pv2(fmtInt(totSes), sesLive), "📲", COL.ses, sparkBox("sp_ses", sSes, COL.ses, sesLive), (actLive ? "Active Devices: " + (actEst ? "~" : "") + fmtInt(avgAct) : ""), sesLive ? "App sessions recorded by App Analytics." : PEND_TIP)) +
-      mcard("Active Devices / Day" + (actEst ? " (est.)" : ""), pv2((actEst ? "~" : "") + fmtInt(avgAct), actLive), "📱", COL.act, sparkBox("sp_act", sAct, COL.act, actLive), null, actLive ? (isAndroid ? "Active device installs reported by Google Play." : "Average distinct devices active per day.") : PEND_TIP) +
+      mcard(isAndroid ? "Active Devices" : ("Active Devices / Day" + (actEst ? " (est.)" : "")), pv2((actEst ? "~" : "") + fmtInt(actShown), actLive), "📱", COL.act, sparkBox("sp_act", sAct, COL.act, actLive), isAndroid ? "current install base" : null, actLive ? (isAndroid ? "Current install base — unique devices with the app installed on the latest day (Play Console 'Installed audience' / Install base). This is a running level, not a daily count, so it shows the current value, not a 90-day average." : "Average distinct devices active per day.") : PEND_TIP) +
       mcard("Crashes", pv2(fmtInt(totCr), crLive), "💥", COL.cr, sparkBox("sp_cr", sCr, COL.cr, crLive), (crLive ? "" : "No crash data"), crLive ? "Crash count." : (isAndroid ? "No crashes reported by Google Play in this window." : PEND_TIP)) +
       // ---- Android-only engagement & quality tiles (Play Console statistics) ----
       (isAndroid ? (
