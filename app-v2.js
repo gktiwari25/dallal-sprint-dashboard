@@ -68,6 +68,45 @@
   }
   function esc(s) { return (s == null ? "" : String(s)).replace(/[&<>]/g, function (c) { return ({ "&": "&amp;", "<": "&lt;", ">": "&gt;" })[c]; }); }
   function escAttr(s) { return String(s == null ? "" : s).replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;"); }
+
+  // ---------- shared floating tooltip ----------
+  // One reusable element positioned by JS on hover of any `.tip[data-tip]`. It is
+  // appended to <body> (so it never inherits the card titles' UPPERCASE) and its
+  // position is clamped to the viewport, so a tooltip can't overflow a card edge,
+  // slide behind the sidebar, or get clipped — anywhere on the dashboard.
+  (function () {
+    var tipEl = null;
+    function ensure() {
+      if (!tipEl) { tipEl = document.createElement("div"); tipEl.id = "gtip"; document.body.appendChild(tipEl); }
+      return tipEl;
+    }
+    function place(target) {
+      var t = target.getAttribute("data-tip"); if (!t) return;
+      var el = ensure();
+      el.textContent = t;
+      el.style.left = "0px"; el.style.top = "0px";   // reset before measuring
+      el.classList.add("on");
+      var r = target.getBoundingClientRect();
+      var w = el.offsetWidth, h = el.offsetHeight, m = 10, vw = window.innerWidth, vh = window.innerHeight;
+      // Prefer above the icon; drop below only if there isn't room above.
+      var top = r.top - h - 10;
+      if (top < m) top = Math.min(r.bottom + 10, vh - h - m);
+      // Centre on the icon, then clamp horizontally inside the viewport.
+      var left = r.left + r.width / 2 - w / 2;
+      left = Math.max(m, Math.min(left, vw - w - m));
+      el.style.left = left + "px"; el.style.top = Math.max(m, top) + "px";
+    }
+    function hide() { if (tipEl) tipEl.classList.remove("on"); }
+    document.addEventListener("mouseover", function (e) {
+      var t = e.target && e.target.closest ? e.target.closest(".tip[data-tip]") : null;
+      if (t) place(t);
+    });
+    document.addEventListener("mouseout", function (e) {
+      var t = e.target && e.target.closest ? e.target.closest(".tip[data-tip]") : null;
+      if (t && (!e.relatedTarget || !t.contains(e.relatedTarget))) hide();
+    });
+    document.addEventListener("scroll", hide, true);
+  })();
   // A ticket is a bug if its title contains "BUG" (team convention) or Type=Bug.
   // Only work items whose TYPE is "Bug" count as bugs — Feature / Enhancement / Requirement
   // items are never counted as bugs, even if "bug" appears in their title.

@@ -272,12 +272,23 @@ details.lb{ border-radius:16px; }
 /* Info-icon chips + status pills a touch rounder */
 .tip{ font-weight:700; }
 .rag{ border-radius:999px; font-weight:700; }
-/* Hero-card tooltips: the (i) sits at the top of the card, so open the box
-   UPWARD into the empty space above — never covering the bars or the % badge —
-   and edge-anchor it horizontally so it stays within the card row. */
-.hcard .tip::after{ top:auto; bottom:calc(100% + 10px); }
-.hcard .tip.tip-l::after{ left:0; right:auto; transform:none; }
-.hcard .tip.tip-r::after{ left:auto; right:0; transform:none; }
+/* Tooltips are rendered by a single shared, JS-positioned floating element
+   (#gtip) that clamps to the viewport — so no card's tooltip can ever overflow
+   a card edge, hide behind the sidebar, or inherit the titles' UPPERCASE. The
+   old CSS ::after tooltip is disabled everywhere in favour of it. */
+.tip::after, .tip::before{ display:none !important; }
+#gtip{
+  position:fixed; z-index:9999; top:0; left:0;
+  max-width:min(320px,90vw); padding:10px 13px; border-radius:11px;
+  background:var(--navy,#0f2039); color:#fff;
+  font:400 13px/1.55 var(--font); text-transform:none; letter-spacing:normal;
+  white-space:normal; box-shadow:var(--sh-lg,0 12px 34px rgba(9,20,40,.28));
+  opacity:0; visibility:hidden; transform:translateY(3px);
+  transition:opacity .12s var(--ease,ease), transform .12s var(--ease,ease);
+  pointer-events:none;
+}
+#gtip.on{ opacity:1; visibility:visible; transform:translateY(0); }
+@media (prefers-color-scheme: dark){ #gtip{ background:#22374f; border:1px solid var(--line-strong,#33465f); } }
 
 /* =========================================================================
    SPLIT-SCREEN LOGIN — dark brand panel + white sign-in form
