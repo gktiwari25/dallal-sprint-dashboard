@@ -131,6 +131,38 @@
   function isPreSprint(i) {
     return /backlog\s*-\s*idea|design\s*in-?progress/i.test(i.section || "");
   }
+  // Committed vs delivered SP for ONE sprint number (same rules as compute()):
+  // committed = sum of SP on committed-scope items; delivered = sum on done items.
+  function sprintScope(sn) {
+    var it = data.items.filter(function (i) { return String(i.sprint) === String(sn) && !isPreSprint(i); });
+    var c = it.reduce(function (a, i) { return a + num(i.story_points); }, 0);
+    var d = it.filter(isDone).reduce(function (a, i) { return a + num(i.story_points); }, 0);
+    return { committed: c, delivered: d };
+  }
+  // "AI learns from past sprints": over the last up-to-6 COMPLETED sprints (sprint
+  // number < current, with SP set), measure two things the forecast needs:
+  //   reliability = average hit-rate = mean( min(delivered/committed, 1) )  → how
+  //                 reliably the team lands its commitment historically.
+  //   avgVelocity = mean delivered SP per sprint                            → the
+  //                 team's typical throughput, independent of what was committed.
+  // Returns null until there's at least one past estimated sprint to learn from.
+  function sprintHistory(current) {
+    var nums = {};
+    data.items.forEach(function (i) { var n = num(i.sprint); if (n > 0 && n < num(current)) nums[n] = 1; });
+    var list = Object.keys(nums).map(Number).sort(function (a, b) { return b - a; }).slice(0, 6);
+    var hits = [], vels = [];
+    list.forEach(function (sn) {
+      var s = sprintScope(sn);
+      if (s.committed > 0) { hits.push(Math.min(1, s.delivered / s.committed)); vels.push(s.delivered); }
+    });
+    if (!hits.length) return null;
+    return {
+      n: hits.length,
+      sprints: list.slice(0, hits.length),
+      reliability: hits.reduce(function (a, b) { return a + b; }, 0) / hits.length,
+      avgVelocity: vels.reduce(function (a, b) { return a + b; }, 0) / vels.length
+    };
+  }
   function compute(sprint) {
     // Any ticket carrying this Sprint number counts — EXCEPT still-ideating columns
     // (Backlog - Idea / Refinement / Design, Design In-Progress). "Ready for Development
@@ -155,6 +187,26 @@
     var hCommit = usePts ? committedSP : planned;
     var hDeliver = usePts ? deliveredSP : completed;
     var hCommitment = usePts ? commitmentSP : planned;
+    // ---- three DISTINCT, history-learning Sprint-Health metrics ----
+    var hist = sprintHistory(sprint);
+    // 1) PROGRESS = what's actually been delivered so far this sprint.
+    var progress = hCommit ? hDeliver / hCommit : null;
+    // 2) PREDICTABILITY = likelihood we land the whole commitment, LEARNED from past
+    //    sprints: reliability (historic hit-rate) × capacityFit (does our typical
+    //    velocity even cover this commitment). Never below what we've already banked
+    //    (progress). Falls back to progress until there's history to learn from.
+    var capacityFit = (hist && hCommit) ? Math.min(1, hist.avgVelocity / hCommit) : null;
+    var predictability;
+    if (hist && capacityFit != null && progress != null) {
+      predictability = Math.max(progress, hist.reliability * capacityFit);
+    } else {
+      predictability = progress;
+    }
+    // 3) CARRY FORWARD = committed − velocity (the user's definition): the SP our
+    //    typical throughput won't cover, i.e. the forecast spill into the next
+    //    sprint. Floored at 0. Without history, fall back to the actual undelivered SP.
+    var carryFwdForecastSP = hist ? Math.max(0, hCommit - hist.avgVelocity) : (usePts ? carryFwdSP : carryFwdItems);
+    var carryFwdFrac = hCommit ? carryFwdForecastSP / hCommit : null;
     var bugs = its.filter(isBug);
     function statusIn(list) { return its.filter(function (i) { return list.indexOf(i.status) !== -1; }).length; }
     var reopened = its.filter(function (i) { return num(i.reopened_count) > 0; }).length;
@@ -171,9 +223,11 @@
     return {
       its: its, committedSP: committedSP, deliveredSP: deliveredSP,
       usePts: usePts, velocity: hDeliver, velocityUnit: usePts ? "SP" : "items",
-      progress: hCommit ? hDeliver / hCommit : null,
-      predictability: hCommitment ? hDeliver / hCommitment : null,
-      carryFwd: hCommit ? (usePts ? carryFwdSP : carryFwdItems) / hCommit : null,
+      progress: progress,
+      predictability: predictability,
+      carryFwd: carryFwdFrac,
+      hist: hist, capacityFit: capacityFit,
+      carryFwdForecastSP: carryFwdForecastSP,
       carryFwdSP: carryFwdSP, carryFwdItems: carryFwdItems,
       planned: planned, completed: completed,
       inDev: its.filter(function (i) { return sectionStage(i.section) === "dev"; }).length,
@@ -286,7 +340,7 @@
   }
 
   // ---------- redesign helpers (v2) ----------
-  function heroCard(title, icon, p, frac, cap, color) {
+  function heroCard(title, icon, p, frac, cap, color, tip) {
     var pc = (p == null || isNaN(p)) ? 0 : Math.round(p * 100);
     var N = 7, solid = Math.max(1, Math.round(pc / 100 * N)), bars = "";
     for (var i = 0; i < N; i++) {
@@ -294,8 +348,9 @@
       bars += '<i class="' + (i < solid ? "on" : "off") + '" style="height:' + h + '%"></i>';
     }
     var badgeLeft = Math.max(9, Math.min(84, (solid - 0.5) / N * 100));
+    var t = tip ? ' <span class="tip" data-tip="' + escAttr(tip) + '">i</span>' : '';
     return '<div class="hcard" style="--hc:' + color + '">' +
-      '<div class="hcard-top"><span class="hcard-title">' + title + '</span><span class="hcard-ic">' + icon + '</span></div>' +
+      '<div class="hcard-top"><span class="hcard-title">' + title + t + '</span><span class="hcard-ic">' + icon + '</span></div>' +
       '<div class="hbars"><span class="hbadge" style="left:' + badgeLeft + '%">' + pc + '%</span>' + bars + '</div>' +
       '<div class="hcard-foot"><span class="hcard-frac">' + frac + '</span></div>' +
       '<div class="hcard-cap">' + cap + '</div></div>';
@@ -366,8 +421,37 @@
     var m = compute(sprint), rag = goalRag(m);
     renderRetro(sprint, m);
     var goalHex = { green: "#2e7d32", amber: "#f29f05", red: "#c62828" }[rag[0]] || "#0f8b8d";
-    var fracSP = m.usePts ? (Math.round(m.deliveredSP) + " / " + Math.round(m.committedSP) + " SP") : (m.completed + " / " + m.planned);
-    var carryTxt = m.usePts ? (Math.round(m.carryFwdSP) + " SP") : ((m.carryFwdItems || 0) + " items");
+    var fracSP = m.usePts ? (Math.round(m.deliveredSP) + " / " + Math.round(m.committedSP) + " SP") : (m.completed + " / " + m.planned + " stories");
+    var unit = m.usePts ? "SP" : "items";
+    var hist = m.hist;
+    // --- explanatory tooltips: exactly how each hero number is derived, with live figures ---
+    var progTip = "SPRINT PROGRESS = delivered ÷ committed, this sprint. "
+      + Math.round(m.usePts ? m.deliveredSP : m.completed) + " " + unit + " delivered ÷ "
+      + Math.round(m.usePts ? m.committedSP : m.planned) + " committed = " + pct(m.progress) + ". "
+      + "“Delivered” means the work reached the UAT pipeline or shipped (Ready for UAT → Released).";
+    var predFracTxt, predTip;
+    if (hist) {
+      predFracTxt = "learns from " + hist.n + " sprint" + (hist.n > 1 ? "s" : "");
+      predTip = "PREDICTABILITY = how likely we are to deliver the WHOLE commitment — learned from the last "
+        + hist.n + " completed sprint" + (hist.n > 1 ? "s" : "") + " (#" + hist.sprints.slice().reverse().join(", #") + "). "
+        + "reliability " + pct(hist.reliability) + " (avg past hit-rate) × capacity-fit " + pct(m.capacityFit)
+        + " (avg velocity " + Math.round(hist.avgVelocity) + " SP ÷ committed " + Math.round(m.committedSP) + " SP)"
+        + ", floored at current progress " + pct(m.progress) + "  →  " + pct(m.predictability) + ". "
+        + "It moves as the team’s track record improves or the commitment fits our velocity — so it no longer mirrors Progress.";
+    } else {
+      predFracTxt = fracSP;
+      predTip = "PREDICTABILITY needs at least one past estimated sprint to learn from. Until then it mirrors Sprint Progress (" + pct(m.progress) + ").";
+    }
+    var carryTxt, carryTip;
+    if (hist && m.usePts) {
+      carryTxt = Math.round(m.carryFwdForecastSP) + " SP forecast";
+      carryTip = "CARRY FORWARD = committed − typical velocity: the SP our usual throughput won’t cover, forecast to spill into the next sprint. "
+        + "committed " + Math.round(m.committedSP) + " SP − avg velocity " + Math.round(hist.avgVelocity) + " SP = "
+        + Math.round(m.carryFwdForecastSP) + " SP (" + pct(m.carryFwd) + " of the commitment). Floored at 0 when velocity covers the commitment.";
+    } else {
+      carryTxt = m.usePts ? (Math.round(m.carryFwdSP) + " SP") : ((m.carryFwdItems || 0) + " items");
+      carryTip = "CARRY FORWARD = committed work not yet delivered (no sprint history yet to forecast from). " + carryTxt + " still In Development or not started.";
+    }
     // Days remaining from the sprint's SCHEDULED end (calendar cadence), not the
     // last-activity date. Only shown for the currently-running sprint.
     var daysLeft = null;
@@ -382,9 +466,9 @@
     })();
     el("healthGrid").innerHTML =
       '<div class="hero3">' +
-        heroCard("SPRINT PROGRESS", "📈", m.progress, fracSP, "story points completed", "#f5883f") +
-        heroCard("PREDICTABILITY", "🎯", m.predictability, fracSP, "story points delivered", "#2f6df6") +
-        heroCard("CARRY FORWARD", "⏱️", m.carryFwd, carryTxt, "work carried forward", "#f5a623") +
+        heroCard("SPRINT PROGRESS", "📈", m.progress, fracSP, "delivered ÷ committed", "#f5883f", progTip) +
+        heroCard("PREDICTABILITY", "🎯", m.predictability, predFracTxt, "likely to hit commitment", "#2f6df6", predTip) +
+        heroCard("CARRY FORWARD", "⏱️", m.carryFwd, carryTxt, "forecast to next sprint", "#f5a623", carryTip) +
       "</div>" +
       '<div class="minigrid">' +
         card("Sprint Goal", "", { rag: rag[0], ragText: rag[1], icon: "🎯" }) +
@@ -392,7 +476,11 @@
       "</div>" +
       glanceCard(m, daysLeft);
     el("healthNote").innerHTML = m.usePts
-      ? 'Progress, Predictability &amp; Carry-Forward are measured in <b>story points</b>. <b>Delivered</b> = work that has reached the UAT pipeline or shipped (Ready&nbsp;for&nbsp;UAT → Released) — ' + Math.round(m.deliveredSP) + '/' + Math.round(m.committedSP) + ' SP (' + pct(m.progress) + '). <b>Carry-Forward</b> = ' + Math.round(m.carryFwdSP) + ' SP (' + pct(m.carryFwd) + '), the committed work still In&nbsp;Development or not yet started. By <b>item count</b> it\'s ' + m.completed + '/' + m.planned + ' stories delivered.'
+      ? '<b>Progress</b> = delivered ÷ committed (' + Math.round(m.deliveredSP) + '/' + Math.round(m.committedSP) + ' SP = ' + pct(m.progress) + '), where delivered = reached the UAT pipeline or shipped (Ready&nbsp;for&nbsp;UAT → Released). '
+        + (hist
+            ? '<b>Predictability</b> = ' + pct(m.predictability) + ', a forecast of hitting the full commitment learned from the last ' + hist.n + ' sprint' + (hist.n > 1 ? 's' : '') + ' (reliability ' + pct(hist.reliability) + ' × capacity-fit ' + pct(m.capacityFit) + '). <b>Carry-Forward</b> = committed − avg velocity = ' + Math.round(m.committedSP) + '&minus;' + Math.round(hist.avgVelocity) + ' = ' + Math.round(m.carryFwdForecastSP) + ' SP (' + pct(m.carryFwd) + ') forecast to spill next sprint.'
+            : '<b>Predictability</b> &amp; <b>Carry-Forward</b> start learning from history once a prior estimated sprint exists; for now Predictability mirrors Progress and Carry-Forward shows the ' + Math.round(m.carryFwdSP) + ' SP still undelivered.')
+        + ' Hover the <span class="tip" data-tip="Every hero card has one of these — hover it to see the exact formula and live numbers.">i</span> on each card for its formula.'
       : "Story Points not set in Asana for this sprint — Sprint Health is showing item counts. It switches to SP automatically once tasks are estimated.";
 
     el("deliveryGrid").innerHTML =
