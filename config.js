@@ -21,11 +21,11 @@ window.DALLAL_CONFIG = {
 
   // Calendar-driven "current running sprint": the default selection and the top of
   // the sprint window are computed from today's date, so they advance automatically
-  // (no data/ETL dependency). Sprints are SPRINT_LENGTH_DAYS long, Monday-aligned.
-  // Anchor = a known sprint and the Monday it started. Update only if the cadence
-  // changes. e.g. Sprint 14 started Mon 2026-08-10 -> Sprint 15 = Mon 2026-08-24.
+  // (no data/ETL dependency). Sprints are SPRINT_LENGTH_DAYS long.
+  // Anchor = a known sprint and the day it started. Update only if the cadence
+  // changes. Sprint 14 runs 2026-08-14 -> 2026-08-28; Sprint 15 = 2026-08-28.
   // Set SPRINT_ANCHOR: null to fall back to the old "latest delivered + 1" heuristic.
-  SPRINT_ANCHOR: { sprint: 14, start: "2026-08-10" },
+  SPRINT_ANCHOR: { sprint: 14, start: "2026-08-14" },
   SPRINT_LENGTH_DAYS: 14,
 
   REQUIRE_AUTH: true,   // set false only if you intentionally want a public link
