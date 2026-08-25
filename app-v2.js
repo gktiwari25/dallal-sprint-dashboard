@@ -2374,7 +2374,7 @@
       mcard(isAndroid ? "All-Time Installs" : "All-Time Downloads", fmtInt(totDlAll), "📥", "#5a5be6",
         sparkBox("sp_all", sDlAll, "#5a5be6", true),
         (dlSince ? "since " + fmtDay(dlSince) : null),
-        "Cumulative " + (isAndroid ? "installs (by unique user)" : "first-time downloads") + " across every available day (" + (dlSince ? fmtDay(dlSince) : "?") + " → today), independent of the Range selector above." + (isAndroid ? " Android history goes back to 2021." : " Note: only Apple's recent reporting window is loaded, so this isn't the full lifetime total yet — earlier iOS history isn't backfilled.")) +
+        "Cumulative " + (isAndroid ? "installs (by unique user)" : "first-time downloads") + " across every available day (" + (dlSince ? fmtDay(dlSince) : "?") + " → today), independent of the Range selector above." + (isAndroid ? " Android history goes back to 2021." : " iOS covers Apple's retained Sales & Trends reports (~365 days), back to the app's first iOS downloads.")) +
       (isAndroid
         ? mcard("User Installs", fmtInt(totDl), "👤", COL.dl, sparkBox("sp_dl", sDl, COL.dl, true), "per unique user",
             "Daily User Installs = " + fmtInt(totDl) + " — counted per unique user / Google account, de-duping anyone who installed on more than one device."
