@@ -156,16 +156,14 @@ DEBUG = False
 
 DATE_COLS = ["Date", "Day"]
 COUNT_COLS = ["Counts", "Count", "Value", "Unique Devices"]
-# Download-type dimension value -> our metric (mirrors the App Analytics cards)
+# Download-type dimension value -> our metric (mirrors the App Analytics cards).
+# DISABLED: the App Analytics ONGOING install feed produced inflated first-time /
+# redownload counts (e.g. 44-125/day vs Apple's ~25-30 and Sales & Trends App Units).
+# We now take iOS downloads/redownloads from Sales & Trends only, so don't ingest
+# the analytics download-type metrics. Impressions / page views / sessions / crashes
+# come from other reports and are unaffected. Re-enable only if the feed is verified.
 DLTYPE_COLS = ["Download Type", "Event", "Type"]
-DLTYPE_METRIC = {
-    "first-time download": "downloads_analytics",
-    "first time download": "downloads_analytics",
-    "redownload": "redownloads_analytics",
-    "auto-download": "redownloads_analytics",
-    "restore": "redownloads_analytics",
-    "total downloads": "total_downloads_analytics",
-}
+DLTYPE_METRIC = {}
 # Report-name substrings whose rows carry download-type-dimensioned install counts
 DOWNLOAD_REPORT_HINTS = ["install", "download", "acquisition"]
 # Single-metric reports: (report-name substring, our metric, value-column candidates)
