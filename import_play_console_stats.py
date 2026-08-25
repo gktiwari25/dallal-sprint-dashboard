@@ -43,6 +43,7 @@ HEADER_METRIC = [
     ("returning users", "returning_users"),     # re-engaged users
     ("user loss", "uninstalls"),                # users who left / uninstalled
     ("total impressions", "impressions"),       # store-listing impressions
+    ("store listing visitors", "product_page_views"),   # store-listing views
     ("store listing acquisitions", "store_acquisitions"),
     ("daily active users", "dau"),
     ("dau/mau", "dau_mau"),                      # stickiness %, stored as a number (8.72 = 8.72%)
