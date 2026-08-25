@@ -2249,25 +2249,17 @@
     var dates = asWindowDates(rows);
     var last = dates.length ? dates[dates.length - 1] : "";
 
-    // Prefer App Analytics figures (match App Store Connect > Analytics) when the
-    // analytics feed has landed; fall back to Sales & Trends until then.
     var hasMetric = function (m) { return rows.some(function (r) { return (r.metric || "") === m && num(r.value) > 0; }); };
-    var dlAnalytics = hasMetric("downloads_analytics");
-    var acqSource = dlAnalytics ? "App Analytics where available, else Sales & Trends" : "Sales & Trends (App Units)";
-    // First-Time Downloads / Redownloads: prefer App Analytics per day (matches App
-    // Store Connect), and fall back to Sales & Trends for the days Apple's Analytics
-    // feed hasn't produced yet. Switching the whole metric to analytics the moment a
-    // single day lands would drop every other day and make multi-day totals undercount.
-    var mergeDaily = function (aMetric, sMetric) {
-      var a = asByDate(rows, aMetric), s = asByDate(rows, sMetric), out = {};
-      Object.keys(s).forEach(function (d) { out[d] = s[d]; });
-      Object.keys(a).forEach(function (d) { out[d] = a[d]; });   // analytics wins per-day
-      return out;
-    };
+    // iOS downloads come from Sales & Trends "App Units" — this matches App Store
+    // Connect's Analytics "First-Time Downloads" chart closely (~1,789 vs Apple 1,820).
+    // We deliberately DON'T merge the App Analytics ONGOING feed (downloads_analytics):
+    // it was producing inflated values (e.g. 44/61/125 a day vs Apple's ~25-30), which
+    // over-counted the totals. Analytics is still used for impressions / page views / sessions.
+    var acqSource = "Sales & Trends (App Units)";
 
-    var dl = mergeDaily("downloads_analytics", "downloads"),
+    var dl = asByDate(rows, "downloads"),
         dev = asByDate(rows, "device_installs"),   // Android: Play "Daily Device Installs"
-        redl = mergeDaily("redownloads_analytics", "redownloads"),
+        redl = asByDate(rows, "redownloads"),
         imp = asByDate(rows, "impressions"), pv = asByDate(rows, "product_page_views"),
         ses = asByDate(rows, "sessions"),
         act = asByDate(rows, hasMetric("active_devices") ? "active_devices" : "active_devices_est"),
