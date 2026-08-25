@@ -2126,6 +2126,11 @@
     if (asCustom && asFrom && asTo) return asFrom + " to " + asTo;
     return asRange === 1 ? "last 24 hours" : ("last " + asRange + " days");
   }
+  function fmtDay(iso) {
+    var p = (iso || "").split("-"); if (p.length < 3) return iso || "";
+    var m = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][parseInt(p[1], 10) - 1] || p[1];
+    return parseInt(p[2], 10) + " " + m + " " + p[0];
+  }
 
   // sum a metric per date across territories -> { 'YYYY-MM-DD': total }
   // Per-date total for a metric. WW is the authoritative total, so when a date has
@@ -2274,6 +2279,14 @@
 
     var totDl = asSum(sDl), totRe = asSum(sRe), totImp = asSum(sImp), totPv = asSum(sPv),
         totSes = asSum(sSes), totCr = asSum(sCr), totDev = asSum(sDev);
+    // All-time downloads: sum EVERY available day (independent of the range selector).
+    // `dl` already holds per-date totals for all dates in the data. Also capture the
+    // earliest day so we can label the coverage honestly (iOS history is a short
+    // rolling window; Android goes back to 2021).
+    var dlAllKeys = Object.keys(dl).sort();
+    var totDlAll = dlAllKeys.reduce(function (a, d) { return a + num(dl[d]); }, 0);
+    var dlSince = dlAllKeys.length ? dlAllKeys[0] : "";
+    var sDlAll = dlAllKeys.map(function (d) { return num(dl[d]); });
     // Extra Android engagement/quality metrics (imported from Play Console stats).
     var sacB = asByDate(rows, "store_acquisitions"), retB = asByDate(rows, "returning_users"),
         ulsB = asByDate(rows, "uninstalls"), dauB = asByDate(rows, "dau"),
@@ -2358,6 +2371,10 @@
     // Apple-only metrics (Impressions / Page Views / Conversion / Sessions /
     // Redownloads) don't exist in Google Play's reports — omit those tiles on Android.
     el("appstoreKpis").innerHTML =
+      mcard(isAndroid ? "All-Time Installs" : "All-Time Downloads", fmtInt(totDlAll), "📥", "#5a5be6",
+        sparkBox("sp_all", sDlAll, "#5a5be6", true),
+        (dlSince ? "since " + fmtDay(dlSince) : null),
+        "Cumulative " + (isAndroid ? "installs (by unique user)" : "first-time downloads") + " across every available day (" + (dlSince ? fmtDay(dlSince) : "?") + " → today), independent of the Range selector above." + (isAndroid ? " Android history goes back to 2021." : " Note: only Apple's recent reporting window is loaded, so this isn't the full lifetime total yet — earlier iOS history isn't backfilled.")) +
       (isAndroid
         ? mcard("User Installs", fmtInt(totDl), "👤", COL.dl, sparkBox("sp_dl", sDl, COL.dl, true), "per unique user",
             "Daily User Installs = " + fmtInt(totDl) + " — counted per unique user / Google account, de-duping anyone who installed on more than one device."
