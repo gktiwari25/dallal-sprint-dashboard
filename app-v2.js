@@ -2257,8 +2257,12 @@
     // over-counted the totals. Analytics is still used for impressions / page views / sessions.
     var acqSource = "Sales & Trends (App Units)";
 
-    var dl = asByDate(rows, "downloads"),
-        dev = asByDate(rows, "device_installs"),   // Android: Play "Daily Device Installs"
+    // iOS install series = Sales & Trends App Units ("downloads"). Android install
+    // series = "device_installs" (Play "Device acquisition") — the clean, by-device
+    // first-install count that best matches Adjust (the "downloads"/"New users"
+    // metric was swapped to All-users and over-counts, so we use device acquisition).
+    var dl = asByDate(rows, isAndroid ? "device_installs" : "downloads"),
+        dev = asByDate(rows, "device_installs"),
         redl = asByDate(rows, "redownloads"),
         imp = asByDate(rows, "impressions"), pv = asByDate(rows, "product_page_views"),
         ses = asByDate(rows, "sessions"),
@@ -2366,14 +2370,10 @@
       mcard(isAndroid ? "All-Time Installs" : "All-Time Downloads", fmtInt(totDlAll), "📥", "#5a5be6",
         sparkBox("sp_all", sDlAll, "#5a5be6", true),
         (dlSince ? "since " + fmtDay(dlSince) : null),
-        "Cumulative " + (isAndroid ? "installs (by unique user)" : "first-time downloads") + " across every available day (" + (dlSince ? fmtDay(dlSince) : "?") + " → today), independent of the Range selector above." + (isAndroid ? " Android history goes back to 2021." : " iOS covers Apple's retained Sales & Trends reports (~365 days), back to the app's first iOS downloads.")) +
+        "Cumulative " + (isAndroid ? "installs (by device — Play Device acquisition)" : "first-time downloads") + " across every available day (" + (dlSince ? fmtDay(dlSince) : "?") + " → today), independent of the Range selector above." + (isAndroid ? " Android history goes back to 2021." : " iOS covers Apple's retained Sales & Trends reports (~365 days), back to the app's first iOS downloads.")) +
       (isAndroid
-        ? mcard("User Installs", fmtInt(totDl), "👤", COL.dl, sparkBox("sp_dl", sDl, COL.dl, true), "per unique user",
-            "Daily User Installs = " + fmtInt(totDl) + " — counted per unique user / Google account, de-duping anyone who installed on more than one device."
-            + (totDev > totDl ? " The " + (totDev - totDl) + "-unit gap vs Device Installs = those installs were the same users on a second device." : "")
-            + " This is Play Console's default \"Installs\" and matches Apple App Units (also per-account).")
-          + mcard("Device Installs", fmtInt(totDev), "📱", "#0891b2", sparkBox("sp_dev", sDev, "#0891b2", true), "per device",
-            "Daily Device Installs = " + fmtInt(totDev) + " — counted per device (each device that installed). A user who installs on more than one device is counted more than once.")
+        ? mcard("Installs", fmtInt(totDl), "📱", COL.dl, sparkBox("sp_dl", sDl, COL.dl, true), "by device (Device acquisition)",
+            "Google Play Device acquisition — first installs counted per device (each device that installs). This is the by-device count, which matches Adjust's device-based install attribution most closely.")
         : mcard("First-Time Downloads", fmtInt(totDl), "⬇️", COL.dl, sparkBox("sp_dl", sDl, COL.dl, true), null, "First-time downloads. Source: " + acqSource + ".")) +
       (isAndroid ? "" :
         mcard("Redownloads", fmtInt(totRe), "🔁", COL.re, sparkBox("sp_re", sRe, COL.re, true), null, "Re-installs by users who previously downloaded the app.")) +
