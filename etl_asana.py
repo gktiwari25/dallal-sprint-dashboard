@@ -141,6 +141,35 @@ def sb_current(cols):
     return {x["task_gid"]: x for x in r.json()}
 
 
+def prune_deleted(token, live_gids):
+    """Remove fact_workitems rows whose Asana task no longer exists (deleted).
+    ONLY call on a FULL sync (live_gids must be the complete current project set).
+    Candidates (rows not in live_gids — could be deleted tasks OR subtasks that
+    aren't direct project members) are each verified via get_task; only real 404s
+    are removed, so we never delete a live subtask by mistake."""
+    base = env("SUPABASE_URL").rstrip("/") + "/rest/v1/fact_workitems"
+    key = env("SUPABASE_SERVICE_ROLE_KEY")
+    sh = {"apikey": key, "Authorization": "Bearer " + key}
+    ah = {"Authorization": "Bearer " + token}
+    gids, frm = [], 0
+    while True:
+        r = requests.get(base, headers=sh, params={"select": "task_gid", "order": "task_gid.asc",
+                         "offset": frm, "limit": 1000}, timeout=90).json()
+        gids += [x["task_gid"] for x in r]
+        if len(r) < 1000:
+            break
+        frm += 1000
+    cand = [g for g in gids if g not in live_gids]
+    deleted = [g for g in cand
+               if requests.get(ASANA_BASE + f"/tasks/{g}", headers=ah, timeout=30).status_code == 404]
+    for i in range(0, len(deleted), 50):
+        ch = deleted[i:i + 50]
+        requests.delete(base, headers={**sh, "Prefer": "return=minimal"},
+                        params={"task_gid": "in.(" + ",".join(ch) + ")"}, timeout=60)
+    print(f"Prune: {len(cand)} candidates checked, {len(deleted)} deleted (removed from Asana).")
+    return deleted
+
+
 def upsert(rows):
     base = env("SUPABASE_URL").rstrip("/") + "/rest/v1/fact_workitems"
     key = env("SUPABASE_SERVICE_ROLE_KEY")
@@ -240,6 +269,10 @@ def main():
     FIELDS = ["task_gid", "section", "is_completed", "completed_at", "modified_at"]
     payload = [{k: r.get(k) for k in FIELDS} for r in rows]
     upsert(payload)
+    # On a FULL sync we have the complete live task set, so prune rows for tasks that
+    # were deleted in Asana (otherwise they linger and open to "This task is deleted").
+    if args.full and not modified_since:
+        prune_deleted(token, {t["gid"] for t in tasks})
     try:
         open(marker, "w").write(run_start.isoformat())
     except Exception:
