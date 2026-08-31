@@ -2030,6 +2030,11 @@
   ];
 
   function sampleAppStore() {
+    // Disabled: never show placeholder/sample store numbers — the team mistook them
+    // for real data. When live data isn't loaded the tiles show an honest empty state.
+    return [];
+  }
+  function _sampleAppStoreOLD() {
     if (_sampleAppStore) return _sampleAppStore;
     var rows = [];
     var today = new Date();
@@ -2212,7 +2217,7 @@
       var throughTxt = dataThrough ? " · data through " + dataThrough : "";
       el("appstoreWindow").textContent = "Live · " + platLabel + throughTxt + syncTxt;
     } else {
-      el("appstoreWindow").textContent = "Sample data (" + platLabel + ") — this is how it will look once the store APIs are wired up";
+      el("appstoreWindow").textContent = "No store data loaded for " + platLabel + " — the feed hasn't loaded yet. Try Refresh, or check the connection / data source.";
     }
 
     // Google Play not-connected note + data-staleness banner. Normal store lag is
