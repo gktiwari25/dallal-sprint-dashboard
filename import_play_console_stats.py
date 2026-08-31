@@ -37,19 +37,24 @@ import requests
 # Header keyword -> our metric (matched against the "All countries" column header,
 # lower-cased; first match wins, so order matters). Extend as needed.
 HEADER_METRIC = [
-    ("new users", "downloads"),                 # "User acquisition (New users…)" = installs by user
-    ("device acquisition", "device_installs"),  # installs by device
-    ("install base", "active_devices"),         # unique devices with the app installed
-    ("returning users", "returning_users"),     # re-engaged users
-    ("user loss", "uninstalls"),                # users who left / uninstalled
-    ("total impressions", "impressions"),       # store-listing impressions
+    # Keys are SPECIFIC on purpose: Play Console exports many variants of the same
+    # name (e.g. "User loss", "User loss rate", "User loss change") — we only want
+    # the raw COUNT, not the rate/change/growth versions, so keys include "(all"
+    # or "(daily" to match the count column and skip the derived ones.
+    ("new users", "downloads"),                     # "User acquisition (New users…)" = installs by user
+    ("user acquisition (all", "downloads"),         # "User acquisition (All users…)" — total installs by user
+    ("device acquisition", "device_installs"),      # installs by device
+    ("install base", "active_devices"),             # unique devices with the app installed
+    ("returning users (daily", "returning_users"),  # daily re-engaged users (NOT Monthly Returning Users)
+    ("user loss (all", "uninstalls"),               # raw uninstall COUNT (NOT rate/change)
+    ("total impressions", "impressions"),           # store-listing impressions
     ("store listing visitors", "product_page_views"),   # store-listing views
     ("store listing acquisitions", "store_acquisitions"),
     ("daily active users", "dau"),
-    ("dau/mau", "dau_mau"),                      # stickiness %, stored as a number (8.72 = 8.72%)
+    ("dau/mau", "dau_mau"),                          # stickiness %, stored as a number (8.72 = 8.72%)
     ("installed audience", "installed_audience"),
     ("anrs", "anrs"),
-    ("crashes", "crashes"),                     # daily crashes (dimension is Android version)
+    ("crashes", "crashes"),                         # daily crashes (dimension is Android version)
     ("daily user installs", "downloads"),
     ("daily device installs", "device_installs"),
 ]
