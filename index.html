@@ -10,7 +10,7 @@
 <link rel="icon" type="image/png" href="dallal-favicon.png?v=237" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
 <link rel="stylesheet" href="styles.css?v=237" />
-<link rel="stylesheet" href="styles-v2.css?v=32" /><!-- REDESIGN PREVIEW theme layer -->
+<link rel="stylesheet" href="styles-v2.css?v=33" /><!-- REDESIGN PREVIEW theme layer -->
 </head>
 <body>
 
@@ -141,6 +141,13 @@
   <div class="section"><h2>Delivery</h2><div class="body">
     <div class="grid" id="deliveryGrid"></div>
     <div id="openList" class="listblock"></div>
+  </div></div>
+
+  <!-- DUE DATES -->
+  <div class="section"><h2>Due Dates</h2><div class="body">
+    <p class="muted" style="margin:0 0 12px">Open tasks (not yet done) that are <b>due today</b> or have <b>missed their due date</b>, grouped by sprint. Shows the assignee and how many days overdue.</p>
+    <div class="grid" id="dueGrid"></div>
+    <div id="dueList" class="listblock"></div>
   </div></div>
 
   <!-- SCOPE CREEP -->
@@ -388,6 +395,6 @@
 <script src="config.js?v=238"></script>
 <script src="sample-data.js?v=237"></script>
 <script src="funnels-data.js?v=237"></script>
-<script src="app-v2.js?v=40"></script>
+<script src="app-v2.js?v=41"></script>
 </body>
 </html>

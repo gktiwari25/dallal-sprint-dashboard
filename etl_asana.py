@@ -33,7 +33,7 @@ ASANA_BASE = "https://app.asana.com/api/1.0"
 DEFAULT_PROJECT = "1214388950902741"
 DELIVERED_RE = re.compile(r"ready for uat|qa on uat|in uat|uat passed|ready for production|released", re.I)
 OPT_FIELDS = ",".join([
-    "name", "completed", "completed_at", "created_at", "modified_at",
+    "name", "completed", "completed_at", "created_at", "modified_at", "due_on",
     "memberships.section.name", "memberships.project.gid",
     "assignee.name", "custom_fields.name", "custom_fields.display_value",
 ])
@@ -123,6 +123,7 @@ def to_row(task, project):
         "reopened_count": num(c.get("Reopened Count")) or 0,
         "efforts_hours": num(c.get("Efforts (Hours) ")),
         "assignee": (task.get("assignee") or {}).get("name"),
+        "due_on": task.get("due_on"),      # YYYY-MM-DD or None
         "is_bug": is_bug,
         "is_completed": 1 if completed else 0,
         "is_delivered": is_delivered,
@@ -266,7 +267,7 @@ def main():
     # Write ONLY completion-critical fields that match the cloud sync's format
     # exactly (section kept raw, no status). PostgREST partial upsert leaves every
     # other column — story points, burndown inputs, status, etc. — untouched.
-    FIELDS = ["task_gid", "section", "is_completed", "completed_at", "modified_at"]
+    FIELDS = ["task_gid", "section", "is_completed", "completed_at", "modified_at", "due_on"]
     payload = [{k: r.get(k) for k in FIELDS} for r in rows]
     upsert(payload)
     # On a FULL sync we have the complete live task set, so prune rows for tasks that

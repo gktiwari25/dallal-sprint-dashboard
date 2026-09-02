@@ -558,6 +558,8 @@
     el("openList").innerHTML = notCompletedBlock("open", openItems.length, m.planned, onHoldCount,
       (openItems.length ? openItems.map(taskRow).join("") : '<div class="muted">All committed stories completed. 🎉</div>'));
 
+    renderDueDates();
+
     el("qualityGrid").innerHTML =
       card("Total Bugs", m.bugs, { icon: "🐞", accent: "#6b7a8d", tip: "Tickets in this sprint whose title contains \"BUG\" (or Type = Bug)." }) +
       card("Bugs Closed", m.bugsClosed, { icon: "✅", accent: "#2e7d32", tip: "Bug tickets resolved this sprint (Released / UAT Passed / done). Total Bugs − Bugs Closed = still-open bugs." }) +
@@ -722,6 +724,81 @@
         scales: { y: { beginAtZero: true, title: { display: true, text: "Story Points", color: "#8f9fb5" }, grid: { color: "rgba(125,142,170,.14)" }, border: { display: false }, ticks: { color: "#8f9fb5" } },
           x: { grid: { display: false }, border: { display: false }, ticks: { color: "#8f9fb5" } } } },
     });
+  }
+
+  // ---------- Due Dates ----------
+  // Parse Asana due_on ('YYYY-MM-DD', date-only) into a LOCAL midnight Date so the
+  // comparison to "today" is purely calendar-based (no timezone drift from UTC).
+  function parseDue(s) {
+    if (!s) return null;
+    var p = String(s).slice(0, 10).split("-");
+    if (p.length !== 3) return null;
+    var d = new Date(+p[0], (+p[1]) - 1, +p[2]);
+    return isNaN(d.getTime()) ? null : d;
+  }
+  function dueTaskRow(it) {
+    var late = it._lateDays;
+    var tag = late
+      ? '<span class="due-tag over">' + late + 'd late</span>'
+      : '<span class="due-tag today">Due today</span>';
+    var who = it.assignee ? esc(it.assignee) : '<span class="muted">Unassigned</span>';
+    return '<div class="taskrow due ' + (late ? "od" : "dt") + '">' +
+      '<span class="trbadge ' + priClass(it.priority) + '">' + shortPri(it.priority) + "</span>" +
+      '<span class="trname" title="' + escAttr(it.name) + '">' + esc(it.name) + "</span>" +
+      '<span class="trwho" title="Assignee">👤 ' + who + "</span>" +
+      tag +
+      '<span class="trstatus">' + esc(it.status || it.section || "") + "</span>" +
+      '<a class="tasklink" href="' + ASANA_TASK + it.task_gid + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
+  }
+  // Sprint-wise view of open (not-done) tasks that are due today or past due. Spans
+  // ALL sprints (overdue work is cross-sprint by nature) and only counts tasks that
+  // carry a Sprint number. "Done" uses the same isDone() rule as the rest of the tab,
+  // so anything already Released / in the UAT pipeline is not flagged as missed.
+  function renderDueDates() {
+    var grid = el("dueGrid"), list = el("dueList");
+    if (!grid || !list) return;
+    var now = new Date();
+    var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    var DAY = 86400000;
+    var dueToday = [], overdue = [];
+    (data.items || []).forEach(function (i) {
+      if (isDone(i)) return;
+      if (!(num(i.sprint) > 0)) return;          // sprint-wise only
+      var d = parseDue(i.due_on);
+      if (!d) return;
+      var diff = Math.round((today - d) / DAY);  // >0 late, 0 today, <0 future
+      delete i._lateDays;
+      if (diff === 0) dueToday.push(i);
+      else if (diff > 0) { i._lateDays = diff; overdue.push(i); }
+    });
+    grid.innerHTML =
+      statCard("Due Today", dueToday.length, "open, sprinted tasks", "#e07b2f", "📅", "#f5883f",
+        "Open (not-done) tasks whose Asana due date is today, across all sprints.") +
+      statCard("Overdue", overdue.length, "missed due date", "#ef4444", "⚠️", "#ef4444",
+        "Open (not-done) tasks whose due date has already passed. Sorted most-overdue first within each sprint.");
+    // Group sprint-wise (highest sprint first). Within a sprint: overdue (most late
+    // first) then due-today.
+    var bySprint = {};
+    overdue.concat(dueToday).forEach(function (i) {
+      (bySprint[i.sprint] = bySprint[i.sprint] || []).push(i);
+    });
+    var sprints = Object.keys(bySprint).map(Number).sort(function (a, b) { return b - a; });
+    if (!sprints.length) {
+      list.innerHTML = '<div class="muted" style="padding:10px 2px">Nothing due today and nothing overdue — every sprinted task is on time. 🎉</div>';
+      return;
+    }
+    list.innerHTML = sprints.map(function (sn) {
+      var items = bySprint[sn];
+      var od = items.filter(function (i) { return i._lateDays; })
+                    .sort(function (a, b) { return b._lateDays - a._lateDays; });
+      var dt = items.filter(function (i) { return !i._lateDays; });
+      var rows = od.map(dueTaskRow).join("") + dt.map(dueTaskRow).join("");
+      var badge = (od.length ? '<span class="due-cnt over">' + od.length + ' overdue</span>' : "") +
+                  (dt.length ? '<span class="due-cnt today">' + dt.length + ' due today</span>' : "");
+      var id = "due-s" + sn;
+      if (_collapse[id] === undefined) _collapse[id] = true;   // open by default; user toggle persists
+      return listBlock(id, "Sprint " + sn + badge, rows);
+    }).join("");
   }
 
   function renderRisks(sprint) {

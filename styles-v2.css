@@ -257,6 +257,18 @@ table.risks td, table.risks th{ padding:12px 14px !important; }
 .taskrow .trstatus{ background:var(--surface-3); border-radius:999px; padding:4px 12px; font-weight:600; }
 details.lb{ border-radius:16px; }
 
+/* Due Dates section */
+.taskrow .trwho{ flex:none; font-size:11.5px; color:var(--muted); white-space:nowrap; max-width:160px; overflow:hidden; text-overflow:ellipsis; }
+.taskrow .due-tag{ flex:none; font-size:10.5px; font-weight:700; letter-spacing:.02em; border-radius:999px; padding:3px 9px; white-space:nowrap; }
+.due-tag.over{ background:rgba(239,68,68,.14); color:#ef4444; }
+.due-tag.today{ background:rgba(245,136,63,.16); color:#e07b2f; }
+.taskrow.due.od{ border-left:3px solid #ef4444 !important; }
+.taskrow.due.dt{ border-left:3px solid #f5883f !important; }
+.due-cnt{ font-size:10px; font-weight:700; border-radius:999px; padding:2px 8px; margin-left:8px; letter-spacing:.02em; }
+.due-cnt.over{ background:rgba(239,68,68,.14); color:#ef4444; }
+.due-cnt.today{ background:rgba(245,136,63,.16); color:#e07b2f; }
+@media(max-width:640px){ .taskrow .trwho{ display:none } }
+
 /* Funnels — modern steps + panels */
 .funnelcard{ border-radius:20px !important; box-shadow:var(--sh-sm) !important; border:1px solid var(--line); background:var(--card); }
 .fstep{ border-radius:14px !important; }

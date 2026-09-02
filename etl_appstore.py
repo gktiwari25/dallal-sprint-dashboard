@@ -84,15 +84,36 @@ def make_token():
     return jwt.encode(payload, private_key, algorithm="ES256", headers={"kid": key_id, "typ": "JWT"})
 
 
-def asc_get(token, path, params=None, accept="application/json", stream=False):
-    r = requests.get(
-        ASC_BASE + path,
-        headers={"Authorization": f"Bearer {token}", "Accept": accept},
-        params=params or {},
-        timeout=90,
-        stream=stream,
-    )
-    return r
+def asc_get(token, path, params=None, accept="application/json", stream=False,
+            retries=4, backoff=3):
+    """GET with retry on transient network errors and 429/5xx (Apple's ASC API
+    intermittently resets connections mid-download). Exponential backoff."""
+    last_err = None
+    for attempt in range(retries + 1):
+        try:
+            r = requests.get(
+                ASC_BASE + path,
+                headers={"Authorization": f"Bearer {token}", "Accept": accept},
+                params=params or {},
+                timeout=90,
+                stream=stream,
+            )
+            if r.status_code in (429, 500, 502, 503, 504) and attempt < retries:
+                wait = backoff * (2 ** attempt)
+                print(f"  asc_get {path}: HTTP {r.status_code}, retry {attempt+1}/{retries} in {wait}s")
+                time.sleep(wait)
+                continue
+            return r
+        except requests.exceptions.RequestException as e:
+            last_err = e
+            if attempt < retries:
+                wait = backoff * (2 ** attempt)
+                print(f"  asc_get {path}: {type(e).__name__}, retry {attempt+1}/{retries} in {wait}s")
+                time.sleep(wait)
+                continue
+            raise
+    if last_err:
+        raise last_err
 
 
 # ------------------------------------------------------------------------------------
