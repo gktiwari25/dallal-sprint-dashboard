@@ -10,7 +10,7 @@
 <link rel="icon" type="image/png" href="dallal-favicon.png?v=237" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
 <link rel="stylesheet" href="styles.css?v=237" />
-<link rel="stylesheet" href="styles-v2.css?v=35" /><!-- REDESIGN PREVIEW theme layer -->
+<link rel="stylesheet" href="styles-v2.css?v=36" /><!-- REDESIGN PREVIEW theme layer -->
 </head>
 <body>
 
@@ -152,7 +152,25 @@
 
   <!-- READY FOR UAT -->
   <div class="section"><h2>Ready for UAT</h2><div class="body">
-    <p class="muted" style="margin:0 0 12px">Tickets in the <b>selected sprint</b> currently handed to testing (board column <b>Ready for UAT</b>), with the date each entered the column and how long it has been waiting. Longest-waiting first; each links to Asana.</p>
+    <p class="muted" style="margin:0 0 12px">Tickets in the <b>selected sprint</b> currently handed to testing (board column <b>Ready for UAT</b>), with the date each entered the column and how long it has been waiting. Filter by <b>developer</b> and by <b>when they were added</b> to see how many entered UAT per day, week, or a custom range.</p>
+    <div class="uat-filters" id="uatFilters">
+      <label class="uatf">Developer
+        <select id="uatDev"><option value="all">All developers</option></select>
+      </label>
+      <label class="uatf">Added
+        <select id="uatRange">
+          <option value="all">All time</option>
+          <option value="today">Today</option>
+          <option value="week">This week</option>
+          <option value="7">Last 7 days</option>
+          <option value="30">Last 30 days</option>
+          <option value="custom">Custom range…</option>
+        </select>
+      </label>
+      <span class="uatf hidden" id="uatCustom">
+        <input type="date" id="uatFrom" /> <span class="muted">to</span> <input type="date" id="uatTo" />
+      </span>
+    </div>
     <div class="grid" id="uatGrid"></div>
     <div id="uatList" class="listblock"></div>
   </div></div>
@@ -399,9 +417,9 @@
 <script src="https://cdn.jsdelivr.net/npm/chartjs-chart-sankey@0.12.1/dist/chartjs-chart-sankey.min.js"></script>
 <!-- gauges replaced by progress hero cards in app-v2.js -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="config.js?v=238"></script>
+<script src="config.js?v=239"></script>
 <script src="sample-data.js?v=237"></script>
 <script src="funnels-data.js?v=237"></script>
-<script src="app-v2.js?v=48"></script>
+<script src="app-v2.js?v=49"></script>
 </body>
 </html>

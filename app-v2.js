@@ -739,6 +739,10 @@
   }
 
   // ---------- Due Dates ----------
+  // Assignees hidden from the Delivery developer views (PMs/leads) — set in config.js.
+  var _EXCL_ASSIGNEES = {};
+  (cfg.EXCLUDE_ASSIGNEES || []).forEach(function (n) { _EXCL_ASSIGNEES[String(n).trim().toLowerCase()] = 1; });
+  function isExcludedAssignee(n) { return !!_EXCL_ASSIGNEES[String(n || "").trim().toLowerCase()]; }
   // Parse Asana due_on ('YYYY-MM-DD', date-only) into a LOCAL midnight Date so the
   // comparison to "today" is purely calendar-based (no timezone drift from UTC).
   function parseDue(s) {
@@ -810,6 +814,7 @@
     (data.items || []).forEach(function (i) {
       if (isDone(i)) return;
       if (String(i.sprint) !== String(sprint)) return;   // selected sprint only
+      if (isExcludedAssignee(i.assignee)) return;         // hide PMs/leads (config.js)
       if (!i.due_on) { missing.push(i); return; }         // no due date set
       var d = parseDue(i.due_on);
       if (!d) { missing.push(i); return; }
@@ -820,7 +825,7 @@
     });
     // Modified due dates for this sprint (from the audit table); red-flag pushed-later.
     var modified = (data.dueChanges || []).filter(function (c) {
-      return String(c.sprint) === String(sprint) && (c.modified === true || c.modified === "true");
+      return String(c.sprint) === String(sprint) && (c.modified === true || c.modified === "true") && !isExcludedAssignee(c.assignee);
     }).sort(function (a, b) {
       var pa = a.pushed_later ? 1 : 0, pb = b.pushed_later ? 1 : 0;
       if (pa !== pb) return pb - pa;
@@ -890,31 +895,79 @@
       added + wait +
       '<a class="tasklink" href="' + ASANA_TASK + it.task_gid + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
   }
-  // All tickets currently in the "Ready for UAT" board column (across all sprints),
-  // with the date they entered it (fact_workitems.section_since, stamped by etl_uat.py
-  // from the Asana activity log). Sorted longest-waiting first.
+  // Filters for the Ready-for-UAT bucket: developer + date-added range.
+  var _uatSprint = null;
+  var _UAT_RANGE_LABEL = { all: "awaiting UAT", today: "added today", week: "added this week", "7": "added last 7 days", "30": "added last 30 days" };
+  function uatRangeBounds() {
+    var sel = el("uatRange"); var v = sel ? sel.value : "all";
+    var now = new Date();
+    var t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());   // local midnight today
+    var from = null, to = null;
+    if (v === "today") { from = t0; to = t0; }
+    else if (v === "week") { var dow = (now.getDay() + 6) % 7; from = new Date(t0.getTime() - dow * 86400000); to = t0; }
+    else if (v === "7") { from = new Date(t0.getTime() - 6 * 86400000); to = t0; }
+    else if (v === "30") { from = new Date(t0.getTime() - 29 * 86400000); to = t0; }
+    else if (v === "custom") {
+      var f = el("uatFrom") && el("uatFrom").value, tt = el("uatTo") && el("uatTo").value;
+      from = f ? new Date(f + "T00:00:00") : null;
+      to = tt ? new Date(tt + "T00:00:00") : null;
+    }
+    return { v: v, from: from, to: to };
+  }
+  function uatPopulateDevs(baseItems) {
+    var sel = el("uatDev"); if (!sel) return "all";
+    var names = {}; baseItems.forEach(function (i) { if (i.assignee) names[i.assignee] = 1; });
+    var listN = Object.keys(names).sort();
+    var cur = sel.value || "all";
+    if (cur === "all") { try { var s = localStorage.getItem("dallal_uat_dev"); if (s) cur = s; } catch (e) {} }
+    if (cur !== "all" && listN.indexOf(cur) === -1) cur = "all";   // dev not in this sprint's bucket
+    sel.innerHTML = '<option value="all">All developers</option>' +
+      listN.map(function (n) { return '<option value="' + escAttr(n) + '">' + esc(n) + '</option>'; }).join("");
+    sel.value = cur;
+    return cur;
+  }
+  // The selected sprint's Ready-for-UAT bucket (section_since = when it entered the
+  // column), filtered by developer and by date-added so you can count how many were
+  // added per day / week / custom range. Sorted longest-waiting first.
   function renderReadyForUAT(sprint) {
+    _uatSprint = sprint;
     var grid = el("uatGrid"), list = el("uatList");
     if (!grid || !list) return;
-    var items = (data.items || []).filter(function (i) {
-      return /^\s*ready for uat\s*$/i.test(i.section || "") && String(i.sprint) === String(sprint);
+    var base = (data.items || []).filter(function (i) {
+      return /^\s*ready for uat\s*$/i.test(i.section || "") && String(i.sprint) === String(sprint) && !isExcludedAssignee(i.assignee);
     });
-    items.sort(function (a, b) {                       // ascending date = oldest first; nulls last
+    var dev = uatPopulateDevs(base);
+    var rb = uatRangeBounds();
+    var inRange = function (ss) {
+      if (!ss) return rb.from == null && rb.to == null;   // undated tickets only count in "all time"
+      var d = new Date(ss.getFullYear(), ss.getMonth(), ss.getDate());
+      if (rb.from && d < rb.from) return false;
+      if (rb.to && d > rb.to) return false;
+      return true;
+    };
+    var items = base.filter(function (i) {
+      if (dev !== "all" && (i.assignee || "") !== dev) return false;
+      return inRange(i.section_since ? new Date(i.section_since) : null);
+    });
+    items.sort(function (a, b) {
       var av = a.section_since || "", bv = b.section_since || "";
-      if (!av && !bv) return 0;
-      if (!av) return 1;
-      if (!bv) return -1;
+      if (!av && !bv) return 0; if (!av) return 1; if (!bv) return -1;
       return av < bv ? -1 : av > bv ? 1 : 0;
     });
     var dated = items.filter(function (i) { return i.section_since; });
     var oldest = dated.length ? uatDays(new Date(dated[0].section_since)) : 0;
+    var rangeLbl = _UAT_RANGE_LABEL[rb.v] || "added in range";
+    if (rb.v === "custom") {
+      rangeLbl = "added " + (rb.from ? uatFmtDay(rb.from) : "start") + " – " + (rb.to ? uatFmtDay(rb.to) : "today");
+    }
+    var sub = rangeLbl + (dev !== "all" ? " · " + dev : "");
     grid.innerHTML =
-      statCard("In Ready for UAT", items.length, "tickets awaiting UAT", "#2f6df6", "🧪", "#2f6df6",
-        "Tickets in the selected sprint currently in the Ready for UAT board column.") +
+      statCard((rb.v === "all" ? "In Ready for UAT" : "Added to UAT"), items.length, sub, "#2f6df6", "🧪", "#2f6df6",
+        "Tickets in this sprint in Ready for UAT" + (rb.v === "all" ? "" : ", added within the selected range") + (dev !== "all" ? ", by " + dev : "") + ".") +
       statCard("Longest waiting", (dated.length ? oldest + "d" : "—"), "since added to UAT", "#e07b2f", "⏳", "#f5883f",
-        "Days the oldest ticket in this sprint has been sitting in Ready for UAT (from when it entered the column).");
+        "Days the oldest matching ticket has been sitting in Ready for UAT.");
     if (!items.length) {
-      list.innerHTML = '<div class="muted" style="padding:10px 2px">No tickets in Ready for UAT for Sprint ' + esc(String(sprint)) + '.</div>';
+      list.innerHTML = '<div class="muted" style="padding:10px 2px">No Ready-for-UAT tickets match this filter in Sprint ' + esc(String(sprint)) + '.</div>';
       return;
     }
     var id = "uat-all";
@@ -2898,6 +2951,28 @@
       selectedSprint = this.value; try { localStorage.setItem("dallal_sprint", selectedSprint); } catch (e) {}
       render(this.value);
     });
+    // Ready-for-UAT filters (developer + date-added range).
+    (function () {
+      function reUat() { renderReadyForUAT(_uatSprint != null ? _uatSprint : el("sprintSel").value); }
+      function saveRange() {
+        try {
+          localStorage.setItem("dallal_uat_range", el("uatRange").value);
+          localStorage.setItem("dallal_uat_from", (el("uatFrom") && el("uatFrom").value) || "");
+          localStorage.setItem("dallal_uat_to", (el("uatTo") && el("uatTo").value) || "");
+        } catch (e) {}
+      }
+      try {   // restore persisted filter state
+        var r = localStorage.getItem("dallal_uat_range"); if (r && el("uatRange")) el("uatRange").value = r;
+        var f = localStorage.getItem("dallal_uat_from"); if (f && el("uatFrom")) el("uatFrom").value = f;
+        var t = localStorage.getItem("dallal_uat_to"); if (t && el("uatTo")) el("uatTo").value = t;
+      } catch (e) {}
+      var cust = el("uatCustom");
+      if (cust && el("uatRange")) cust.classList.toggle("hidden", el("uatRange").value !== "custom");
+      if (el("uatDev")) el("uatDev").addEventListener("change", function () { try { localStorage.setItem("dallal_uat_dev", this.value); } catch (e) {} reUat(); });
+      if (el("uatRange")) el("uatRange").addEventListener("change", function () { if (cust) cust.classList.toggle("hidden", this.value !== "custom"); saveRange(); reUat(); });
+      if (el("uatFrom")) el("uatFrom").addEventListener("change", function () { saveRange(); reUat(); });
+      if (el("uatTo")) el("uatTo").addEventListener("change", function () { saveRange(); reUat(); });
+    })();
     el("tabDelivery").addEventListener("click", function () { showTab("delivery"); });
     el("tabEng").addEventListener("click", function () { showTab("eng"); });
     el("tabFunnels").addEventListener("click", function () { showTab("funnels"); });

@@ -28,5 +28,9 @@ window.DALLAL_CONFIG = {
   SPRINT_ANCHOR: { sprint: 14, start: "2026-08-14" },
   SPRINT_LENGTH_DAYS: 14,
 
+  // Names to hide from the Delivery "Due Dates" and "Ready for UAT" developer
+  // views (PMs / leads, not the developers being tracked). Matched on assignee.
+  EXCLUDE_ASSIGNEES: ["Gourav Kumar Tiwari", "Rayan Abdul Baki"],
+
   REQUIRE_AUTH: true,   // set false only if you intentionally want a public link
 };

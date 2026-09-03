@@ -277,6 +277,13 @@ details.lb{ border-radius:16px; }
 .uat-age.over{ background:rgba(239,68,68,.14); color:#ef4444; }
 .taskrow.uat{ border-left:3px solid #2f6df6 !important; }
 
+/* Ready for UAT — filter bar */
+.uat-filters{ display:flex; flex-wrap:wrap; gap:12px 18px; align-items:center; margin:0 0 14px; }
+.uat-filters .uatf{ display:inline-flex; align-items:center; gap:8px; font-size:12px; font-weight:700; letter-spacing:.02em; color:var(--muted); }
+.uat-filters select, .uat-filters input[type=date]{ font-size:13px; padding:6px 11px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--ink); font-weight:600; }
+.uat-filters input[type=date]{ font-weight:500; }
+.uat-filters select:focus, .uat-filters input[type=date]:focus{ outline:none; border-color:#2f6df6; }
+
 /* Due Dates — Missing / Modified blocks */
 .taskrow.due.nd{ border-left:3px solid #8a74f4 !important; }
 .taskrow.due.mod{ border-left:3px solid #2f6df6 !important; }
