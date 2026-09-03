@@ -10,7 +10,7 @@
 <link rel="icon" type="image/png" href="dallal-favicon.png?v=237" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
 <link rel="stylesheet" href="styles.css?v=237" />
-<link rel="stylesheet" href="styles-v2.css?v=36" /><!-- REDESIGN PREVIEW theme layer -->
+<link rel="stylesheet" href="styles-v2.css?v=37" /><!-- REDESIGN PREVIEW theme layer -->
 </head>
 <body>
 
@@ -150,21 +150,34 @@
     <div id="dueList" class="listblock"></div>
   </div></div>
 
+  <!-- UNESTIMATED STORIES (missing Story Points) -->
+  <div class="section"><h2>Unestimated Stories — missing Story Points</h2><div class="body">
+    <div class="grid" id="missingSPGrid"></div>
+    <div id="missingSPList" class="listblock"></div>
+  </div></div>
+
   <!-- READY FOR UAT -->
   <div class="section"><h2>Ready for UAT</h2><div class="body">
     <p class="muted" style="margin:0 0 12px">Tickets in the <b>selected sprint</b> currently handed to testing (board column <b>Ready for UAT</b>), with the date each entered the column and how long it has been waiting. Filter by <b>developer</b> and by <b>when they were added</b> to see how many entered UAT per day, week, or a custom range.</p>
     <div class="uat-filters" id="uatFilters">
-      <label class="uatf">Developer
-        <select id="uatDev"><option value="all">All developers</option></select>
-      </label>
+      <div class="uatf">Developer
+        <div class="combo" id="uatDevCombo">
+          <button type="button" class="combo-btn" id="uatDevBtn" aria-haspopup="listbox" aria-expanded="false">All developers</button>
+          <div class="combo-pop hidden" id="uatDevPop">
+            <input type="text" id="uatDevSearch" class="combo-search" placeholder="Search developer…" autocomplete="off" />
+            <div class="combo-list" id="uatDevList"></div>
+          </div>
+        </div>
+      </div>
       <label class="uatf">Added
         <select id="uatRange">
           <option value="all">All time</option>
           <option value="today">Today</option>
-          <option value="week">This week</option>
+          <option value="yesterday">Yesterday</option>
           <option value="7">Last 7 days</option>
-          <option value="30">Last 30 days</option>
-          <option value="custom">Custom range…</option>
+          <option value="15">Last 15 days</option>
+          <option value="month">Month</option>
+          <option value="custom">Custom</option>
         </select>
       </label>
       <span class="uatf hidden" id="uatCustom">
@@ -187,12 +200,6 @@
     <div class="grid" id="qualityGrid"></div>
     <!-- Bugs by priority chart removed per design -->
     <div id="bugList" class="listblock"></div>
-  </div></div>
-
-  <!-- UNESTIMATED STORIES (missing Story Points) -->
-  <div class="section"><h2>Unestimated Stories — missing Story Points</h2><div class="body">
-    <div class="grid" id="missingSPGrid"></div>
-    <div id="missingSPList" class="listblock"></div>
   </div></div>
 
   <!-- SPRINT RETROSPECTIVE -->
@@ -420,6 +427,6 @@
 <script src="config.js?v=239"></script>
 <script src="sample-data.js?v=237"></script>
 <script src="funnels-data.js?v=237"></script>
-<script src="app-v2.js?v=50"></script>
+<script src="app-v2.js?v=51"></script>
 </body>
 </html>

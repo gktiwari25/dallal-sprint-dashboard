@@ -896,17 +896,18 @@
       '<a class="tasklink" href="' + ASANA_TASK + it.task_gid + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
   }
   // Filters for the Ready-for-UAT bucket: developer + date-added range.
-  var _uatSprint = null;
-  var _UAT_RANGE_LABEL = { all: "awaiting UAT", today: "added today", week: "added this week", "7": "added last 7 days", "30": "added last 30 days" };
+  var _uatSprint = null, _uatDev = "all";
+  var _UAT_RANGE_LABEL = { all: "awaiting UAT", today: "added today", yesterday: "added yesterday", "7": "added last 7 days", "15": "added last 15 days", month: "added this month" };
   function uatRangeBounds() {
     var sel = el("uatRange"); var v = sel ? sel.value : "all";
     var now = new Date();
     var t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());   // local midnight today
     var from = null, to = null;
     if (v === "today") { from = t0; to = t0; }
-    else if (v === "week") { var dow = (now.getDay() + 6) % 7; from = new Date(t0.getTime() - dow * 86400000); to = t0; }
+    else if (v === "yesterday") { var y = new Date(t0.getTime() - 86400000); from = y; to = y; }
     else if (v === "7") { from = new Date(t0.getTime() - 6 * 86400000); to = t0; }
-    else if (v === "30") { from = new Date(t0.getTime() - 29 * 86400000); to = t0; }
+    else if (v === "15") { from = new Date(t0.getTime() - 14 * 86400000); to = t0; }
+    else if (v === "month") { from = new Date(now.getFullYear(), now.getMonth(), 1); to = t0; }
     else if (v === "custom") {
       var f = el("uatFrom") && el("uatFrom").value, tt = el("uatTo") && el("uatTo").value;
       from = f ? new Date(f + "T00:00:00") : null;
@@ -917,20 +918,32 @@
   // Full developer list = every assignee seen across the project (from Asana via
   // fact_workitems), minus the excluded PM/lead names — so you can pick anyone,
   // even a dev with no ticket currently in the UAT bucket.
-  function uatPopulateDevs() {
-    var sel = el("uatDev"); if (!sel) return "all";
+  function uatDevNames() {
     var names = {};
-    (data.items || []).forEach(function (i) {
-      if (i.assignee && !isExcludedAssignee(i.assignee)) names[i.assignee] = 1;
+    (data.items || []).forEach(function (i) { if (i.assignee && !isExcludedAssignee(i.assignee)) names[i.assignee] = 1; });
+    return Object.keys(names).sort(function (a, b) { return a.toLowerCase() < b.toLowerCase() ? -1 : 1; });
+  }
+  function uatDevLabel() { return _uatDev === "all" ? "All developers" : _uatDev; }
+  // Renders the searchable dropdown list, filtered by the search box text.
+  function renderUatDevList(q) {
+    var wrap = el("uatDevList"); if (!wrap) return;
+    q = (q || "").trim().toLowerCase();
+    var opts = ["all"].concat(uatDevNames()).filter(function (n) {
+      return n === "all" ? (q === "" || "all developers".indexOf(q) !== -1) : n.toLowerCase().indexOf(q) !== -1;
     });
-    var listN = Object.keys(names).sort(function (a, b) { return a.toLowerCase() < b.toLowerCase() ? -1 : 1; });
-    var cur = sel.value || "all";
-    if (cur === "all") { try { var s = localStorage.getItem("dallal_uat_dev"); if (s) cur = s; } catch (e) {} }
-    if (cur !== "all" && listN.indexOf(cur) === -1) cur = "all";   // saved dev no longer exists
-    sel.innerHTML = '<option value="all">All developers</option>' +
-      listN.map(function (n) { return '<option value="' + escAttr(n) + '">' + esc(n) + '</option>'; }).join("");
-    sel.value = cur;
-    return cur;
+    wrap.innerHTML = opts.length
+      ? opts.map(function (n) {
+          return '<div class="combo-opt' + (n === _uatDev ? " sel" : "") + '" data-v="' + escAttr(n) + '">' +
+            (n === "all" ? "All developers" : esc(n)) + '</div>';
+        }).join("")
+      : '<div class="combo-empty">No match</div>';
+  }
+  // Validate the saved developer against the current list and update the button label.
+  function uatPopulateDevs() {
+    var names = uatDevNames();
+    if (_uatDev !== "all" && names.indexOf(_uatDev) === -1) _uatDev = "all";
+    var btn = el("uatDevBtn"); if (btn) btn.textContent = uatDevLabel();
+    return _uatDev;
   }
   // The selected sprint's Ready-for-UAT bucket (section_since = when it entered the
   // column), filtered by developer and by date-added so you can count how many were
@@ -2971,13 +2984,28 @@
         var r = localStorage.getItem("dallal_uat_range"); if (r && el("uatRange")) el("uatRange").value = r;
         var f = localStorage.getItem("dallal_uat_from"); if (f && el("uatFrom")) el("uatFrom").value = f;
         var t = localStorage.getItem("dallal_uat_to"); if (t && el("uatTo")) el("uatTo").value = t;
+        var d = localStorage.getItem("dallal_uat_dev"); if (d) _uatDev = d;
       } catch (e) {}
       var cust = el("uatCustom");
       if (cust && el("uatRange")) cust.classList.toggle("hidden", el("uatRange").value !== "custom");
-      if (el("uatDev")) el("uatDev").addEventListener("change", function () { try { localStorage.setItem("dallal_uat_dev", this.value); } catch (e) {} reUat(); });
       if (el("uatRange")) el("uatRange").addEventListener("change", function () { if (cust) cust.classList.toggle("hidden", this.value !== "custom"); saveRange(); reUat(); });
       if (el("uatFrom")) el("uatFrom").addEventListener("change", function () { saveRange(); reUat(); });
       if (el("uatTo")) el("uatTo").addEventListener("change", function () { saveRange(); reUat(); });
+      // Searchable developer combobox (opens below, type to filter).
+      var combo = el("uatDevCombo"), pop = el("uatDevPop"), devBtn = el("uatDevBtn"), search = el("uatDevSearch"), listEl = el("uatDevList");
+      function closePop() { if (pop) pop.classList.add("hidden"); if (devBtn) devBtn.setAttribute("aria-expanded", "false"); }
+      function openPop() { if (!pop) return; if (search) search.value = ""; renderUatDevList(""); pop.classList.remove("hidden"); if (devBtn) devBtn.setAttribute("aria-expanded", "true"); if (search) search.focus(); }
+      if (devBtn) devBtn.addEventListener("click", function (e) { e.stopPropagation(); (pop && pop.classList.contains("hidden")) ? openPop() : closePop(); });
+      if (search) { search.addEventListener("input", function () { renderUatDevList(this.value); }); search.addEventListener("click", function (e) { e.stopPropagation(); }); }
+      if (listEl) listEl.addEventListener("click", function (e) {
+        var opt = e.target && e.target.closest ? e.target.closest(".combo-opt") : null;
+        if (!opt) return;
+        _uatDev = opt.getAttribute("data-v") || "all";
+        try { localStorage.setItem("dallal_uat_dev", _uatDev); } catch (e2) {}
+        if (devBtn) devBtn.textContent = uatDevLabel();
+        closePop(); reUat();
+      });
+      document.addEventListener("click", function (e) { if (combo && !combo.contains(e.target)) closePop(); });
     })();
     el("tabDelivery").addEventListener("click", function () { showTab("delivery"); });
     el("tabEng").addEventListener("click", function () { showTab("eng"); });
