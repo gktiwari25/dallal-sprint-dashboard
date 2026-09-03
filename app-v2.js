@@ -844,17 +844,17 @@
     var blocks = "";
     if (overdue.length) {
       overdue.sort(function (a, b) { return b._lateDays - a._lateDays; });
-      var idO = "due-overdue"; if (_collapse[idO] === undefined) _collapse[idO] = true;
+      var idO = "due-overdue"; if (_collapse[idO] === undefined) _collapse[idO] = false;
       blocks += listBlock(idO, 'Overdue <span class="due-cnt over">' + overdue.length + '</span>', overdue.map(dueTaskRow).join(""));
     }
     if (modified.length) {
-      var idM = "due-modified"; if (_collapse[idM] === undefined) _collapse[idM] = true;
+      var idM = "due-modified"; if (_collapse[idM] === undefined) _collapse[idM] = false;
       blocks += listBlock(idM,
         'Modified due date <span class="due-cnt over">' + modified.length + '</span>' + (pushedLater ? ' <span class="due-cnt over">' + pushedLater + ' pushed later</span>' : ''),
         modified.map(modifiedRow).join(""));
     }
     if (dueToday.length) {
-      var idT = "due-today"; if (_collapse[idT] === undefined) _collapse[idT] = true;
+      var idT = "due-today"; if (_collapse[idT] === undefined) _collapse[idT] = false;
       blocks += listBlock(idT, 'Due today <span class="due-cnt today">' + dueToday.length + '</span>', dueToday.map(dueTaskRow).join(""));
     }
     if (missing.length) {
@@ -896,10 +896,12 @@
       '<a class="tasklink" href="' + ASANA_TASK + it.task_gid + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
   }
   // Filters for the Ready-for-UAT bucket: developer + date-added range.
-  var _uatSprint = null, _uatDev = "all";
+  var _uatSprint = null, _uatDev = "all", _uatRange = "all";
+  var UAT_RANGES = [["all", "All time"], ["today", "Today"], ["yesterday", "Yesterday"], ["7", "Last 7 days"], ["15", "Last 15 days"], ["month", "Month"], ["custom", "Custom"]];
+  function uatRangeLabelFull(v) { for (var i = 0; i < UAT_RANGES.length; i++) if (UAT_RANGES[i][0] === v) return UAT_RANGES[i][1]; return "All time"; }
   var _UAT_RANGE_LABEL = { all: "awaiting UAT", today: "added today", yesterday: "added yesterday", "7": "added last 7 days", "15": "added last 15 days", month: "added this month" };
   function uatRangeBounds() {
-    var sel = el("uatRange"); var v = sel ? sel.value : "all";
+    var v = _uatRange;
     var now = new Date();
     var t0 = new Date(now.getFullYear(), now.getMonth(), now.getDate());   // local midnight today
     var from = null, to = null;
@@ -944,6 +946,17 @@
     if (_uatDev !== "all" && names.indexOf(_uatDev) === -1) _uatDev = "all";
     var btn = el("uatDevBtn"); if (btn) btn.textContent = uatDevLabel();
     return _uatDev;
+  }
+  // Date-range combobox (same style as the developer one; no search box).
+  function renderUatRangeList() {
+    var wrap = el("uatRangeList"); if (!wrap) return;
+    wrap.innerHTML = UAT_RANGES.map(function (o) {
+      return '<div class="combo-opt' + (o[0] === _uatRange ? " sel" : "") + '" data-v="' + o[0] + '">' + o[1] + '</div>';
+    }).join("");
+  }
+  function uatSyncRangeUI() {
+    var btn = el("uatRangeBtn"); if (btn) btn.textContent = uatRangeLabelFull(_uatRange);
+    var cust = el("uatCustom"); if (cust) cust.classList.toggle("hidden", _uatRange !== "custom");
   }
   // The selected sprint's Ready-for-UAT bucket (section_since = when it entered the
   // column), filtered by developer and by date-added so you can count how many were
@@ -990,7 +1003,7 @@
       return;
     }
     var id = "uat-all";
-    if (_collapse[id] === undefined) _collapse[id] = true;   // open by default
+    if (_collapse[id] === undefined) _collapse[id] = false;   // collapsed by default
     list.innerHTML = listBlock(id,
       "Ready for UAT — " + items.length + " ticket" + (items.length !== 1 ? "s" : ""),
       items.map(uatTaskRow).join(""));
@@ -2902,7 +2915,7 @@
   }
 
   // ---------- auth ----------
-  function showAppUI() { hide("booting"); hide("login"); show("app"); show("signOut"); show("topbar"); }
+  function showAppUI() { hide("booting"); hide("login"); show("app"); show("signOut"); show("topbar"); try { window.scrollTo(0, 0); } catch (e) {} }
   function showLoginUI() { hide("booting"); show("login"); hide("app"); hide("signOut"); hide("topbar"); }
 
   // A clean, fragment-free redirect target. Using window.location.href would
@@ -2970,42 +2983,50 @@
       selectedSprint = this.value; try { localStorage.setItem("dallal_sprint", selectedSprint); } catch (e) {}
       render(this.value);
     });
-    // Ready-for-UAT filters (developer + date-added range).
+    // Ready-for-UAT filters (developer + date-added range) — both as searchable-style combos.
     (function () {
+      try { if ("scrollRestoration" in history) history.scrollRestoration = "manual"; } catch (e) {}  // reload starts at top
       function reUat() { renderReadyForUAT(_uatSprint != null ? _uatSprint : el("sprintSel").value); }
-      function saveRange() {
-        try {
-          localStorage.setItem("dallal_uat_range", el("uatRange").value);
-          localStorage.setItem("dallal_uat_from", (el("uatFrom") && el("uatFrom").value) || "");
-          localStorage.setItem("dallal_uat_to", (el("uatTo") && el("uatTo").value) || "");
-        } catch (e) {}
-      }
       try {   // restore persisted filter state
-        var r = localStorage.getItem("dallal_uat_range"); if (r && el("uatRange")) el("uatRange").value = r;
+        var r = localStorage.getItem("dallal_uat_range"); if (r) _uatRange = r;
         var f = localStorage.getItem("dallal_uat_from"); if (f && el("uatFrom")) el("uatFrom").value = f;
         var t = localStorage.getItem("dallal_uat_to"); if (t && el("uatTo")) el("uatTo").value = t;
         var d = localStorage.getItem("dallal_uat_dev"); if (d) _uatDev = d;
       } catch (e) {}
-      var cust = el("uatCustom");
-      if (cust && el("uatRange")) cust.classList.toggle("hidden", el("uatRange").value !== "custom");
-      if (el("uatRange")) el("uatRange").addEventListener("change", function () { if (cust) cust.classList.toggle("hidden", this.value !== "custom"); saveRange(); reUat(); });
-      if (el("uatFrom")) el("uatFrom").addEventListener("change", function () { saveRange(); reUat(); });
-      if (el("uatTo")) el("uatTo").addEventListener("change", function () { saveRange(); reUat(); });
-      // Searchable developer combobox (opens below, type to filter).
-      var combo = el("uatDevCombo"), pop = el("uatDevPop"), devBtn = el("uatDevBtn"), search = el("uatDevSearch"), listEl = el("uatDevList");
-      function closePop() { if (pop) pop.classList.add("hidden"); if (devBtn) devBtn.setAttribute("aria-expanded", "false"); }
-      function openPop() { if (!pop) return; if (search) search.value = ""; renderUatDevList(""); pop.classList.remove("hidden"); if (devBtn) devBtn.setAttribute("aria-expanded", "true"); if (search) search.focus(); }
-      if (devBtn) devBtn.addEventListener("click", function (e) { e.stopPropagation(); (pop && pop.classList.contains("hidden")) ? openPop() : closePop(); });
-      if (search) { search.addEventListener("input", function () { renderUatDevList(this.value); }); search.addEventListener("click", function (e) { e.stopPropagation(); }); }
-      if (listEl) listEl.addEventListener("click", function (e) {
-        var opt = e.target && e.target.closest ? e.target.closest(".combo-opt") : null;
-        if (!opt) return;
+      uatSyncRangeUI();
+      // Generic combo open/close (click button to toggle, click outside to close).
+      function bindCombo(comboId, popId, btnId, onOpen) {
+        var combo = el(comboId), pop = el(popId), btn = el(btnId);
+        function close() { if (pop) pop.classList.add("hidden"); if (btn) btn.setAttribute("aria-expanded", "false"); }
+        function open() { if (!pop) return; if (onOpen) onOpen(); pop.classList.remove("hidden"); if (btn) btn.setAttribute("aria-expanded", "true"); }
+        if (btn) btn.addEventListener("click", function (e) { e.stopPropagation(); (pop && pop.classList.contains("hidden")) ? open() : close(); });
+        document.addEventListener("click", function (e) { if (combo && !combo.contains(e.target)) close(); });
+        return { close: close };
+      }
+      // Developer combo (with search box).
+      var devSearch = el("uatDevSearch"), devList = el("uatDevList"), devBtn = el("uatDevBtn");
+      var devCombo = bindCombo("uatDevCombo", "uatDevPop", "uatDevBtn", function () { if (devSearch) devSearch.value = ""; renderUatDevList(""); if (devSearch) setTimeout(function () { devSearch.focus(); }, 0); });
+      if (devSearch) { devSearch.addEventListener("input", function () { renderUatDevList(this.value); }); devSearch.addEventListener("click", function (e) { e.stopPropagation(); }); }
+      if (devList) devList.addEventListener("click", function (e) {
+        var opt = e.target && e.target.closest ? e.target.closest(".combo-opt") : null; if (!opt) return;
         _uatDev = opt.getAttribute("data-v") || "all";
         try { localStorage.setItem("dallal_uat_dev", _uatDev); } catch (e2) {}
         if (devBtn) devBtn.textContent = uatDevLabel();
-        closePop(); reUat();
+        devCombo.close(); reUat();
       });
-      document.addEventListener("click", function (e) { if (combo && !combo.contains(e.target)) closePop(); });
+      // Date-range combo (no search box; same style).
+      var rangeList = el("uatRangeList");
+      var rangeCombo = bindCombo("uatRangeCombo", "uatRangePop", "uatRangeBtn", function () { renderUatRangeList(); });
+      if (rangeList) rangeList.addEventListener("click", function (e) {
+        var opt = e.target && e.target.closest ? e.target.closest(".combo-opt") : null; if (!opt) return;
+        _uatRange = opt.getAttribute("data-v") || "all";
+        try { localStorage.setItem("dallal_uat_range", _uatRange); } catch (e2) {}
+        uatSyncRangeUI(); rangeCombo.close(); reUat();
+      });
+      // Custom date inputs.
+      function saveDates() { try { localStorage.setItem("dallal_uat_from", (el("uatFrom") && el("uatFrom").value) || ""); localStorage.setItem("dallal_uat_to", (el("uatTo") && el("uatTo").value) || ""); } catch (e) {} }
+      if (el("uatFrom")) el("uatFrom").addEventListener("change", function () { saveDates(); reUat(); });
+      if (el("uatTo")) el("uatTo").addEventListener("change", function () { saveDates(); reUat(); });
     })();
     el("tabDelivery").addEventListener("click", function () { showTab("delivery"); });
     el("tabEng").addEventListener("click", function () { showTab("eng"); });
@@ -3061,6 +3082,7 @@
     el("funnelPlatform").addEventListener("change", function () { try { localStorage.setItem("dallal_funnel_platform", this.value); } catch (e) {} renderFunnels(); });
     el("refreshBtn").addEventListener("click", function () {
       if (!(sbc && loadedOnce)) return;
+      try { window.scrollTo(0, 0); } catch (e) {}   // refresh returns to the top
       var b = el("refreshBtn"), txt = b.innerHTML; b.disabled = true; b.innerHTML = "↻ Refreshing…";
       Promise.resolve(loadAll(true)).then(function () {}).catch(function () {}).then(function () {
         b.disabled = false; b.innerHTML = txt;
