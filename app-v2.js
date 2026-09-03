@@ -2895,7 +2895,10 @@
   }
 
   // ---------- auth ----------
-  function showAppUI() { hide("booting"); hide("login"); show("app"); show("signOut"); show("topbar"); try { window.scrollTo(0, 0); } catch (e) {} }
+  // NOTE: no scrollTo here — Supabase fires an auth event (token refresh) every time
+  // the tab regains focus, which calls this; scrolling here would jump the user to the
+  // top on every tab switch. Reloads start at top via history.scrollRestoration=manual.
+  function showAppUI() { hide("booting"); hide("login"); show("app"); show("signOut"); show("topbar"); }
   function showLoginUI() { hide("booting"); show("login"); hide("app"); hide("signOut"); hide("topbar"); }
 
   // A clean, fragment-free redirect target. Using window.location.href would
