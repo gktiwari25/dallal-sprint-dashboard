@@ -292,8 +292,8 @@ details.lb{ border-radius:16px; }
 .combo-pop{ position:absolute; z-index:500; top:calc(100% + 5px); left:0; width:240px; background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:0 10px 30px rgba(15,22,45,.22); padding:8px; }
 .combo-search{ width:100%; box-sizing:border-box; font-size:13px; padding:7px 10px; border-radius:8px; border:1px solid var(--line); background:var(--surface-3); color:var(--ink); margin-bottom:6px; }
 .combo-search:focus{ outline:none; border-color:#2f6df6; }
-.combo-list{ max-height:260px; overflow-y:auto; }
-.combo-opt{ padding:7px 10px; border-radius:8px; font-size:13px; cursor:pointer; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.combo-list{ max-height:252px; overflow-y:auto; }  /* exactly 7 rows (7×36) so items never clip mid-text */
+.combo-opt{ height:36px; display:flex; align-items:center; padding:0 10px; border-radius:8px; font-size:13px; cursor:pointer; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .combo-opt:hover{ background:var(--surface-3); }
 .combo-opt.sel{ background:rgba(47,109,246,.14); color:#2f6df6; font-weight:700; }
 .combo-empty{ padding:8px 10px; color:var(--muted); font-size:12px; }
