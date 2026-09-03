@@ -914,13 +914,19 @@
     }
     return { v: v, from: from, to: to };
   }
-  function uatPopulateDevs(baseItems) {
+  // Full developer list = every assignee seen across the project (from Asana via
+  // fact_workitems), minus the excluded PM/lead names — so you can pick anyone,
+  // even a dev with no ticket currently in the UAT bucket.
+  function uatPopulateDevs() {
     var sel = el("uatDev"); if (!sel) return "all";
-    var names = {}; baseItems.forEach(function (i) { if (i.assignee) names[i.assignee] = 1; });
-    var listN = Object.keys(names).sort();
+    var names = {};
+    (data.items || []).forEach(function (i) {
+      if (i.assignee && !isExcludedAssignee(i.assignee)) names[i.assignee] = 1;
+    });
+    var listN = Object.keys(names).sort(function (a, b) { return a.toLowerCase() < b.toLowerCase() ? -1 : 1; });
     var cur = sel.value || "all";
     if (cur === "all") { try { var s = localStorage.getItem("dallal_uat_dev"); if (s) cur = s; } catch (e) {} }
-    if (cur !== "all" && listN.indexOf(cur) === -1) cur = "all";   // dev not in this sprint's bucket
+    if (cur !== "all" && listN.indexOf(cur) === -1) cur = "all";   // saved dev no longer exists
     sel.innerHTML = '<option value="all">All developers</option>' +
       listN.map(function (n) { return '<option value="' + escAttr(n) + '">' + esc(n) + '</option>'; }).join("");
     sel.value = cur;
@@ -936,7 +942,7 @@
     var base = (data.items || []).filter(function (i) {
       return /^\s*ready for uat\s*$/i.test(i.section || "") && String(i.sprint) === String(sprint) && !isExcludedAssignee(i.assignee);
     });
-    var dev = uatPopulateDevs(base);
+    var dev = uatPopulateDevs();
     var rb = uatRangeBounds();
     var inRange = function (ss) {
       if (!ss) return rb.from == null && rb.to == null;   // undated tickets only count in "all time"
