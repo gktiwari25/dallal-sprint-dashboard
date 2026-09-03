@@ -614,10 +614,23 @@
     renderScopeCreep(sprint, m);
   }
 
+  // Calendar sprint window (14 days from the config anchor) — authoritative, unlike
+  // dim_sprint.inferred_start/end which drift far wider than an actual sprint.
+  function sprintWindow(sn) {
+    var a = cfg.SPRINT_ANCHOR;
+    if (!a || a.sprint == null || !a.start) return null;
+    var len = num(cfg.SPRINT_LENGTH_DAYS) || 14;
+    var s0 = new Date(a.start + "T00:00:00Z");
+    if (isNaN(s0.getTime())) return null;
+    var start = new Date(s0.getTime() + (num(sn) - num(a.sprint)) * len * 86400000);
+    var end = new Date(start.getTime() + (len - 1) * 86400000);
+    return { start: start.toISOString().slice(0, 10), end: end.toISOString().slice(0, 10) };
+  }
   function renderScopeCreep(sprint, m) {
     var dim = data.sprints.filter(function (s) { return String(s.sprint) === String(sprint); })[0] || {};
-    var start = dim.planned_start || dim.inferred_start;
-    var end = dim.planned_end || dim.inferred_end;
+    var sw = sprintWindow(sprint);
+    var start = (sw && sw.start) || dim.planned_start || dim.inferred_start;
+    var end = (sw && sw.end) || dim.planned_end || dim.inferred_end;
     // Scope creep = unplanned *story* work. Bugs are EXCLUDED: they're raised
     // during the sprint while testing delivered stories, so they're expected
     // sprint activity, not scope that "crept in". (Bugs live on the Quality tab.)
@@ -654,6 +667,9 @@
       var ctx = chart.ctx, meta = chart.getDatasetMeta(0), dd = chart.data.datasets[0].data;
       meta.data.forEach(function (pt, i) {
         var v = dd[i]; if (v == null) return;
+        // Only label the first point, points where the value changed, and the last —
+        // avoids a wall of identical pills on flat stretches.
+        if (i > 0 && v === dd[i - 1] && i !== dd.length - 1) return;
         ctx.save(); ctx.font = "700 10px 'Fira Sans',sans-serif"; ctx.textAlign = "center";
         var txt = String(v), w = ctx.measureText(txt).width + 12;
         ctx.fillStyle = "#e94b6a"; roundRect(ctx, pt.x - w / 2, pt.y - 26, w, 16, 6); ctx.fill();
@@ -682,8 +698,9 @@
   }
   function renderBurndown(sprint, m) {
     var dim = data.sprints.filter(function (s) { return String(s.sprint) === String(sprint); })[0] || {};
-    var start = dim.planned_start || dim.inferred_start;
-    var end = dim.planned_end || dim.inferred_end;
+    var sw = sprintWindow(sprint);
+    var start = (sw && sw.start) || dim.planned_start || dim.inferred_start;
+    var end = (sw && sw.end) || dim.planned_end || dim.inferred_end;
     var committed = m.committedSP || 0;
     var snap = {};
     data.burndown.filter(function (b) { return String(b.sprint) === String(sprint); })
