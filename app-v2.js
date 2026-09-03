@@ -803,13 +803,13 @@
   }
 
   // ---------- Ready for UAT ----------
-  var _MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  function fmtDay(d) { return d.getDate() + " " + _MON[d.getMonth()]; }
+  var _UAT_MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function uatFmtDay(d) { return d.getDate() + " " + _UAT_MON[d.getMonth()]; }
   function uatTaskRow(it) {
     var ss = it.section_since ? new Date(it.section_since) : null;
     var days = ss ? Math.floor((Date.now() - ss.getTime()) / 86400000) : null;
     var ageCls = days == null ? "" : (days >= 7 ? "over" : days >= 3 ? "warn" : "ok");
-    var added = ss ? '<span class="due-tag added">📅 added ' + fmtDay(ss) + '</span>'
+    var added = ss ? '<span class="due-tag added">📅 added ' + uatFmtDay(ss) + '</span>'
                    : '<span class="due-tag added">📅 date n/a</span>';
     var wait = days == null ? "" : '<span class="uat-age ' + ageCls + '">' + days + 'd in UAT</span>';
     var who = it.assignee ? esc(it.assignee) : '<span class="muted">Unassigned</span>';
