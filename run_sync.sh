@@ -67,6 +67,14 @@ fi
 # Uses the gh CLI (no token env needed). fact_repo_health + fact_vulns.
 run_step "github" "$PY" "$DIR/etl_github.py" --out "$DIR/data" --supabase
 
+# --- Ready-for-UAT entry dates (Asana activity log) -> fact_workitems.section_since
+# Stamps when each testing ticket entered its board column (Delivery "Ready for UAT").
+if [ -n "${ASANA_PAT:-}" ]; then
+  run_step "uat-dates" "$PY" "$DIR/etl_uat.py"
+else
+  log "SKIP  uat-dates — ASANA_PAT not set in .env"
+fi
+
 # --- Amplitude (Funnels / Marketing / Paths) -> Supabase ----------------------
 # Only run when the Amplitude keys are present in .env.
 if [ -n "${AMPLITUDE_PROD_API_KEY:-}" ]; then

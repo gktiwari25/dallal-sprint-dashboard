@@ -269,6 +269,14 @@ details.lb{ border-radius:16px; }
 .due-cnt.today{ background:rgba(245,136,63,.16); color:#e07b2f; }
 @media(max-width:640px){ .taskrow .trwho{ display:none } }
 
+/* Ready for UAT section */
+.due-tag.added{ background:var(--surface-3); color:var(--muted); font-weight:600; }
+.taskrow .uat-age{ flex:none; font-size:10.5px; font-weight:700; border-radius:999px; padding:3px 9px; white-space:nowrap; }
+.uat-age.ok{ background:rgba(47,109,246,.12); color:#2f6df6; }
+.uat-age.warn{ background:rgba(245,136,63,.16); color:#e07b2f; }
+.uat-age.over{ background:rgba(239,68,68,.14); color:#ef4444; }
+.taskrow.uat{ border-left:3px solid #2f6df6 !important; }
+
 /* Funnels — modern steps + panels */
 .funnelcard{ border-radius:20px !important; box-shadow:var(--sh-sm) !important; border:1px solid var(--line); background:var(--card); }
 .fstep{ border-radius:14px !important; }

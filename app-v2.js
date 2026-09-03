@@ -559,6 +559,7 @@
       (openItems.length ? openItems.map(taskRow).join("") : '<div class="muted">All committed stories completed. 🎉</div>'));
 
     renderDueDates();
+    renderReadyForUAT();
 
     el("qualityGrid").innerHTML =
       card("Total Bugs", m.bugs, { icon: "🐞", accent: "#6b7a8d", tip: "Tickets in this sprint whose title contains \"BUG\" (or Type = Bug)." }) +
@@ -799,6 +800,59 @@
       if (_collapse[id] === undefined) _collapse[id] = true;   // open by default; user toggle persists
       return listBlock(id, "Sprint " + sn + badge, rows);
     }).join("");
+  }
+
+  // ---------- Ready for UAT ----------
+  var _MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function fmtDay(d) { return d.getDate() + " " + _MON[d.getMonth()]; }
+  function uatTaskRow(it) {
+    var ss = it.section_since ? new Date(it.section_since) : null;
+    var days = ss ? Math.floor((Date.now() - ss.getTime()) / 86400000) : null;
+    var ageCls = days == null ? "" : (days >= 7 ? "over" : days >= 3 ? "warn" : "ok");
+    var added = ss ? '<span class="due-tag added">📅 added ' + fmtDay(ss) + '</span>'
+                   : '<span class="due-tag added">📅 date n/a</span>';
+    var wait = days == null ? "" : '<span class="uat-age ' + ageCls + '">' + days + 'd in UAT</span>';
+    var who = it.assignee ? esc(it.assignee) : '<span class="muted">Unassigned</span>';
+    return '<div class="taskrow uat">' +
+      '<span class="trbadge ' + priClass(it.priority) + '">' + shortPri(it.priority) + "</span>" +
+      '<span class="trname" title="' + escAttr(it.name) + '">' + esc(it.name) + "</span>" +
+      '<span class="trwho" title="Assignee">👤 ' + who + "</span>" +
+      (num(it.sprint) > 0 ? '<span class="trstatus">S' + it.sprint + "</span>" : "") +
+      added + wait +
+      '<a class="tasklink" href="' + ASANA_TASK + it.task_gid + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
+  }
+  // All tickets currently in the "Ready for UAT" board column (across all sprints),
+  // with the date they entered it (fact_workitems.section_since, stamped by etl_uat.py
+  // from the Asana activity log). Sorted longest-waiting first.
+  function renderReadyForUAT() {
+    var grid = el("uatGrid"), list = el("uatList");
+    if (!grid || !list) return;
+    var items = (data.items || []).filter(function (i) {
+      return /^\s*ready for uat\s*$/i.test(i.section || "");
+    });
+    items.sort(function (a, b) {                       // ascending date = oldest first; nulls last
+      var av = a.section_since || "", bv = b.section_since || "";
+      if (!av && !bv) return 0;
+      if (!av) return 1;
+      if (!bv) return -1;
+      return av < bv ? -1 : av > bv ? 1 : 0;
+    });
+    var dated = items.filter(function (i) { return i.section_since; });
+    var oldest = dated.length ? Math.floor((Date.now() - new Date(dated[0].section_since).getTime()) / 86400000) : 0;
+    grid.innerHTML =
+      statCard("In Ready for UAT", items.length, "tickets awaiting UAT", "#2f6df6", "🧪", "#2f6df6",
+        "Tickets currently in the Ready for UAT board column, across all sprints.") +
+      statCard("Longest waiting", (dated.length ? oldest + "d" : "—"), "since added to UAT", "#e07b2f", "⏳", "#f5883f",
+        "Days the oldest ticket has been sitting in Ready for UAT (from when it entered the column).");
+    if (!items.length) {
+      list.innerHTML = '<div class="muted" style="padding:10px 2px">No tickets in Ready for UAT right now.</div>';
+      return;
+    }
+    var id = "uat-all";
+    if (_collapse[id] === undefined) _collapse[id] = true;   // open by default
+    list.innerHTML = listBlock(id,
+      "Ready for UAT — " + items.length + " ticket" + (items.length !== 1 ? "s" : ""),
+      items.map(uatTaskRow).join(""));
   }
 
   function renderRisks(sprint) {
