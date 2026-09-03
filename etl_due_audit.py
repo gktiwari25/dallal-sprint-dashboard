@@ -29,6 +29,9 @@ import urllib.error
 ASANA = "https://app.asana.com/api/1.0"
 DONE_RE = re.compile(r"Ready for UAT|QA on UAT|In UAT|UAT Passed|Ready for Production|Released", re.I)
 STORY_FIELDS = "created_at,resource_subtype,created_by.name,old_dates.due_on,new_dates.due_on"
+# Changers whose due-date edits are NOT flagged (PMs / leads, not the devs we watch).
+# Comma-separated in .env; e.g. DUE_AUDIT_EXCLUDE="Rayan Abdul Baki,Gourav Kumar Tiwari".
+EXCLUDE = {n.strip() for n in (os.environ.get("DUE_AUDIT_EXCLUDE") or "").split(",") if n.strip()}
 
 
 def env(n):
@@ -99,21 +102,38 @@ def main():
         evs = due_changes(r["task_gid"])
         if not evs:
             continue
-        latest = evs[-1]
-        old_due, new_due = latest["old_due"], latest["new_due"]
+        # Ignore edits by excluded changers (PMs/leads). Base the row on the latest
+        # change made by SOMEONE ELSE, so a dev's change isn't hidden by a later PM edit.
+        relevant = [e for e in evs if (e["by"] or "") not in EXCLUDE]
+        base = relevant[-1] if relevant else evs[-1]
+        old_due, new_due = base["old_due"], base["new_due"]
         action = "removed" if new_due is None else ("set" if old_due is None else "changed")
         pushed_later = bool(old_due and new_due and new_due > old_due)
-        # "modified" = the latest action changed or removed an EXISTING due date
-        # (a pure first-time set has old_due None and is not flagged).
-        modified = old_due is not None
+        # "modified" = a NON-excluded person changed/removed an EXISTING due date
+        # (pure first-time sets, and edits made only by excluded users, are not flagged).
+        modified = bool(relevant) and (old_due is not None)
         rows.append({
             "task_gid": r["task_gid"], "name": r.get("name"), "sprint": int(r["sprint"]),
-            "assignee": r.get("assignee"), "changed_at": latest["at"], "changed_by": latest["by"],
+            "assignee": r.get("assignee"), "changed_at": base["at"], "changed_by": base["by"],
             "old_due": old_due, "new_due": new_due, "action": action,
-            "n_changes": len(evs), "pushed_later": pushed_later, "modified": modified,
+            "n_changes": len(relevant), "pushed_later": pushed_later, "modified": modified,
         })
     mod = sum(1 for x in rows if x["modified"])
     print(f"{len(rows)} tickets have due-date history; {mod} were MODIFIED (existing date changed/removed).")
+    # Drop stale rows: tickets no longer in scope (done/unsprinted) or whose edits are
+    # now all by excluded users — so the audit reflects only current, relevant changes.
+    current = {r["task_gid"] for r in rows}
+    existing = [e["task_gid"] for e in sb_get("fact_due_changes?select=task_gid")]
+    stale = [g for g in existing if g not in current]
+    if stale:
+        key = env("SUPABASE_SERVICE_ROLE_KEY")
+        h = {"apikey": key, "Authorization": "Bearer " + key, "Prefer": "return=minimal"}
+        base = env("SUPABASE_URL").rstrip("/") + "/rest/v1/fact_due_changes"
+        for i in range(0, len(stale), 50):
+            ch = stale[i:i + 50]
+            u = base + "?task_gid=in.(" + ",".join(ch) + ")"
+            urllib.request.urlopen(urllib.request.Request(u, headers=h, method="DELETE"), timeout=60)
+        print(f"  pruned {len(stale)} stale row(s).")
     upsert(rows)
     print("Done.")
 
