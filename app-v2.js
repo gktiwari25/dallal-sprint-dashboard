@@ -762,52 +762,101 @@
       '<span class="trstatus">' + esc(it.status || it.section || "") + "</span>" +
       '<a class="tasklink" href="' + ASANA_TASK + it.task_gid + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
   }
-  // Open (not-done) tasks in the SELECTED sprint that are due today or past due.
-  // Scoped to the sprint chosen in the top selector (same as the rest of the tab).
+  var _DD_MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function fmtDD(iso) {
+    if (!iso) return "—";
+    var p = String(iso).slice(0, 10).split("-");
+    return p.length < 3 ? String(iso) : (+p[2]) + " " + _DD_MON[(+p[1]) - 1];
+  }
+  // Row for a sprint task with NO due date set.
+  function missingRow(it) {
+    var who = it.assignee ? esc(it.assignee) : '<span class="muted">Unassigned</span>';
+    return '<div class="taskrow due nd">' +
+      '<span class="trbadge ' + priClass(it.priority) + '">' + shortPri(it.priority) + "</span>" +
+      '<span class="trname" title="' + escAttr(it.name) + '">' + esc(it.name) + "</span>" +
+      '<span class="trwho" title="Assignee">👤 ' + who + "</span>" +
+      '<span class="due-tag nodate">no due date</span>' +
+      '<span class="trstatus">' + esc(it.status || it.section || "") + "</span>" +
+      '<a class="tasklink" href="' + ASANA_TASK + it.task_gid + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
+  }
+  // Row for a ticket whose due date was changed/removed (from fact_due_changes).
+  function modifiedRow(c) {
+    var by = c.changed_by ? esc(c.changed_by) : "someone";
+    var change = (c.action === "removed")
+      ? ('<span class="due-tag over">removed ' + fmtDD(c.old_due) + '</span>')
+      : ('<span class="dd-change">' + fmtDD(c.old_due) + ' &rarr; <strong>' + fmtDD(c.new_due) + '</strong></span>');
+    var later = c.pushed_later ? '<span class="due-tag over">⚠ pushed later</span>' : "";
+    var cnt = (num(c.n_changes) > 1) ? '<span class="dd-count">×' + c.n_changes + '</span>' : "";
+    return '<div class="taskrow due mod">' +
+      '<span class="trbadge grey">DUE</span>' +
+      '<span class="trname" title="' + escAttr(c.name) + '">' + esc(c.name) + "</span>" +
+      change + later + cnt +
+      '<span class="trwho" title="Changed by">✏️ ' + by + ' · ' + fmtDD(c.changed_at) + "</span>" +
+      '<a class="tasklink" href="' + ASANA_TASK + c.task_gid + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
+  }
+  // Due-date view for the SELECTED sprint (same scope as the rest of the tab):
+  //   Overdue · Due today · Modified due date (audit) · Missing due date.
   // "Done" uses the same isDone() rule, so anything already Released / in the UAT
-  // pipeline is not flagged as missed.
+  // pipeline is not flagged.
   function renderDueDates(sprint) {
     var grid = el("dueGrid"), list = el("dueList");
     if (!grid || !list) return;
     var now = new Date();
     var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     var DAY = 86400000;
-    var dueToday = [], overdue = [];
+    var dueToday = [], overdue = [], missing = [];
     (data.items || []).forEach(function (i) {
       if (isDone(i)) return;
       if (String(i.sprint) !== String(sprint)) return;   // selected sprint only
+      if (!i.due_on) { missing.push(i); return; }         // no due date set
       var d = parseDue(i.due_on);
-      if (!d) return;
+      if (!d) { missing.push(i); return; }
       var diff = Math.round((today - d) / DAY);  // >0 late, 0 today, <0 future
       delete i._lateDays;
       if (diff === 0) dueToday.push(i);
       else if (diff > 0) { i._lateDays = diff; overdue.push(i); }
     });
+    // Modified due dates for this sprint (from the audit table); red-flag pushed-later.
+    var modified = (data.dueChanges || []).filter(function (c) {
+      return String(c.sprint) === String(sprint) && (c.modified === true || c.modified === "true");
+    }).sort(function (a, b) {
+      var pa = a.pushed_later ? 1 : 0, pb = b.pushed_later ? 1 : 0;
+      if (pa !== pb) return pb - pa;
+      return String(b.changed_at || "").localeCompare(String(a.changed_at || ""));
+    });
+    var pushedLater = modified.filter(function (c) { return c.pushed_later; }).length;
     grid.innerHTML =
       statCard("Due Today", dueToday.length, "open tasks this sprint", "#e07b2f", "📅", "#f5883f",
         "Open (not-done) tasks in the selected sprint whose Asana due date is today.") +
       statCard("Overdue", overdue.length, "missed due date", "#ef4444", "⚠️", "#ef4444",
-        "Open (not-done) tasks in the selected sprint whose due date has already passed.");
-    if (!overdue.length && !dueToday.length) {
-      list.innerHTML = '<div class="muted" style="padding:10px 2px">Nothing due today and nothing overdue in Sprint ' + esc(String(sprint)) + ' — all on time. 🎉</div>';
-      return;
-    }
-    // Two status blocks (overdue first, most-late first; then due-today).
+        "Open (not-done) tasks in the selected sprint whose due date has already passed.") +
+      statCard("Missing Due Date", missing.length, "no date set", "#8a74f4", "❓", "#8a74f4",
+        "Open tasks in this sprint with no due date set in Asana — set one so they can be tracked.") +
+      statCard("Modified", modified.length, (pushedLater ? pushedLater + " pushed later" : "due date changed"), (pushedLater ? "#ef4444" : "#2f6df6"), "✏️", "#2f6df6",
+        "Tickets in this sprint whose due date was changed or removed after being set — audit to catch dates moved to dodge overdue.");
     var blocks = "";
     if (overdue.length) {
       overdue.sort(function (a, b) { return b._lateDays - a._lateDays; });
-      var idO = "due-overdue";
-      if (_collapse[idO] === undefined) _collapse[idO] = true;
-      blocks += listBlock(idO,
-        'Overdue <span class="due-cnt over">' + overdue.length + '</span>',
-        overdue.map(dueTaskRow).join(""));
+      var idO = "due-overdue"; if (_collapse[idO] === undefined) _collapse[idO] = true;
+      blocks += listBlock(idO, 'Overdue <span class="due-cnt over">' + overdue.length + '</span>', overdue.map(dueTaskRow).join(""));
     }
     if (dueToday.length) {
-      var idT = "due-today";
-      if (_collapse[idT] === undefined) _collapse[idT] = true;
-      blocks += listBlock(idT,
-        'Due today <span class="due-cnt today">' + dueToday.length + '</span>',
-        dueToday.map(dueTaskRow).join(""));
+      var idT = "due-today"; if (_collapse[idT] === undefined) _collapse[idT] = true;
+      blocks += listBlock(idT, 'Due today <span class="due-cnt today">' + dueToday.length + '</span>', dueToday.map(dueTaskRow).join(""));
+    }
+    if (modified.length) {
+      var idM = "due-modified"; if (_collapse[idM] === undefined) _collapse[idM] = true;
+      blocks += listBlock(idM,
+        'Modified due date <span class="due-cnt over">' + modified.length + '</span>' + (pushedLater ? ' <span class="due-cnt over">' + pushedLater + ' pushed later</span>' : ''),
+        modified.map(modifiedRow).join(""));
+    }
+    if (missing.length) {
+      var idN = "due-missing"; if (_collapse[idN] === undefined) _collapse[idN] = false;  // often long — collapsed by default
+      blocks += listBlock(idN, 'Missing due date <span class="due-cnt today">' + missing.length + '</span>', missing.map(missingRow).join(""));
+    }
+    if (!blocks) {
+      list.innerHTML = '<div class="muted" style="padding:10px 2px">Nothing due today, nothing overdue, no changes, and every task has a due date in Sprint ' + esc(String(sprint)) + '. 🎉</div>';
+      return;
     }
     list.innerHTML = blocks;
   }
@@ -2738,6 +2787,7 @@
       sbSelect("fact_retro").catch(function () { return []; }),
       sbSelect("fact_appstore_metrics").catch(function () { return []; }),
       sbSelect("fact_trends").catch(function () { return []; }),
+      sbSelect("fact_due_changes").catch(function () { return []; }),
     ]).then(function (res) {
       // Skip the repaint entirely when a background refresh brought no meaningful
       // new data (volatile timestamps and row re-ordering are ignored by dataSig).
@@ -2748,7 +2798,7 @@
       data.burndown = res[4]; data.repos = res[5]; data.vulns = res[6]; data.funnels = res[7]; data.paths = res[8];
       data.unreviewedPrs = res[9]; data.abandoned = res[10]; data.reengage = res[11];
       data.apiEndpoints = res[12]; data.apiRequests = res[13]; data.retro = res[14]; data.appstore = res[15];
-      data.trends = res[16];
+      data.trends = res[16]; data.dueChanges = res[17];
       loadedOnce = true;
       var def = populateSprintSelect();
       var anySample = data.items.some(function (i) { return String(i.story_points_is_sample) === "1"; });
@@ -2914,7 +2964,7 @@
       if (!sbc || !sbc.channel) return;
       try {
         var ch = sbc.channel("delivery-live");
-        ["fact_workitems", "fact_burndown", "dim_sprint", "fact_appstore_metrics"].forEach(function (t) {
+        ["fact_workitems", "fact_burndown", "dim_sprint", "fact_appstore_metrics", "fact_due_changes"].forEach(function (t) {
           ch.on("postgres_changes", { event: "*", schema: "public", table: t }, liveReload);
         });
         ch.subscribe();

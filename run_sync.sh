@@ -71,8 +71,9 @@ run_step "github" "$PY" "$DIR/etl_github.py" --out "$DIR/data" --supabase
 # Stamps when each testing ticket entered its board column (Delivery "Ready for UAT").
 if [ -n "${ASANA_PAT:-}" ]; then
   run_step "uat-dates" "$PY" "$DIR/etl_uat.py"
+  run_step "due-audit" "$PY" "$DIR/etl_due_audit.py"
 else
-  log "SKIP  uat-dates — ASANA_PAT not set in .env"
+  log "SKIP  uat-dates / due-audit — ASANA_PAT not set in .env"
 fi
 
 # --- Amplitude (Funnels / Marketing / Paths) -> Supabase ----------------------
