@@ -589,27 +589,7 @@
       rows: bugItems.length ? bugItems.map(taskRow).join("") : '<div class="muted">No bug tickets this sprint. 🎉</div>'
     });
 
-    if (m.hasFlow) {
-      el("flowGrid").innerHTML =
-        card("Avg Dev Time", (m.devDays != null ? m.devDays.toFixed(1) : "--") + ' <small>days</small>',
-          { icon: "🛠️", accent: "#3f7fce", tip: "Average time a task spends being built — from entering 'In Development' to reaching the first testing stage (QA on Dev / Ready for UAT / In UAT). Derived from board section moves." }) +
-        card("Avg QA Time", (m.qaDays != null ? m.qaDays.toFixed(1) : "--") + ' <small>days</small>',
-          { icon: "🔍", accent: "#1f6feb", tip: "Average time in testing — from the first testing stage to Done (UAT Passed / Released, or task completion)." }) +
-        card("Cycle Time", (m.cycleDays != null ? m.cycleDays.toFixed(1) : "--") + ' <small>days</small>',
-          { icon: "🔄", accent: "#0f8b8d", tip: "Total active build + test time per task — from 'In Development' to Done. Lower is faster delivery." }) +
-        card("Blocked Hours", (m.blockedHours != null ? m.blockedHours.toFixed(0) : "--"),
-          { icon: "⛔", accent: "#c62828", tip: "Total hours tasks sat in the 'Blocked' board section this sprint. 0 means tasks weren't moved into Blocked (blocking tracked elsewhere)." });
-      if (el("flowChart")) mkChart("flowChart", { type: "bar",
-        data: { labels: ["Avg Dev", "Avg QA", "Cycle"],
-          datasets: [{ data: [m.devDays || 0, m.qaDays || 0, m.cycleDays || 0],
-            backgroundColor: ["#3f7fce", "#1f6feb", "#0f8b8d"], borderRadius: 6, barThickness: 28 }] },
-        options: { indexAxis: "y", responsive: true, plugins: { legend: { display: false } },
-          scales: { x: { beginAtZero: true, title: { display: true, text: "days" } } } } });
-    } else {
-      el("flowGrid").innerHTML = '<div class="card"><div class="label">Flow metrics</div>' +
-        '<div class="muted">No flow data yet. Run the sync with <code>--with-flow</code> to populate dev/QA/cycle time &amp; blocked hours.</div></div>';
-      if (_charts.flowChart) { _charts.flowChart.destroy(); delete _charts.flowChart; }
-    }
+    // (Flow section removed.)
     // Unestimated stories — committed stories (excluding bugs & sub-tasks) with no
     // Story Points. They're invisible to all SP-based metrics (velocity, burndown,
     // carry-forward), so surfacing them is the fastest way to close the data gap.
@@ -1041,22 +1021,18 @@
     var sorted = data.sprints.slice().filter(function (s) { return s.sprint != null && inWindow(num(s.sprint)); })
       .sort(function (a, b) { return num(a.sprint) - num(b.sprint); });
     var labels = sorted.map(function (s) { return "S" + s.sprint; });
+    // Use the SAME live computation as Sprint Health (compute()/sprintAgg) rather than
+    // the stored dim_sprint columns, which go stale for in-progress/recent sprints.
+    var aggs = sorted.map(function (s) { return sprintAgg(num(s.sprint)); });
     if (velChart) velChart.destroy();
     velChart = new Chart(el("velChart"), {
       type: "bar",
       data: { labels: labels, datasets: [
-        { label: "Delivered SP", data: sorted.map(function (s) { return num(s.delivered_sp); }), backgroundColor: "#0f8b8d" },
-        { label: "Committed SP", data: sorted.map(function (s) { return num(s.committed_sp); }), type: "line", borderColor: "#1f6feb", backgroundColor: "transparent", tension: .3 } ] },
+        { label: "Delivered SP", data: aggs.map(function (a) { return a.delivered; }), backgroundColor: "#0f8b8d" },
+        { label: "Committed SP", data: aggs.map(function (a) { return a.committed; }), type: "line", borderColor: "#1f6feb", backgroundColor: "transparent", tension: .3 } ] },
       options: { responsive: true, plugins: { legend: { position: "bottom" } }, scales: { y: { beginAtZero: true } } },
     });
-    var mix = {}; m.its.forEach(function (i) { var s = i.section || "(none)"; mix[s] = (mix[s] || 0) + 1; });
-    if (statusChart) statusChart.destroy();
-    statusChart = new Chart(el("statusChart"), {
-      type: "doughnut",
-      data: { labels: Object.keys(mix), datasets: [{ data: Object.values(mix),
-        backgroundColor: ["#0f8b8d", "#1f6feb", "#f29f05", "#c62828", "#2e7d32", "#6b7a8d", "#9c27b0", "#00897b", "#5d4037"] }] },
-      options: { responsive: true, plugins: { legend: { position: "right", labels: { boxWidth: 12, font: { size: 10 } } } } },
-    });
+    // (Status mix doughnut removed.)
   }
 
   // Per-sprint aggregate for the trend charts (across the visible sprint window).
@@ -2876,6 +2852,7 @@
       sbSelect("fact_trends").catch(function () { return []; }),
       sbSelect("fact_due_changes").catch(function () { return []; }),
     ]).then(function (res) {
+      var _preY = window.scrollY;   // preserve scroll across background repaints
       // Skip the repaint entirely when a background refresh brought no meaningful
       // new data (volatile timestamps and row re-ordering are ignored by dataSig).
       var sig = dataSig(res);
@@ -2897,6 +2874,9 @@
       if (!el("funnelView").classList.contains("hidden")) renderFunnels();
       if (!el("marketingView").classList.contains("hidden")) renderMarketing();
       if (!el("appstoreView").classList.contains("hidden")) renderAppStore();
+      // Background updates (poll / realtime) must not move the user; only an explicit
+      // Refresh or a fresh page load jumps to the top.
+      if (!force) { try { window.scrollTo(0, _preY); } catch (e) {} }
     }).catch(function (e) {
       el("error").textContent = "Could not load data: " + e.message +
         "  -  ensure web_read_policies.sql is applied and your account can read.";
@@ -3104,7 +3084,8 @@
       } catch (e) {}
     }
     setInterval(function () { if (sbc && loadedOnce && !document.hidden) loadAll(); }, 60000);
-    document.addEventListener("visibilitychange", function () { if (!document.hidden && sbc && loadedOnce) loadAll(); });
+    // (No reload on tab focus — returning from another tab keeps your scroll position;
+    //  Realtime + the 60s poll keep data fresh without moving the page.)
     setTimeout(subscribeRealtime, 1500);
     el("googleBtn").addEventListener("click", doGoogle);
     el("magicBtn").addEventListener("click", function (e) { if (e && e.preventDefault) e.preventDefault(); doMagicLink(); });

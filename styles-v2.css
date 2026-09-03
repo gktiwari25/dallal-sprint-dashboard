@@ -287,7 +287,9 @@ details.lb{ border-radius:16px; }
 .combo{ position:relative; display:inline-block; }
 .combo-btn{ font-size:13px; font-weight:600; padding:6px 30px 6px 11px; border-radius:10px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; min-width:180px; max-width:240px; text-align:left; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 .combo-btn::after{ content:"▾"; position:absolute; right:11px; top:50%; transform:translateY(-50%); color:var(--muted); font-size:11px; pointer-events:none; }
-.combo-pop{ position:absolute; z-index:60; top:calc(100% + 5px); left:0; width:240px; background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:0 10px 30px rgba(15,22,45,.22); padding:8px; }
+.combo{ z-index:1; }
+.combo:has(.combo-pop:not(.hidden)){ z-index:500; }   /* lift the whole control above sibling cards while open */
+.combo-pop{ position:absolute; z-index:500; top:calc(100% + 5px); left:0; width:240px; background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:0 10px 30px rgba(15,22,45,.22); padding:8px; }
 .combo-search{ width:100%; box-sizing:border-box; font-size:13px; padding:7px 10px; border-radius:8px; border:1px solid var(--line); background:var(--surface-3); color:var(--ink); margin-bottom:6px; }
 .combo-search:focus{ outline:none; border-color:#2f6df6; }
 .combo-list{ max-height:260px; overflow-y:auto; }
