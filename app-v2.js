@@ -804,9 +804,17 @@
   // ---------- Ready for UAT ----------
   var _UAT_MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
   function uatFmtDay(d) { return d.getDate() + " " + _UAT_MON[d.getMonth()]; }
+  // Calendar-day difference (local), so a ticket added yesterday reads "1d" even if
+  // only ~21h have elapsed — matches the "added <date>" label and how people count.
+  function uatDays(ss) {
+    var a = new Date(ss.getFullYear(), ss.getMonth(), ss.getDate());
+    var now = new Date();
+    var t = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return Math.round((t - a) / 86400000);
+  }
   function uatTaskRow(it) {
     var ss = it.section_since ? new Date(it.section_since) : null;
-    var days = ss ? Math.floor((Date.now() - ss.getTime()) / 86400000) : null;
+    var days = ss ? uatDays(ss) : null;
     var ageCls = days == null ? "" : (days >= 7 ? "over" : days >= 3 ? "warn" : "ok");
     var added = ss ? '<span class="due-tag added">📅 added ' + uatFmtDay(ss) + '</span>'
                    : '<span class="due-tag added">📅 date n/a</span>';
@@ -837,7 +845,7 @@
       return av < bv ? -1 : av > bv ? 1 : 0;
     });
     var dated = items.filter(function (i) { return i.section_since; });
-    var oldest = dated.length ? Math.floor((Date.now() - new Date(dated[0].section_since).getTime()) / 86400000) : 0;
+    var oldest = dated.length ? uatDays(new Date(dated[0].section_since)) : 0;
     grid.innerHTML =
       statCard("In Ready for UAT", items.length, "tickets awaiting UAT", "#2f6df6", "🧪", "#2f6df6",
         "Tickets in the selected sprint currently in the Ready for UAT board column.") +

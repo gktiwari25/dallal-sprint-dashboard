@@ -28,7 +28,7 @@ const CF: Record<string, string> = {
 };
 const SECTION_DONE = /UAT Passed|Released|Ready for Production/i;
 const TASK_FIELDS =
-  "name,completed,completed_at,created_at,modified_at,assignee.name,num_subtasks,parent.gid," +
+  "name,completed,completed_at,created_at,modified_at,due_on,assignee.name,num_subtasks,parent.gid," +
   "memberships.section.name,memberships.project.gid," +
   "custom_fields.gid,custom_fields.enum_value.name,custom_fields.number_value,custom_fields.text_value";
 
@@ -49,6 +49,32 @@ function sectionOf(t: any): string | null {
 // removed from the board) roll up into their parent's superseded SP — they must
 // NOT get their own row (that's what created the orphan "Unestimated" entries).
 const isProjectMember = (t: any) => (t.memberships ?? []).some((m: any) => m.project?.gid === PROJECT);
+
+// Testing columns whose entry-date drives the Delivery "Ready for UAT" section.
+const TESTING_SECTION = /^(ready for uat|qa on uat|in uat)$/i;
+// Latest time this task was moved INTO `section`, from its Asana activity log
+// (section_changed story: …to "Ready for UAT" in <project>). Mirrors etl_uat.py.
+async function enteredSectionAt(gid: string, section: string): Promise<string | null> {
+  const esc = section.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const re = new RegExp('to\\s+"' + esc + '"', "i");
+  let best: string | null = null, offset: string | null = null;
+  do {
+    const u = new URL(`${A}/tasks/${gid}/stories`);
+    u.searchParams.set("opt_fields", "created_at,resource_subtype,text");
+    u.searchParams.set("limit", "100");
+    if (offset) u.searchParams.set("offset", offset);
+    const r = await fetch(u, { headers: AH });
+    if (!r.ok) break;
+    const b = await r.json();
+    for (const s of b.data ?? []) {
+      if (s.resource_subtype === "section_changed" && re.test(s.text ?? "")) {
+        if (!best || s.created_at > best) best = s.created_at;
+      }
+    }
+    offset = b.next_page?.offset ?? null;
+  } while (offset);
+  return best;
+}
 
 async function computeRow(t: any) {
   const idx = cfIndex(t);
@@ -79,6 +105,11 @@ async function computeRow(t: any) {
     }
   }
   const type = enumName(idx, "type");
+  // Real-time UAT entry date: only fetch stories when the ticket is in a testing
+  // column (a handful at a time); null otherwise so it never shows a stale date.
+  const section_since = (section && TESTING_SECTION.test(section.trim()))
+    ? await enteredSectionAt(t.gid, section)
+    : null;
   return {
     task_gid: t.gid,
     name: t.name ?? "",
@@ -96,6 +127,8 @@ async function computeRow(t: any) {
     efforts_hours: numVal(idx, "efforts_hours"),
     release: textVal(idx, "release"),
     assignee: t.assignee?.name ?? null,
+    due_on: t.due_on ?? null,   // real-time due date -> Delivery "Due Dates"
+    section_since,              // real-time UAT entry date -> "Ready for UAT"
     is_completed: completed ? 1 : 0,
     is_delivered: delivered ? 1 : 0,
     is_bug: (type ?? "") === "Bug" ? 1 : 0,
