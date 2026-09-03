@@ -784,7 +784,9 @@
     var by = c.changed_by ? esc(c.changed_by) : "someone";
     var change = (c.action === "removed")
       ? ('<span class="due-tag over">removed ' + fmtDD(c.old_due) + '</span>')
-      : ('<span class="dd-change">' + fmtDD(c.old_due) + ' &rarr; <strong>' + fmtDD(c.new_due) + '</strong></span>');
+      : (c.old_due
+          ? ('<span class="dd-change">' + fmtDD(c.old_due) + ' &rarr; <strong>' + fmtDD(c.new_due) + '</strong></span>')
+          : ('<span class="dd-change">set &rarr; <strong>' + fmtDD(c.new_due) + '</strong></span>'));
     var later = c.pushed_later ? '<span class="due-tag over">⚠ pushed later</span>' : "";
     var cnt = (num(c.n_changes) > 1) ? '<span class="dd-count">×' + c.n_changes + '</span>' : "";
     return '<div class="taskrow due mod">' +
@@ -826,29 +828,29 @@
     });
     var pushedLater = modified.filter(function (c) { return c.pushed_later; }).length;
     grid.innerHTML =
-      statCard("Due Today", dueToday.length, "open tasks this sprint", "#e07b2f", "📅", "#f5883f",
-        "Open (not-done) tasks in the selected sprint whose Asana due date is today.") +
       statCard("Overdue", overdue.length, "missed due date", "#ef4444", "⚠️", "#ef4444",
         "Open (not-done) tasks in the selected sprint whose due date has already passed.") +
-      statCard("Missing Due Date", missing.length, "no date set", "#8a74f4", "❓", "#8a74f4",
-        "Open tasks in this sprint with no due date set in Asana — set one so they can be tracked.") +
       statCard("Modified", modified.length, (pushedLater ? pushedLater + " pushed later" : "due date changed"), (pushedLater ? "#ef4444" : "#2f6df6"), "✏️", "#2f6df6",
-        "Tickets in this sprint whose due date was changed or removed after being set — audit to catch dates moved to dodge overdue.");
+        "Tickets in this sprint whose due date was changed or removed after being set — audit to catch dates moved to dodge overdue.") +
+      statCard("Due Today", dueToday.length, "open tasks this sprint", "#e07b2f", "📅", "#f5883f",
+        "Open (not-done) tasks in the selected sprint whose Asana due date is today.") +
+      statCard("Missing Due Date", missing.length, "no date set", "#8a74f4", "❓", "#8a74f4",
+        "Open tasks in this sprint with no due date set in Asana — set one so they can be tracked.");
     var blocks = "";
     if (overdue.length) {
       overdue.sort(function (a, b) { return b._lateDays - a._lateDays; });
       var idO = "due-overdue"; if (_collapse[idO] === undefined) _collapse[idO] = true;
       blocks += listBlock(idO, 'Overdue <span class="due-cnt over">' + overdue.length + '</span>', overdue.map(dueTaskRow).join(""));
     }
-    if (dueToday.length) {
-      var idT = "due-today"; if (_collapse[idT] === undefined) _collapse[idT] = true;
-      blocks += listBlock(idT, 'Due today <span class="due-cnt today">' + dueToday.length + '</span>', dueToday.map(dueTaskRow).join(""));
-    }
     if (modified.length) {
       var idM = "due-modified"; if (_collapse[idM] === undefined) _collapse[idM] = true;
       blocks += listBlock(idM,
         'Modified due date <span class="due-cnt over">' + modified.length + '</span>' + (pushedLater ? ' <span class="due-cnt over">' + pushedLater + ' pushed later</span>' : ''),
         modified.map(modifiedRow).join(""));
+    }
+    if (dueToday.length) {
+      var idT = "due-today"; if (_collapse[idT] === undefined) _collapse[idT] = true;
+      blocks += listBlock(idT, 'Due today <span class="due-cnt today">' + dueToday.length + '</span>', dueToday.map(dueTaskRow).join(""));
     }
     if (missing.length) {
       var idN = "due-missing"; if (_collapse[idN] === undefined) _collapse[idN] = false;  // often long — collapsed by default

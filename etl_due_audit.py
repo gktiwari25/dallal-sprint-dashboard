@@ -3,21 +3,19 @@
 etl_due_audit.py — audit due-date CHANGES so a PM can catch tickets whose due
 date was moved (e.g. a dev pushing it out to avoid being overdue).
 
-Asana's task fields don't expose due-date history, but the activity log does:
-a `due_date_changed` story — "<name> changed the due date to Sep 11" or
-"<name> removed the due date". We scan the stories of every open, sprinted
-ticket, reconstruct the change sequence, and upsert a per-ticket summary into
-`fact_due_changes`:
+Asana's task fields don't expose due-date history, but each `due_date_changed`
+story carries STRUCTURED old/new dates (old_dates.due_on / new_dates.due_on) —
+exact ISO dates, so we never have to parse Asana's relative wording ("Today",
+"Monday", "Yesterday"). We scan the stories of every open, sprinted ticket and
+upsert a per-ticket summary into `fact_due_changes`:
   - changed_by / changed_at   = the LATEST change (who + when)
-  - old_due -> new_due        = previous value -> current value
-  - action                    = 'set' (first time) | 'changed' | 'removed'
+  - old_due -> new_due        = the exact dates on that latest change
+  - action                    = 'set' (from nothing) | 'changed' | 'removed'
   - n_changes                 = how many times the due date was touched
   - pushed_later              = the latest change moved the date LATER (red flag)
-  - modified                  = it was changed after being set, or removed
-                                (i.e. worth the PM's attention — not just a first set)
-
-The current due date comes from fact_workitems.due_on (authoritative) so the
-"new" value never depends on parsing; only the "old" value is parsed from text.
+  - modified                  = the latest action changed/removed an EXISTING
+                                due date (i.e. worth the PM's attention — a pure
+                                first-time set is NOT flagged)
 
 .env: ASANA_PAT, SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY.  Run: python3 etl_due_audit.py
 """
@@ -25,14 +23,12 @@ import os
 import re
 import sys
 import json
-import datetime
 import urllib.request
 import urllib.error
 
 ASANA = "https://app.asana.com/api/1.0"
 DONE_RE = re.compile(r"Ready for UAT|QA on UAT|In UAT|UAT Passed|Ready for Production|Released", re.I)
-TO_RE = re.compile(r"changed the due date to (.+)$", re.I)
-REMOVED_RE = re.compile(r"removed the due date", re.I)
+STORY_FIELDS = "created_at,resource_subtype,created_by.name,old_dates.due_on,new_dates.due_on"
 
 
 def env(n):
@@ -49,54 +45,30 @@ def sb_get(path):
     return json.loads(urllib.request.urlopen(urllib.request.Request(url, headers=h), timeout=60).read())
 
 
-def asana_get(path):
-    h = {"Authorization": "Bearer " + env("ASANA_PAT")}
-    return json.loads(urllib.request.urlopen(urllib.request.Request(ASANA + path, headers=h), timeout=60).read())["data"]
-
-
 def is_done(r):
     return bool(r.get("completed_at")) or str(r.get("is_completed")) == "1" \
         or str(r.get("is_delivered")) == "1" or bool(DONE_RE.search(r.get("section") or ""))
 
 
-def parse_due(text, year_hint):
-    """Parse Asana's due-date story text (e.g. 'Sep 11' or 'Sep 11, 2026') to ISO date."""
-    s = (text or "").strip().rstrip(".")
-    for fmt in ("%b %d, %Y", "%B %d, %Y"):
-        try:
-            return datetime.datetime.strptime(s, fmt).date().isoformat()
-        except ValueError:
-            pass
-    for fmt in ("%b %d", "%B %d"):
-        try:
-            d = datetime.datetime.strptime(s, fmt)
-            return datetime.date(year_hint, d.month, d.day).isoformat()
-        except ValueError:
-            pass
-    return None
-
-
 def due_changes(task_gid):
-    """Ordered list of due-date change events: [{at, by, new_due(iso|None), removed}]."""
+    """Ordered list of due-date change events with exact dates:
+    [{at, by, old_due(iso|None), new_due(iso|None)}]."""
+    h = {"Authorization": "Bearer " + env("ASANA_PAT")}
     out, offset = [], None
     while True:
-        q = f"/tasks/{task_gid}/stories?opt_fields=created_at,resource_subtype,text,created_by.name&limit=100"
+        q = f"/tasks/{task_gid}/stories?opt_fields={STORY_FIELDS}&limit=100"
         if offset:
             q += "&offset=" + offset
-        h = {"Authorization": "Bearer " + env("ASANA_PAT")}
         body = json.loads(urllib.request.urlopen(urllib.request.Request(ASANA + q, headers=h), timeout=60).read())
         for s in body.get("data", []):
             if s.get("resource_subtype") != "due_date_changed":
                 continue
-            at = s.get("created_at")
-            by = (s.get("created_by") or {}).get("name")
-            txt = s.get("text") or ""
-            yr = int(at[:4]) if at else datetime.date.today().year
-            if REMOVED_RE.search(txt):
-                out.append({"at": at, "by": by, "new_due": None, "removed": True})
-            else:
-                m = TO_RE.search(txt)
-                out.append({"at": at, "by": by, "new_due": parse_due(m.group(1), yr) if m else None, "removed": False})
+            out.append({
+                "at": s.get("created_at"),
+                "by": (s.get("created_by") or {}).get("name"),
+                "old_due": (s.get("old_dates") or {}).get("due_on"),
+                "new_due": (s.get("new_dates") or {}).get("due_on"),
+            })
         offset = (body.get("next_page") or {}).get("offset")
         if not offset:
             break
@@ -119,7 +91,7 @@ def upsert(rows):
 
 
 def main():
-    items = sb_get("fact_workitems?select=task_gid,name,sprint,assignee,due_on,section,is_completed,is_delivered,completed_at")
+    items = sb_get("fact_workitems?select=task_gid,name,sprint,assignee,section,is_completed,is_delivered,completed_at")
     cands = [r for r in items if not is_done(r) and str(r.get("sprint") or "").isdigit()]
     print(f"Auditing {len(cands)} open, sprinted tickets for due-date changes...")
     rows = []
@@ -128,22 +100,20 @@ def main():
         if not evs:
             continue
         latest = evs[-1]
-        prev_due = evs[-2]["new_due"] if len(evs) >= 2 else None
-        # Authoritative current value from fact_workitems; fall back to parsed.
-        new_due = r.get("due_on") if not latest["removed"] else None
-        if new_due is None and not latest["removed"]:
-            new_due = latest["new_due"]
-        action = "removed" if latest["removed"] else ("set" if len(evs) == 1 else "changed")
-        pushed_later = bool(prev_due and new_due and new_due > prev_due)
-        modified = (len(evs) >= 2) or latest["removed"]
+        old_due, new_due = latest["old_due"], latest["new_due"]
+        action = "removed" if new_due is None else ("set" if old_due is None else "changed")
+        pushed_later = bool(old_due and new_due and new_due > old_due)
+        # "modified" = the latest action changed or removed an EXISTING due date
+        # (a pure first-time set has old_due None and is not flagged).
+        modified = old_due is not None
         rows.append({
             "task_gid": r["task_gid"], "name": r.get("name"), "sprint": int(r["sprint"]),
             "assignee": r.get("assignee"), "changed_at": latest["at"], "changed_by": latest["by"],
-            "old_due": prev_due, "new_due": new_due, "action": action,
+            "old_due": old_due, "new_due": new_due, "action": action,
             "n_changes": len(evs), "pushed_later": pushed_later, "modified": modified,
         })
     mod = sum(1 for x in rows if x["modified"])
-    print(f"{len(rows)} tickets have due-date history; {mod} were MODIFIED (changed/removed after set).")
+    print(f"{len(rows)} tickets have due-date history; {mod} were MODIFIED (existing date changed/removed).")
     upsert(rows)
     print("Done.")
 
