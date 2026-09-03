@@ -242,9 +242,14 @@
       predictability = progress;
     }
     // 3) CARRY FORWARD = committed − velocity (the user's definition): the SP our
-    //    typical throughput won't cover, i.e. the forecast spill into the next
-    //    sprint. Floored at 0. Without history, fall back to the actual undelivered SP.
-    var carryFwdForecastSP = hist ? Math.max(0, hCommit - hist.avgVelocity) : (usePts ? carryFwdSP : carryFwdItems);
+    //    typical throughput won't cover, i.e. the forecast spill into the next sprint.
+    //    CAPPED by the work actually still undelivered — already-delivered work can't
+    //    spill, so a 100%-delivered sprint always reads 0 (not a stale velocity guess).
+    //    Floored at 0. Without history, it's just the actual undelivered SP.
+    var hUndelivered = usePts ? carryFwdSP : carryFwdItems;
+    var carryFwdForecastSP = hist
+      ? Math.max(0, Math.min(hCommit - hist.avgVelocity, hUndelivered))
+      : hUndelivered;
     var carryFwdFrac = hCommit ? carryFwdForecastSP / hCommit : null;
     var bugs = its.filter(isBug);
     function statusIn(list) { return its.filter(function (i) { return list.indexOf(i.status) !== -1; }).length; }
@@ -508,9 +513,15 @@
     }
     var carryTxt, carryTip;
     if (hist && m.usePts) {
+      var rawFc = Math.max(0, Math.round(m.committedSP - hist.avgVelocity));
+      var capped = Math.round(m.carryFwdForecastSP) < rawFc;
       carryTxt = Math.round(m.carryFwdForecastSP) + " SP forecast";
-      carryTip = "committed − avg velocity = " + Math.round(m.committedSP) + " − " + Math.round(hist.avgVelocity)
-        + " = " + Math.round(m.carryFwdForecastSP) + " SP (" + pct(m.carryFwd) + ") forecast to spill next sprint. Floored at 0.";
+      carryTip = capped
+        ? ("Forecast = committed − avg velocity = " + Math.round(m.committedSP) + " − " + Math.round(hist.avgVelocity)
+           + " = " + rawFc + " SP, but capped at the " + Math.round(m.carryFwdSP) + " SP still undelivered → "
+           + Math.round(m.carryFwdForecastSP) + " SP (" + pct(m.carryFwd) + "). Delivered work can't spill.")
+        : ("committed − avg velocity = " + Math.round(m.committedSP) + " − " + Math.round(hist.avgVelocity)
+           + " = " + Math.round(m.carryFwdForecastSP) + " SP (" + pct(m.carryFwd) + ") forecast to spill next sprint. Capped at undelivered work; floored at 0.");
     } else {
       carryTxt = m.usePts ? (Math.round(m.carryFwdSP) + " SP") : ((m.carryFwdItems || 0) + " items");
       carryTip = "Committed work not yet delivered (no history yet to forecast from): " + carryTxt + ".";
@@ -541,7 +552,7 @@
     el("healthNote").innerHTML = m.usePts
       ? '<b>Progress</b> = delivered ÷ committed (' + Math.round(m.deliveredSP) + '/' + Math.round(m.committedSP) + ' SP = ' + pct(m.progress) + '), where delivered = reached the UAT pipeline or shipped (Ready&nbsp;for&nbsp;UAT → Released). '
         + (hist
-            ? '<b>Predictability</b> = ' + pct(m.predictability) + ', a forecast of hitting the full commitment learned from the last ' + hist.n + ' sprint' + (hist.n > 1 ? 's' : '') + ' (reliability ' + pct(hist.reliability) + ' × capacity-fit ' + pct(m.capacityFit) + '). <b>Carry-Forward</b> = committed − avg velocity = ' + Math.round(m.committedSP) + '&minus;' + Math.round(hist.avgVelocity) + ' = ' + Math.round(m.carryFwdForecastSP) + ' SP (' + pct(m.carryFwd) + ') forecast to spill next sprint.'
+            ? '<b>Predictability</b> = ' + pct(m.predictability) + ', a forecast of hitting the full commitment learned from the last ' + hist.n + ' sprint' + (hist.n > 1 ? 's' : '') + ' (reliability ' + pct(hist.reliability) + ' × capacity-fit ' + pct(m.capacityFit) + '). <b>Carry-Forward</b> = committed − avg velocity = ' + Math.round(m.committedSP) + '&minus;' + Math.round(hist.avgVelocity) + ' = ' + Math.max(0, Math.round(m.committedSP - hist.avgVelocity)) + ' SP, capped at the ' + Math.round(m.carryFwdSP) + ' SP still undelivered = <b>' + Math.round(m.carryFwdForecastSP) + ' SP</b> (' + pct(m.carryFwd) + ') forecast to spill next sprint (delivered work can&rsquo;t spill).'
             : '<b>Predictability</b> &amp; <b>Carry-Forward</b> start learning from history once a prior estimated sprint exists; for now Predictability mirrors Progress and Carry-Forward shows the ' + Math.round(m.carryFwdSP) + ' SP still undelivered.')
         + ' Hover the <span class="tip" data-tip="Every hero card has one of these — hover it to see the exact formula and live numbers.">i</span> on each card for its formula.'
       : "Story Points not set in Asana for this sprint — Sprint Health is showing item counts. It switches to SP automatically once tasks are estimated.";
