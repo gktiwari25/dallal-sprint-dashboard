@@ -2981,10 +2981,12 @@
       var comboClosers = [];   // so only ONE combo is open at a time
       function bindCombo(comboId, popId, btnId, onOpen) {
         var combo = el(comboId), pop = el(popId), btn = el(btnId);
-        function close() { if (pop) pop.classList.add("hidden"); if (btn) btn.setAttribute("aria-expanded", "false"); }
+        var sect = combo && combo.closest ? combo.closest(".section") : null;
+        function close() { if (pop) pop.classList.add("hidden"); if (btn) btn.setAttribute("aria-expanded", "false"); if (sect) sect.classList.remove("combo-open"); }
         function open() {
           comboClosers.forEach(function (c) { if (c !== close) c(); });   // close the others first
           if (!pop) return; if (onOpen) onOpen(); pop.classList.remove("hidden"); if (btn) btn.setAttribute("aria-expanded", "true");
+          if (sect) sect.classList.add("combo-open");   // lift the whole section above later sections
         }
         comboClosers.push(close);
         if (btn) btn.addEventListener("click", function (e) { e.stopPropagation(); (pop && pop.classList.contains("hidden")) ? open() : close(); });
