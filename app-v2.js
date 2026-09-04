@@ -1101,8 +1101,8 @@
           '<span class="uat-age" title="Stories sent that day">' + o.n + ' sent</span></div>';
       }).join("");
     var idDay = "uat-sent-day", idList = "uat-sent-list";
-    if (_collapse[idDay] === undefined) _collapse[idDay] = false;   // day breakdown collapsed by default
-    if (_collapse[idList] === undefined) _collapse[idList] = true;   // event list open by default
+    if (_collapse[idDay] === undefined) _collapse[idDay] = false;    // day breakdown collapsed by default
+    if (_collapse[idList] === undefined) _collapse[idList] = false;  // event list collapsed by default
     list.innerHTML =
       listBlock(idDay, "By day — " + Object.keys(byDay).length + " day" + (Object.keys(byDay).length !== 1 ? "s" : ""), dayRows) +
       listBlock(idList, "Sends — " + evs.length + " event" + (evs.length !== 1 ? "s" : ""), evs.map(function (m) { return uatMoveRow(m, byGid[m.task_gid]); }).join(""));
