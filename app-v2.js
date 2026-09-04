@@ -20,6 +20,11 @@
 
   // ---------- helpers ----------
   function num(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+  // Accurate reopen count per task (from fact_reopens: Reopen-column moves merged
+  // with the manual "Reopened Count" field). Falls back to the raw field only if the
+  // reopen table hasn't loaded yet. Set in loadAll().
+  var _reopenMap = {};
+  function reopenCount(i) { var v = _reopenMap[i.task_gid]; return v == null ? num(i.reopened_count) : num(v); }
   function pct(x) { return (x == null || isNaN(x)) ? "--" : (Math.round(x * 1000) / 10) + "%"; }
   function el(id) { return document.getElementById(id); }
   function show(id) { el(id).classList.remove("hidden"); }
@@ -146,9 +151,10 @@
       '<a class="tasklink" href="' + ASANA_TASK + it.task_gid + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
   }
   // Row for a reopened ticket: shows current board column (state) + how many times it
-  // was sent back for rework (reopened_count, from the flow/status-history sync).
+  // was moved back into the Reopen column (reopenCount, from the Asana activity log
+  // merged with the manual field).
   function reopenedRow(it) {
-    var n = num(it.reopened_count);
+    var n = reopenCount(it);
     var state = it.section || it.status || "—";
     var done = isDone(it);
     var who = it.assignee ? esc(it.assignee) : '<span class="muted">Unassigned</span>';
@@ -268,7 +274,7 @@
     var carryFwdFrac = hCommit ? carryFwdForecastSP / hCommit : null;
     var bugs = its.filter(isBug);
     function statusIn(list) { return its.filter(function (i) { return list.indexOf(i.status) !== -1; }).length; }
-    var reopened = its.filter(function (i) { return num(i.reopened_count) > 0; }).length;
+    var reopened = its.filter(function (i) { return reopenCount(i) > 0; }).length;
     // Defect-escape inputs: only bugs whose "Found In" is set count toward the rate.
     var classifiedBugs = bugs.filter(function (i) { return ["Dev", "UAT", "Prod"].indexOf(i.found_in) !== -1; });
     var prodBugs = bugs.filter(function (i) { return i.found_in === "Prod"; });
@@ -299,10 +305,10 @@
       pCritical: bugs.filter(function (i) { return (i.priority || "").indexOf("P1") === 0; }).length,
       pHigh: bugs.filter(function (i) { return (i.priority || "").indexOf("P2") === 0; }).length,
       pMedium: bugs.filter(function (i) { return (i.priority || "").indexOf("P3") === 0; }).length,
-      regression: bugs.filter(function (i) { return num(i.reopened_count) > 0; }).length,
+      regression: bugs.filter(function (i) { return reopenCount(i) > 0; }).length,
       reopened: reopened,   // count of items reopened >=1x this sprint
       // Rework rate: delivered items that were reopened / delivered items (always <=100%).
-      reopenedPct: completed ? its.filter(function (i) { return isDone(i) && num(i.reopened_count) > 0; }).length / completed : null,
+      reopenedPct: completed ? its.filter(function (i) { return isDone(i) && reopenCount(i) > 0; }).length / completed : null,
       // Escape rate = Prod-found bugs / bugs that actually have a Found In value.
       // Bugs with no Found In are EXCLUDED (not silently counted as "didn't escape").
       defectEscape: classifiedBugs.length ? prodBugs.length / classifiedBugs.length : null,
@@ -592,7 +598,7 @@
       card("Bugs Closed", m.bugsClosed, { icon: "✅", accent: "#2e7d32", tip: "Bug tickets resolved this sprint (Released / UAT Passed / done). Total Bugs − Bugs Closed = still-open bugs." }) +
       card("Critical (P1)", m.pCritical, { icon: "🔴", accent: "#c62828", tip: "Bug tickets with task Priority = P1 Critical." }) +
       card("High (P2)", m.pHigh, { icon: "🟠", accent: "#f29f05", tip: "Bug tickets with task Priority = P2 High." }) +
-      card("Reopened", m.reopened, { icon: "🔁", tip: "Count of items sent back for rework at least once this sprint (bounced to Raised by QA / Reopen / UAT Failed) — derived from Status history, refreshed on the daily flow sync. Rework rate of delivered items: " + pct(m.reopenedPct) + "." }) +
+      card("Reopened", m.reopened, { icon: "🔁", tip: "Tickets moved back into the \"Reopen\" column at least once this sprint — counted from the Asana activity log, merged with the manual \"Reopened Count\" field (whichever is higher). See the Reopened Tickets list below. Rework rate of delivered items: " + pct(m.reopenedPct) + "." }) +
       card("Defect Escape", (m.escapeReliable ? pct(m.defectEscape) : "--") + ' <span style="font-size:13px;color:var(--muted,#5b6577)">' + m.bugsClassified + "/" + m.bugs + " classified</span>", { icon: "🪲", accent: m.escapeReliable ? undefined : "#5b6577", tip: "Share of bugs found in Prod, out of bugs that have a 'Found In' value (Dev/UAT/Prod). Bugs with no 'Found In' are excluded, and the rate shows '—' until at least 3 bugs and 50% of the sprint's bugs are classified in Asana." });
     // (Bugs by priority doughnut removed per design.)
     var bugItems = m.its.filter(isBug);
@@ -605,10 +611,11 @@
     });
 
     // Reopened tickets — every ticket sent back for rework at least once this sprint
-    // (reopened_count > 0), most-reopened first, with its current board column and
-    // reopen count. The ring shows how many are now closed again.
-    var reopenedItems = m.its.filter(function (i) { return num(i.reopened_count) > 0; })
-      .sort(function (a, b) { return num(b.reopened_count) - num(a.reopened_count); });
+    // (reopenCount > 0 — Reopen-column moves merged with the manual field), most-
+    // reopened first, with its current board column and reopen count. The ring shows
+    // how many are now closed again.
+    var reopenedItems = m.its.filter(function (i) { return reopenCount(i) > 0; })
+      .sort(function (a, b) { return reopenCount(b) - reopenCount(a); });
     var reopenedDone = reopenedItems.filter(isDone).length;
     el("reopenedList").innerHTML = summaryBlock("reopened", {
       label: "REOPENED TICKETS", color: "#f29f05",
@@ -3015,6 +3022,7 @@
       sbSelect("fact_trends").catch(function () { return []; }),
       sbSelect("fact_due_changes").catch(function () { return []; }),
       sbSelect("fact_uat_moves").catch(function () { return []; }),
+      sbSelect("fact_reopens").catch(function () { return []; }),
     ]).then(function (res) {
       var _preY = window.scrollY;   // preserve scroll across background repaints
       // Skip the repaint entirely when a background refresh brought no meaningful
@@ -3026,7 +3034,11 @@
       data.burndown = res[4]; data.repos = res[5]; data.vulns = res[6]; data.funnels = res[7]; data.paths = res[8];
       data.unreviewedPrs = res[9]; data.abandoned = res[10]; data.reengage = res[11];
       data.apiEndpoints = res[12]; data.apiRequests = res[13]; data.retro = res[14]; data.appstore = res[15];
-      data.trends = res[16]; data.dueChanges = res[17]; data.uatMoves = res[18];
+      data.trends = res[16]; data.dueChanges = res[17]; data.uatMoves = res[18]; data.reopens = res[19];
+      // Accurate reopen counts (Reopen-column moves merged with the manual field),
+      // keyed by task — used everywhere instead of the unreliable reopened_count.
+      _reopenMap = {};
+      (data.reopens || []).forEach(function (r) { _reopenMap[r.task_gid] = num(r.reopen_count); });
       loadedOnce = true;
       var def = populateSprintSelect();
       var anySample = data.items.some(function (i) { return String(i.story_points_is_sample) === "1"; });
@@ -3267,7 +3279,7 @@
       if (!sbc || !sbc.channel) return;
       try {
         var ch = sbc.channel("delivery-live");
-        ["fact_workitems", "fact_burndown", "dim_sprint", "fact_appstore_metrics", "fact_due_changes", "fact_uat_moves"].forEach(function (t) {
+        ["fact_workitems", "fact_burndown", "dim_sprint", "fact_appstore_metrics", "fact_due_changes", "fact_uat_moves", "fact_reopens"].forEach(function (t) {
           ch.on("postgres_changes", { event: "*", schema: "public", table: t }, liveReload);
         });
         ch.subscribe();
