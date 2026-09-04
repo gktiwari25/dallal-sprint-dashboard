@@ -23,3 +23,6 @@ logs/*.out
 # supabase CLI local
 supabase/.branches/
 supabase/.temp/
+
+# Selenium test creds (never commit)
+tests/.env.test
