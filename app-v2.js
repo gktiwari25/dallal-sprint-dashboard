@@ -145,6 +145,21 @@
       '<span class="trstatus">' + esc(it.status || "") + "</span>" +
       '<a class="tasklink" href="' + ASANA_TASK + it.task_gid + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
   }
+  // Row for a reopened ticket: shows current board column (state) + how many times it
+  // was sent back for rework (reopened_count, from the flow/status-history sync).
+  function reopenedRow(it) {
+    var n = num(it.reopened_count);
+    var state = it.section || it.status || "—";
+    var done = isDone(it);
+    var who = it.assignee ? esc(it.assignee) : '<span class="muted">Unassigned</span>';
+    return '<div class="taskrow">' +
+      '<span class="trbadge ' + priClass(it.priority) + '">' + shortPri(it.priority) + "</span>" +
+      '<span class="trname" title="' + escAttr(it.name) + '">' + esc(it.name) + "</span>" +
+      '<span class="trwho" title="Assignee">👤 ' + who + "</span>" +
+      '<span class="uat-age ' + (done ? "ok" : "warn") + '" title="Current board column">' + esc(state) + "</span>" +
+      '<span class="uat-age ' + (n >= 3 ? "over" : "warn") + '" title="Times reopened / sent back for rework">🔁 ' + n + "×</span>" +
+      '<a class="tasklink" href="' + ASANA_TASK + it.task_gid + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
+  }
   // Collapsible list block (native <details>) that remembers open/closed across re-renders.
   function listBlock(id, title, rowsHtml) {
     var open = _collapse[id] === true; // default collapsed; remembers a user's toggle in-session
@@ -587,6 +602,19 @@
       pct: bugItems.length ? 100 * bugsClosedN / bugItems.length : 100,
       sub: bugItems.length ? (bugItems.length + " bugs &middot; " + bugsClosedN + " closed") : "No bug tickets this sprint",
       rows: bugItems.length ? bugItems.map(taskRow).join("") : '<div class="muted">No bug tickets this sprint. 🎉</div>'
+    });
+
+    // Reopened tickets — every ticket sent back for rework at least once this sprint
+    // (reopened_count > 0), most-reopened first, with its current board column and
+    // reopen count. The ring shows how many are now closed again.
+    var reopenedItems = m.its.filter(function (i) { return num(i.reopened_count) > 0; })
+      .sort(function (a, b) { return num(b.reopened_count) - num(a.reopened_count); });
+    var reopenedDone = reopenedItems.filter(isDone).length;
+    el("reopenedList").innerHTML = summaryBlock("reopened", {
+      label: "REOPENED TICKETS", color: "#f29f05",
+      pct: reopenedItems.length ? 100 * reopenedDone / reopenedItems.length : 100,
+      sub: reopenedItems.length ? (reopenedItems.length + " reopened &middot; " + reopenedDone + " now closed") : "No reopened tickets this sprint",
+      rows: reopenedItems.length ? reopenedItems.map(reopenedRow).join("") : '<div class="muted">No tickets were reopened this sprint. 🎉</div>'
     });
 
     // (Flow section removed.)
@@ -1058,24 +1086,17 @@
       list.innerHTML = '<div class="muted" style="padding:10px 2px">No tickets were sent to Ready for UAT under this filter in Sprint ' + esc(String(sprint)) + '.</div>';
       return;
     }
-    // Per-developer breakdown (desc by count).
-    var devRows = Object.keys(byDev).sort(function (a, b) { return byDev[b] - byDev[a] || (a.toLowerCase() < b.toLowerCase() ? -1 : 1); })
-      .map(function (n) {
-        return '<div class="taskrow uat"><span class="trname">🧑‍💻 ' + esc(n) + '</span>' +
-          '<span class="uat-age ok" title="Stories sent to UAT">' + byDev[n] + ' sent</span></div>';
-      }).join("");
-    // Per-day breakdown (desc by date).
+    // Per-day breakdown (desc by date) — how many stories were sent each day.
     var dayRows = Object.keys(byDay).map(function (k) { return byDay[k]; })
       .sort(function (a, b) { return b.d - a.d; })
       .map(function (o) {
         return '<div class="taskrow uat"><span class="trname">📅 ' + esc(uatFmtDay(o.d)) + '</span>' +
           '<span class="uat-age" title="Stories sent that day">' + o.n + ' sent</span></div>';
       }).join("");
-    var idDev = "uat-sent-dev", idDay = "uat-sent-day", idList = "uat-sent-list";
-    [idDev, idDay].forEach(function (id) { if (_collapse[id] === undefined) _collapse[id] = false; });   // breakdowns collapsed by default
+    var idDay = "uat-sent-day", idList = "uat-sent-list";
+    if (_collapse[idDay] === undefined) _collapse[idDay] = false;   // day breakdown collapsed by default
     if (_collapse[idList] === undefined) _collapse[idList] = true;   // event list open by default
     list.innerHTML =
-      listBlock(idDev, "By developer — " + devN + (devN === 1 ? " developer" : " developers"), devRows) +
       listBlock(idDay, "By day — " + Object.keys(byDay).length + " day" + (Object.keys(byDay).length !== 1 ? "s" : ""), dayRows) +
       listBlock(idList, "Sends — " + evs.length + " event" + (evs.length !== 1 ? "s" : ""), evs.map(function (m) { return uatMoveRow(m, byGid[m.task_gid]); }).join(""));
   }
