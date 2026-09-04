@@ -76,6 +76,18 @@ header.topbar #updated{ font-size:10.5px; color:rgba(233,236,255,.5); padding:8p
 .subtabs{ background:var(--card); border:1px solid var(--line); border-radius:14px; box-shadow:var(--sh-sm); padding:5px; }
 .subtabs .subtab.active{ background:var(--accent-grad) !important; color:#fff !important; box-shadow:0 6px 16px rgba(90,91,230,.34); }
 
+/* Ready-for-UAT sub-tab toggle: pill container, each tab an elevated chip
+   (inactive = white, active = purple gradient) with a leading icon. */
+#uatTabs{ display:inline-flex; gap:8px; margin:0 0 4px; padding:6px; width:fit-content; max-width:100%;
+  background:var(--surface-2); border:1px solid var(--line); border-radius:17px; box-shadow:var(--sh-sm); }
+#uatTabs .subtab{ display:inline-flex; align-items:center; gap:11px; padding:11px 21px; border:none; border-radius:12px;
+  cursor:pointer; white-space:nowrap; letter-spacing:-.01em; font:700 14.5px var(--font);
+  color:var(--muted); background:var(--card); box-shadow:var(--sh-xs);
+  transition:transform .16s var(--ease), box-shadow .16s var(--ease), color .16s var(--ease); }
+#uatTabs .subtab svg{ width:19px; height:19px; flex:0 0 auto; }
+#uatTabs .subtab:hover{ color:var(--ink); transform:translateY(-1px); }
+#uatTabs .subtab.active{ color:#fff !important; transform:none; box-shadow:0 10px 24px rgba(90,91,230,.42); }
+
 /* Section: transparent grouper (cards float on the canvas) with a bold header */
 .section{ margin:0 0 30px !important; }
 .section > h2{ font-size:15px !important; letter-spacing:-.01em; display:flex; align-items:center; gap:11px; color:var(--ink); }
