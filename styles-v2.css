@@ -76,6 +76,22 @@ header.topbar #updated{ font-size:10.5px; color:rgba(233,236,255,.5); padding:8p
 .subtabs{ background:var(--card); border:1px solid var(--line); border-radius:14px; box-shadow:var(--sh-sm); padding:5px; }
 .subtabs .subtab.active{ background:var(--accent-grad) !important; color:#fff !important; box-shadow:0 6px 16px rgba(90,91,230,.34); }
 
+/* Loading skeleton — shimmer placeholders shown on first load until data lands. */
+#loadSkeleton{ padding-top:8px; }
+#loadSkeleton .sk{ position:relative; overflow:hidden; background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:var(--sh-sm); }
+#loadSkeleton .sk::after{ content:""; position:absolute; inset:0; transform:translateX(-100%);
+  background:linear-gradient(90deg, transparent, color-mix(in srgb, var(--ink) 8%, transparent), transparent);
+  animation:sk-shimmer 1.3s ease-in-out infinite; }
+@keyframes sk-shimmer{ 100%{ transform:translateX(100%); } }
+#loadSkeleton .sk-title{ height:24px; width:210px; border-radius:8px; margin:6px 0 22px; }
+#loadSkeleton .sk-row3{ display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:16px; }
+#loadSkeleton .sk-card{ height:132px; }
+#loadSkeleton .sk-chart{ height:300px; margin-bottom:16px; }
+#loadSkeleton .sk-row2{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+#loadSkeleton .sk-half{ height:230px; }
+@media (max-width:1120px){ #loadSkeleton .sk-row3{ grid-template-columns:1fr; } }
+@media (max-width:640px){ #loadSkeleton .sk-row2{ grid-template-columns:1fr; } }
+
 /* Ready-for-UAT sub-tab toggle: pill container, each tab an elevated chip
    (inactive = white, active = purple gradient) with a leading icon. */
 #uatTabs{ display:inline-flex; gap:8px; margin:0 0 4px; padding:6px; width:fit-content; max-width:100%;
@@ -119,7 +135,8 @@ header.topbar #updated{ font-size:10.5px; color:rgba(233,236,255,.5); padding:8p
 .hcard{ background:var(--card); border:1px solid var(--line); border-radius:20px; padding:18px 20px; box-shadow:var(--sh-sm); display:flex; flex-direction:column; gap:8px; transition:box-shadow var(--dur) var(--ease),transform var(--dur) var(--ease); }
 .hcard:hover{ box-shadow:var(--sh-md); transform:translateY(-3px); }
 .hcard-top{ display:flex; align-items:center; justify-content:space-between; }
-.hcard-title{ font-size:11.5px; font-weight:800; letter-spacing:.05em; color:var(--hc); }
+.hcard-title{ font-size:11.5px; font-weight:800; letter-spacing:.05em; color:var(--hc); white-space:nowrap; display:inline-flex; align-items:center; }
+.hcard-title .tip{ vertical-align:middle; }
 .hcard-ic{ width:34px; height:34px; border-radius:11px; display:grid; place-items:center; font-size:16px; background:color-mix(in srgb,var(--hc) 15%,transparent); }
 /* Ascending "growth" bars with a floating % pill */
 .hbars{ position:relative; display:flex; align-items:flex-end; gap:7px; height:74px; margin:16px 0 4px; }

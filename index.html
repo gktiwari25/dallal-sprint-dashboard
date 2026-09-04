@@ -10,7 +10,7 @@
 <link rel="icon" type="image/png" href="dallal-favicon.png?v=237" />
 <link rel="apple-touch-icon" href="dallal-favicon.png" />
 <link rel="stylesheet" href="styles.css?v=237" />
-<link rel="stylesheet" href="styles-v2.css?v=42" /><!-- REDESIGN PREVIEW theme layer -->
+<link rel="stylesheet" href="styles-v2.css?v=43" /><!-- REDESIGN PREVIEW theme layer -->
 </head>
 <body>
 
@@ -116,6 +116,14 @@
 <div class="wrap hidden" id="app" >
   <div id="error" class="err hidden"></div>
   <div id="sampleFlag" class="sample-flag hidden"></div>
+
+  <!-- Loading skeleton: shown on first load until the real data render lands -->
+  <div id="loadSkeleton" class="hidden" aria-hidden="true">
+    <div class="sk sk-title"></div>
+    <div class="sk-row3"><div class="sk sk-card"></div><div class="sk sk-card"></div><div class="sk sk-card"></div></div>
+    <div class="sk sk-chart"></div>
+    <div class="sk-row2"><div class="sk sk-half"></div><div class="sk sk-half"></div></div>
+  </div>
 
   <!-- USER FLOW sub-tabs (only visible when the User Flow tab is active) -->
   <nav id="userFlowTabs" class="subtabs hidden">
@@ -429,6 +437,6 @@
 <script src="config.js?v=239"></script>
 <script src="sample-data.js?v=237"></script>
 <script src="funnels-data.js?v=237"></script>
-<script src="app-v2.js?v=60"></script>
+<script src="app-v2.js?v=61"></script>
 </body>
 </html>

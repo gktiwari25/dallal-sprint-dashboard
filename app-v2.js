@@ -3053,7 +3053,9 @@
       // Background updates (poll / realtime) must not move the user; only an explicit
       // Refresh or a fresh page load jumps to the top.
       if (!force) { try { window.scrollTo(0, _preY); } catch (e) {} }
+      revealContent();
     }).catch(function (e) {
+      revealContent();
       el("error").textContent = "Could not load data: " + e.message +
         "  -  ensure web_read_policies.sql is applied and your account can read.";
       show("error");
@@ -3067,14 +3069,21 @@
     data.burndown = s.burndown || []; data.repos = s.repos || []; data.vulns = s.vulns || [];
     var def = populateSprintSelect();
     el("sampleFlag").textContent = "OFFLINE PREVIEW - bundled sample data (story points estimated). Configure Supabase in config.js for live, login-protected data.";
-    show("sampleFlag"); el("updated").textContent = "Sample preview"; render(def);
+    show("sampleFlag"); el("updated").textContent = "Sample preview"; render(def); revealContent();
   }
 
   // ---------- auth ----------
   // NOTE: no scrollTo here — Supabase fires an auth event (token refresh) every time
   // the tab regains focus, which calls this; scrolling here would jump the user to the
   // top on every tab switch. Reloads start at top via history.scrollRestoration=manual.
-  function showAppUI() { hide("booting"); hide("login"); show("app"); show("signOut"); show("topbar"); }
+  function showAppUI() {
+    hide("booting"); hide("login"); show("app"); show("signOut"); show("topbar");
+    // First load: show a skeleton over the content until the first data render lands,
+    // so the user never sees the empty section shells / half-drawn charts.
+    if (!loadedOnce) { if (el("loadSkeleton")) show("loadSkeleton"); if (el("sprintView")) hide("sprintView"); }
+  }
+  // Reveal the real content and drop the skeleton (called once the first render is done).
+  function revealContent() { if (el("loadSkeleton")) hide("loadSkeleton"); if (el("sprintView")) show("sprintView"); }
   function showLoginUI() { hide("booting"); show("login"); hide("app"); hide("signOut"); hide("topbar"); }
 
   // A clean, fragment-free redirect target. Using window.location.href would
