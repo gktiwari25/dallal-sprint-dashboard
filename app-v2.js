@@ -893,7 +893,10 @@
       '<a class="tasklink" href="' + ASANA_TASK + it.task_gid + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
   }
   // Filters for the Ready-for-UAT bucket: developer + date-added range.
-  var _uatSprint = null, _uatDev = "all", _uatRange = "all";
+  // _uatTab: "current" = tickets sitting in Ready for UAT now (current state);
+  //          "sent"    = every "moved into Ready for UAT" EVENT this sprint,
+  //                      irrespective of where the ticket ended up (throughput).
+  var _uatSprint = null, _uatDev = "all", _uatRange = "all", _uatTab = "current";
   var UAT_RANGES = [["all", "All time"], ["today", "Today"], ["yesterday", "Yesterday"], ["7", "Last 7 days"], ["15", "Last 15 days"], ["month", "Month"], ["custom", "Custom"]];
   function uatRangeLabelFull(v) { for (var i = 0; i < UAT_RANGES.length; i++) if (UAT_RANGES[i][0] === v) return UAT_RANGES[i][1]; return "All time"; }
   var _UAT_RANGE_LABEL = { all: "awaiting UAT", today: "added today", yesterday: "added yesterday", "7": "added last 7 days", "15": "added last 15 days", month: "added this month" };
@@ -919,7 +922,15 @@
   // even a dev with no ticket currently in the UAT bucket.
   function uatDevNames() {
     var names = {};
-    (data.items || []).forEach(function (i) { if (i.assignee && !isExcludedAssignee(i.assignee)) names[i.assignee] = 1; });
+    if (_uatTab === "sent") {
+      // Movers who sent a ticket to Ready for UAT in the selected sprint (any state).
+      (data.uatMoves || []).forEach(function (m) {
+        if (_uatSprint != null && String(m.sprint) !== String(_uatSprint)) return;
+        if (m.moved_by && !isExcludedAssignee(m.moved_by)) names[m.moved_by] = 1;
+      });
+    } else {
+      (data.items || []).forEach(function (i) { if (i.assignee && !isExcludedAssignee(i.assignee)) names[i.assignee] = 1; });
+    }
     return Object.keys(names).sort(function (a, b) { return a.toLowerCase() < b.toLowerCase() ? -1 : 1; });
   }
   function uatDevLabel() { return _uatDev === "all" ? "All developers" : _uatDev; }
@@ -955,10 +966,124 @@
     var btn = el("uatRangeBtn"); if (btn) btn.textContent = uatRangeLabelFull(_uatRange);
     var cust = el("uatCustom"); if (cust) cust.classList.toggle("hidden", _uatRange !== "custom");
   }
+  // Tab labels/intro/filter-label change between the two Ready-for-UAT views.
+  var _UAT_INTRO = {
+    current: 'Tickets in the <b>selected sprint</b> currently handed to testing (board column <b>Ready for UAT</b>), with the date each entered the column and how long it has been waiting. Filter by <b>developer</b> and by <b>when they were added</b>.',
+    sent: 'Every time a developer <b>moved a ticket into Ready for UAT</b> in the <b>selected sprint</b> — counted as a throughput event, <b>irrespective of where the ticket is now</b> (so a ticket later closed by QA still counts). Attributed to <b>whoever moved the card</b>. A ticket bounced back and re-sent counts each time. Filter by <b>developer</b> and by <b>when it was sent</b> to see how many each dev sends per day.'
+  };
+  function updateUatTabUI() {
+    var tc = el("uatTabCurrent"), ts = el("uatTabSent");
+    if (tc) tc.classList.toggle("active", _uatTab === "current");
+    if (ts) ts.classList.toggle("active", _uatTab === "sent");
+    var intro = el("uatIntro"); if (intro) intro.innerHTML = _UAT_INTRO[_uatTab] || "";
+    var lbl = el("uatRangeLabel"); if (lbl) lbl.textContent = _uatTab === "sent" ? "Sent" : "Added";
+  }
+  // Dispatcher: paints whichever Ready-for-UAT tab is active into the shared
+  // uatGrid / uatList containers.
+  function renderReadyForUAT(sprint) {
+    _uatSprint = sprint;
+    updateUatTabUI();
+    if (_uatTab === "sent") return renderUatSent(sprint);
+    return renderUatCurrent(sprint);
+  }
+
+  // One "sent to UAT" event row: ticket, who moved it, when, and its CURRENT state
+  // (so you can see it was sent even though it's now Released / closed).
+  function uatMoveRow(m, cur) {
+    var dt = m.moved_at ? new Date(m.moved_at) : null;
+    var when = dt ? '<span class="due-tag added">➡️ sent ' + uatFmtDay(dt) + '</span>' : '';
+    var by = m.moved_by ? esc(m.moved_by) : '<span class="muted">Unknown</span>';
+    // Current state badge, derived from the live ticket (data.items) if we still have it.
+    var stateTxt = cur ? (cur.section || cur.status || "—") : "—";
+    var done = cur && (String(cur.is_completed) === "1" || String(cur.is_delivered) === "1" || !!cur.completed_at
+      || /UAT Passed|Ready for Production|Released|Done|Closed/i.test(cur.section || ""));
+    var still = cur && /^\s*ready for uat\s*$/i.test(cur.section || "");
+    var stCls = done ? "ok" : still ? "warn" : "";
+    return '<div class="taskrow uat">' +
+      '<span class="trbadge ' + priClass(m.priority || (cur && cur.priority)) + '">' + shortPri(m.priority || (cur && cur.priority)) + "</span>" +
+      '<span class="trname" title="' + escAttr(m.name) + '">' + esc(m.name) + "</span>" +
+      '<span class="trwho" title="Moved to UAT by">🧑‍💻 ' + by + "</span>" +
+      (num(m.sprint) > 0 ? '<span class="trstatus">S' + m.sprint + "</span>" : "") +
+      when +
+      '<span class="uat-age ' + stCls + '" title="Current state">' + esc(stateTxt) + "</span>" +
+      '<a class="tasklink" href="' + ASANA_TASK + m.task_gid + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
+  }
+
+  // "Sent to UAT" throughput view: one row per move-into-UAT event this sprint,
+  // filtered by mover (developer) and by when it was sent. Shows a per-developer
+  // and per-day breakdown so you can see how many stories each dev sends per day.
+  function renderUatSent(sprint) {
+    _uatSprint = sprint;
+    var grid = el("uatGrid"), list = el("uatList");
+    if (!grid || !list) return;
+    // Live-ticket lookup for the current-state badge.
+    var byGid = {};
+    (data.items || []).forEach(function (i) { byGid[i.task_gid] = i; });
+    var base = (data.uatMoves || []).filter(function (m) {
+      return String(m.sprint) === String(sprint) && !isExcludedAssignee(m.moved_by);
+    });
+    var dev = uatPopulateDevs();
+    var rb = uatRangeBounds();
+    var inRange = function (dt) {
+      if (!dt) return false;
+      var d = new Date(dt.getFullYear(), dt.getMonth(), dt.getDate());
+      if (rb.from && d < rb.from) return false;
+      if (rb.to && d > rb.to) return false;
+      return true;
+    };
+    var evs = base.filter(function (m) {
+      if (dev !== "all" && (m.moved_by || "") !== dev) return false;
+      return rb.v === "all" ? true : inRange(m.moved_at ? new Date(m.moved_at) : null);
+    });
+    evs.sort(function (a, b) { var av = a.moved_at || "", bv = b.moved_at || ""; return av < bv ? 1 : av > bv ? -1 : 0; });   // newest send first
+    // Aggregates.
+    var byDev = {}, byDay = {}, tickets = {};
+    evs.forEach(function (m) {
+      byDev[m.moved_by || "Unknown"] = (byDev[m.moved_by || "Unknown"] || 0) + 1;
+      tickets[m.task_gid] = 1;
+      if (m.moved_at) { var d = new Date(m.moved_at); var k = d.getFullYear() + "-" + d.getMonth() + "-" + d.getDate(); byDay[k] = byDay[k] || { d: d, n: 0 }; byDay[k].n++; }
+    });
+    var devN = Object.keys(byDev).length;
+    var rangeLbl = _UAT_RANGE_LABEL[rb.v] || "sent in range";
+    rangeLbl = (rangeLbl || "").replace(/^added/, "sent");
+    if (rb.v === "all") rangeLbl = "all time";
+    if (rb.v === "custom") rangeLbl = "sent " + (rb.from ? uatFmtDay(rb.from) : "start") + " – " + (rb.to ? uatFmtDay(rb.to) : "today");
+    var sub = rangeLbl + (dev !== "all" ? " · " + dev : "");
+    grid.innerHTML =
+      statCard("Sent to UAT", evs.length, sub, "#2f6df6", "➡️", "#2f6df6",
+        "Number of times a ticket was moved into Ready for UAT in this sprint" + (dev !== "all" ? ", by " + dev : "") + (rb.v === "all" ? "" : ", within the selected range") + ". Counts every send, even if the ticket was later closed.") +
+      statCard("Developers", devN, "sent ≥1 in range", "#7b61ff", "🧑‍💻", "#7b61ff", "Distinct developers who sent at least one ticket to UAT in the current filter.") +
+      statCard("Distinct tickets", Object.keys(tickets).length, "unique stories", "#22a565", "🎫", "#22a565", "Unique tickets sent (a ticket re-sent after a bounce is counted once here, but each send counts in 'Sent to UAT').");
+    if (!evs.length) {
+      list.innerHTML = '<div class="muted" style="padding:10px 2px">No tickets were sent to Ready for UAT under this filter in Sprint ' + esc(String(sprint)) + '.</div>';
+      return;
+    }
+    // Per-developer breakdown (desc by count).
+    var devRows = Object.keys(byDev).sort(function (a, b) { return byDev[b] - byDev[a] || (a.toLowerCase() < b.toLowerCase() ? -1 : 1); })
+      .map(function (n) {
+        return '<div class="taskrow uat"><span class="trname">🧑‍💻 ' + esc(n) + '</span>' +
+          '<span class="uat-age ok" title="Stories sent to UAT">' + byDev[n] + ' sent</span></div>';
+      }).join("");
+    // Per-day breakdown (desc by date).
+    var dayRows = Object.keys(byDay).map(function (k) { return byDay[k]; })
+      .sort(function (a, b) { return b.d - a.d; })
+      .map(function (o) {
+        return '<div class="taskrow uat"><span class="trname">📅 ' + esc(uatFmtDay(o.d)) + '</span>' +
+          '<span class="uat-age" title="Stories sent that day">' + o.n + ' sent</span></div>';
+      }).join("");
+    var idDev = "uat-sent-dev", idDay = "uat-sent-day", idList = "uat-sent-list";
+    [idDev, idDay].forEach(function (id) { if (_collapse[id] === undefined) _collapse[id] = false; });   // breakdowns collapsed by default
+    if (_collapse[idList] === undefined) _collapse[idList] = true;   // event list open by default
+    list.innerHTML =
+      listBlock(idDev, "By developer — " + devN + (devN === 1 ? " developer" : " developers"), devRows) +
+      listBlock(idDay, "By day — " + Object.keys(byDay).length + " day" + (Object.keys(byDay).length !== 1 ? "s" : ""), dayRows) +
+      listBlock(idList, "Sends — " + evs.length + " event" + (evs.length !== 1 ? "s" : ""), evs.map(function (m) { return uatMoveRow(m, byGid[m.task_gid]); }).join(""));
+  }
+
   // The selected sprint's Ready-for-UAT bucket (section_since = when it entered the
   // column), filtered by developer and by date-added so you can count how many were
   // added per day / week / custom range. Sorted longest-waiting first.
-  function renderReadyForUAT(sprint) {
+  function renderUatCurrent(sprint) {
     _uatSprint = sprint;
     var grid = el("uatGrid"), list = el("uatList");
     if (!grid || !list) return;
@@ -2868,6 +2993,7 @@
       sbSelect("fact_appstore_metrics").catch(function () { return []; }),
       sbSelect("fact_trends").catch(function () { return []; }),
       sbSelect("fact_due_changes").catch(function () { return []; }),
+      sbSelect("fact_uat_moves").catch(function () { return []; }),
     ]).then(function (res) {
       var _preY = window.scrollY;   // preserve scroll across background repaints
       // Skip the repaint entirely when a background refresh brought no meaningful
@@ -2879,7 +3005,7 @@
       data.burndown = res[4]; data.repos = res[5]; data.vulns = res[6]; data.funnels = res[7]; data.paths = res[8];
       data.unreviewedPrs = res[9]; data.abandoned = res[10]; data.reengage = res[11];
       data.apiEndpoints = res[12]; data.apiRequests = res[13]; data.retro = res[14]; data.appstore = res[15];
-      data.trends = res[16]; data.dueChanges = res[17];
+      data.trends = res[16]; data.dueChanges = res[17]; data.uatMoves = res[18];
       loadedOnce = true;
       var def = populateSprintSelect();
       var anySample = data.items.some(function (i) { return String(i.story_points_is_sample) === "1"; });
@@ -2992,8 +3118,24 @@
         var f = localStorage.getItem("dallal_uat_from"); if (f && el("uatFrom")) el("uatFrom").value = f;
         var t = localStorage.getItem("dallal_uat_to"); if (t && el("uatTo")) el("uatTo").value = t;
         var d = localStorage.getItem("dallal_uat_dev"); if (d) _uatDev = d;
+        var tb = localStorage.getItem("dallal_uat_tab"); if (tb === "sent" || tb === "current") _uatTab = tb;
       } catch (e) {}
       uatSyncRangeUI();
+      updateUatTabUI();
+      // Ready-for-UAT sub-tab toggle (Currently in UAT ↔ Sent to UAT throughput).
+      var devBtnRef = el("uatDevBtn");
+      function switchUatTab(tab) {
+        if (tab !== "current" && tab !== "sent") return;
+        _uatTab = tab;
+        try { localStorage.setItem("dallal_uat_tab", tab); } catch (e2) {}
+        // The dev list source differs per tab; drop a now-invalid selection and relabel.
+        uatPopulateDevs();
+        if (devBtnRef) devBtnRef.textContent = uatDevLabel();
+        renderUatDevList("");
+        reUat();
+      }
+      if (el("uatTabCurrent")) el("uatTabCurrent").addEventListener("click", function () { switchUatTab("current"); });
+      if (el("uatTabSent")) el("uatTabSent").addEventListener("click", function () { switchUatTab("sent"); });
       // Generic combo open/close (click button to toggle, click outside to close).
       var comboClosers = [];   // so only ONE combo is open at a time
       function bindCombo(comboId, popId, btnId, onOpen) {
@@ -3104,7 +3246,7 @@
       if (!sbc || !sbc.channel) return;
       try {
         var ch = sbc.channel("delivery-live");
-        ["fact_workitems", "fact_burndown", "dim_sprint", "fact_appstore_metrics", "fact_due_changes"].forEach(function (t) {
+        ["fact_workitems", "fact_burndown", "dim_sprint", "fact_appstore_metrics", "fact_due_changes", "fact_uat_moves"].forEach(function (t) {
           ch.on("postgres_changes", { event: "*", schema: "public", table: t }, liveReload);
         });
         ch.subscribe();

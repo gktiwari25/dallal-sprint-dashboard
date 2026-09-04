@@ -158,7 +158,11 @@
 
   <!-- READY FOR UAT -->
   <div class="section"><h2>Ready for UAT</h2><div class="body">
-    <p class="muted" style="margin:0 0 12px">Tickets in the <b>selected sprint</b> currently handed to testing (board column <b>Ready for UAT</b>), with the date each entered the column and how long it has been waiting. Filter by <b>developer</b> and by <b>when they were added</b> to see how many entered UAT per day, week, or a custom range.</p>
+    <div class="subtabs" id="uatTabs">
+      <button type="button" class="subtab active" id="uatTabCurrent" data-uattab="current">Currently in UAT</button>
+      <button type="button" class="subtab" id="uatTabSent" data-uattab="sent">Sent to UAT · throughput</button>
+    </div>
+    <p class="muted" id="uatIntro" style="margin:0 0 12px"></p>
     <div class="uat-filters" id="uatFilters">
       <div class="uatf">Developer
         <div class="combo" id="uatDevCombo">
@@ -169,7 +173,7 @@
           </div>
         </div>
       </div>
-      <div class="uatf">Added
+      <div class="uatf"><span id="uatRangeLabel">Added</span>
         <div class="combo" id="uatRangeCombo">
           <button type="button" class="combo-btn" id="uatRangeBtn" aria-haspopup="listbox" aria-expanded="false">All time</button>
           <div class="combo-pop hidden" id="uatRangePop">
@@ -418,6 +422,6 @@
 <script src="config.js?v=239"></script>
 <script src="sample-data.js?v=237"></script>
 <script src="funnels-data.js?v=237"></script>
-<script src="app-v2.js?v=57"></script>
+<script src="app-v2.js?v=58"></script>
 </body>
 </html>
