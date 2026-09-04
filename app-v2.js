@@ -3028,6 +3028,7 @@
       // Skip the repaint entirely when a background refresh brought no meaningful
       // new data (volatile timestamps and row re-ordering are ignored by dataSig).
       var sig = dataSig(res);
+      revealContent();   // data is in — drop the first-load skeleton no matter which branch we take
       if (!force && loadedOnce && sig === _dataSig) return;
       _dataSig = sig;
       data.items = res[0]; data.sprints = res[1]; data.flow = res[2]; data.risks = res[3];
@@ -3076,14 +3077,27 @@
   // NOTE: no scrollTo here — Supabase fires an auth event (token refresh) every time
   // the tab regains focus, which calls this; scrolling here would jump the user to the
   // top on every tab switch. Reloads start at top via history.scrollRestoration=manual.
+  var _skelTimer = null;
   function showAppUI() {
     hide("booting"); hide("login"); show("app"); show("signOut"); show("topbar");
     // First load: show a skeleton over the content until the first data render lands,
-    // so the user never sees the empty section shells / half-drawn charts.
-    if (!loadedOnce) { if (el("loadSkeleton")) show("loadSkeleton"); if (el("sprintView")) hide("sprintView"); }
+    // so the user never sees the empty section shells / half-drawn charts. A hard
+    // fallback reveals the content anyway if the data load is slow or a query stalls,
+    // so the skeleton can never get stuck ("refresh never completes").
+    if (!loadedOnce) {
+      if (el("loadSkeleton")) show("loadSkeleton");
+      if (el("sprintView")) hide("sprintView");
+      clearTimeout(_skelTimer);
+      _skelTimer = setTimeout(revealContent, 9000);
+    }
   }
-  // Reveal the real content and drop the skeleton (called once the first render is done).
-  function revealContent() { if (el("loadSkeleton")) hide("loadSkeleton"); if (el("sprintView")) show("sprintView"); }
+  // Reveal the real content and drop the skeleton (called once the first render is done,
+  // on error, or by the fallback timer).
+  function revealContent() {
+    clearTimeout(_skelTimer);
+    if (el("loadSkeleton")) hide("loadSkeleton");
+    if (el("sprintView")) show("sprintView");
+  }
   function showLoginUI() { hide("booting"); show("login"); hide("app"); hide("signOut"); hide("topbar"); }
 
   // A clean, fragment-free redirect target. Using window.location.href would
