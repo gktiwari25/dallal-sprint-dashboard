@@ -147,7 +147,10 @@
     return '<div class="taskrow">' +
       '<span class="trbadge ' + priClass(it.priority) + '">' + shortPri(it.priority) + "</span>" +
       '<span class="trname" title="' + escAttr(it.name) + '">' + esc(it.name) + "</span>" +
-      '<span class="trstatus">' + esc(it.status || "") + "</span>" +
+      // Show the BOARD COLUMN (section) — the authoritative current state the app uses
+      // for done/open — not the Status custom field, which is often stale (e.g. a card
+      // bounced back to "Reopen" while Status still reads "UAT Passed").
+      '<span class="trstatus" title="Board column">' + esc(it.section || it.status || "") + "</span>" +
       '<a class="tasklink" href="' + ASANA_TASK + it.task_gid + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
   }
   // Row for a reopened ticket: shows current board column (state) + how many times it
