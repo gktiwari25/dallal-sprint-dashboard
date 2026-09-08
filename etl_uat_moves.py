@@ -55,6 +55,21 @@ def env(n):
     return v
 
 
+def current_sprint():
+    """The calendar-driven current sprint from config.js SPRINT_ANCHOR — robust
+    against outlier future sprint numbers in the data (teams plan ahead, so
+    max(sprint) is NOT the current sprint). Returns None if config can't be read."""
+    import datetime
+    try:
+        cfg = open(os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.js")).read()
+        anc = int(re.search(r"SPRINT_ANCHOR:\s*\{\s*sprint:\s*(\d+)", cfg).group(1))
+        start = datetime.date.fromisoformat(re.search(r'start:\s*"(\d{4}-\d{2}-\d{2})"', cfg).group(1))
+        length = int(re.search(r"SPRINT_LENGTH_DAYS:\s*(\d+)", cfg).group(1))
+        return anc + (datetime.date.today() - start).days // length
+    except Exception:
+        return None
+
+
 def sb_get(path):
     key = env("SUPABASE_SERVICE_ROLE_KEY")
     h = {"apikey": key, "Authorization": "Bearer " + key}
@@ -108,9 +123,9 @@ def main():
         floor = SPRINT_FLOOR
         scope = f"full backfill (sprint >= {floor})"
     else:
-        top = max(int(r["sprint"]) for r in sprinted)
-        floor = top - (RECENT_SPRINTS - 1)
-        scope = f"recent sprints {floor}-{top}"
+        cur = current_sprint() or max(int(r["sprint"]) for r in sprinted)
+        floor = cur - (RECENT_SPRINTS - 1)
+        scope = f"recent sprints >= {floor} (current {cur})"
     cands = [r for r in sprinted if int(r["sprint"]) >= floor]
     print(f"Scanning {len(cands)} sprinted tickets for UAT moves ({scope})...")
     rows, tickets_with_moves = [], 0
