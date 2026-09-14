@@ -128,9 +128,16 @@ def main():
         scope = f"recent sprints >= {floor} (current {cur})"
     cands = [r for r in sprinted if int(r["sprint"]) >= floor]
     print(f"Scanning {len(cands)} sprinted tickets for UAT moves ({scope})...")
-    rows, tickets_with_moves = [], 0
+    rows, tickets_with_moves, skipped = [], 0, 0
     for r in cands:
-        moves = uat_moves(r["task_gid"])
+        try:
+            moves = uat_moves(r["task_gid"])
+        except urllib.error.HTTPError as e:
+            # Task in a project/team this PAT can't read, or deleted — skip it.
+            if e.code in (403, 404):
+                skipped += 1
+                continue
+            raise
         if not moves:
             continue
         tickets_with_moves += 1
@@ -142,6 +149,8 @@ def main():
                 "name": r.get("name"), "sprint": int(r["sprint"]), "assignee": r.get("assignee"),
                 "section": UAT_SECTION,
             })
+    if skipped:
+        print(f"  skipped {skipped} inaccessible/deleted task(s).")
     print(f"{len(rows)} move events across {tickets_with_moves} tickets.")
     upsert(rows)
     print("Done.")

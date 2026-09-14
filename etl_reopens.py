@@ -30,6 +30,7 @@ import re
 import sys
 import json
 import urllib.request
+import urllib.error
 
 ASANA = "https://app.asana.com/api/1.0"
 REOPEN_SECTION = "Reopen"
@@ -146,8 +147,16 @@ def main():
     scope_sprints = sorted({int(r["sprint"]) for r in cands})
     print(f"Scanning {len(cands)} sprinted tickets for reopens ({scope})...")
     rows = []
+    skipped = 0
     for r in cands:
-        moves, last_at = reopen_moves(r["task_gid"])
+        try:
+            moves, last_at = reopen_moves(r["task_gid"])
+        except urllib.error.HTTPError as e:
+            # Task in a project/team this PAT can't read, or deleted — skip it.
+            if e.code in (403, 404):
+                skipped += 1
+                continue
+            raise
         field = num(r.get("reopened_count"))
         count = max(moves, field)
         if count <= 0:
@@ -157,6 +166,8 @@ def main():
             "assignee": r.get("assignee"), "reopen_count": count, "reopen_moves": moves,
             "reopen_field": field, "last_reopened_at": last_at,
         })
+    if skipped:
+        print(f"  skipped {skipped} inaccessible/deleted task(s).")
     print(f"{len(rows)} tickets reopened >=1x (board or manual field).")
     prune({x["task_gid"] for x in rows}, scope_sprints)
     upsert(rows)

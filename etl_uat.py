@@ -22,6 +22,7 @@ import sys
 import json
 import urllib.parse
 import urllib.request
+import urllib.error
 
 ASANA_BASE = "https://app.asana.com/api/1.0"
 # Board columns that mean "handed to testing". "Ready for UAT" is the one the
@@ -99,9 +100,16 @@ def main():
     pat = env("ASANA_PAT")
     tickets = sb_testing_tickets()
     print(f"Testing tickets found: {len(tickets)}")
-    rows, missing = [], 0
+    rows, missing, skipped = [], 0, 0
     for t in tickets:
-        ts = entered_section_at(pat, t["task_gid"], t["section"])
+        try:
+            ts = entered_section_at(pat, t["task_gid"], t["section"])
+        except urllib.error.HTTPError as e:
+            # Task this PAT can't read, or deleted — skip it, don't kill the run.
+            if e.code in (403, 404):
+                skipped += 1
+                continue
+            raise
         if ts:
             rows.append({"task_gid": t["task_gid"], "section_since": ts})
         else:
@@ -110,6 +118,8 @@ def main():
     upsert(rows)
     if missing:
         print(f"  {missing} ticket(s) had no matching move story — section_since left as-is.")
+    if skipped:
+        print(f"  skipped {skipped} inaccessible/deleted task(s).")
     print("Done.")
 
 

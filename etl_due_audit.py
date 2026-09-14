@@ -98,8 +98,17 @@ def main():
     cands = [r for r in items if not is_done(r) and str(r.get("sprint") or "").isdigit()]
     print(f"Auditing {len(cands)} open, sprinted tickets for due-date changes...")
     rows = []
+    skipped = 0
     for r in cands:
-        evs = due_changes(r["task_gid"])
+        try:
+            evs = due_changes(r["task_gid"])
+        except urllib.error.HTTPError as e:
+            # Some tasks live in projects/teams this PAT can't read ("You do not have
+            # access to this parent") or were deleted — skip them, don't kill the run.
+            if e.code in (403, 404):
+                skipped += 1
+                continue
+            raise
         if not evs:
             continue
         # Ignore edits by excluded changers (PMs/leads). Base the row on the latest
@@ -119,6 +128,8 @@ def main():
             "n_changes": len(relevant), "pushed_later": pushed_later, "modified": modified,
         })
     mod = sum(1 for x in rows if x["modified"])
+    if skipped:
+        print(f"  skipped {skipped} inaccessible/deleted task(s).")
     print(f"{len(rows)} tickets have due-date history; {mod} were MODIFIED (existing date changed/removed).")
     # Drop stale rows: tickets no longer in scope (done/unsprinted) or whose edits are
     # now all by excluded users — so the audit reflects only current, relevant changes.
