@@ -74,8 +74,9 @@ if [ -n "${ASANA_PAT:-}" ]; then
   run_step "due-audit" "$PY" "$DIR/etl_due_audit.py"
   run_step "uat-moves" "$PY" "$DIR/etl_uat_moves.py"
   run_step "reopens" "$PY" "$DIR/etl_reopens.py"
+  run_step "cycle-time" "$PY" "$DIR/etl_cycle_time.py"
 else
-  log "SKIP  uat-dates / due-audit / uat-moves / reopens — ASANA_PAT not set in .env"
+  log "SKIP  uat-dates / due-audit / uat-moves / reopens / cycle-time — ASANA_PAT not set in .env"
 fi
 
 # --- Amplitude (Funnels / Marketing / Paths) -> Supabase ----------------------
@@ -87,6 +88,25 @@ if [ -n "${AMPLITUDE_PROD_API_KEY:-}" ]; then
   run_step "trends"    "$PY" "$DIR/etl_trends.py" --supabase --days 90
 else
   log "SKIP  amplitude/marketing/paths — AMPLITUDE_PROD_API_KEY not set in .env"
+fi
+
+# --- Partner performance: synthetic uptime + latency monitor -> fact_uptime ---
+# Observes the website + API from the outside (no partner cooperation needed).
+# Always runs; it just needs Supabase creds + at least one enabled target in
+# monitor_targets.json (skips per-target if none are enabled).
+run_step "uptime" "$PY" "$DIR/etl_uptime.py" --supabase
+
+# --- Website performance: PageSpeed Insights / Core Web Vitals -> fact_web_vitals
+# Needs a (free) Google API key. PSI is heavy + daily-granular, so only run it a
+# few times a day — gate on the top of the hour band to avoid burning quota.
+if [ -n "${PAGESPEED_API_KEY:-}" ]; then
+  HOUR="$(date +%H)"
+  case "$HOUR" in
+    00|06|12|18) run_step "pagespeed" "$PY" "$DIR/etl_pagespeed.py" --supabase ;;
+    *) log "SKIP  pagespeed — runs at 00/06/12/18h only (hour=$HOUR)" ;;
+  esac
+else
+  log "SKIP  pagespeed — PAGESPEED_API_KEY not set in .env"
 fi
 
 # --- One-time Slack alerts: App Store Impressions & Google Play (Android) ------

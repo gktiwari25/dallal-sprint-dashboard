@@ -25,6 +25,7 @@
   <nav class="tabs">
     <button id="tabDelivery" class="tab active">Delivery</button>
     <button id="tabAppStore" class="tab">App Analytics</button>
+    <button id="tabPerformance" class="tab">Performance</button>
     <button id="tabFunnels" class="tab">Funnels</button>
     <button id="tabEng" class="tab">Engineering</button>
     <button id="tabUserFlow" class="tab">User Flow</button>
@@ -428,6 +429,53 @@
     </div></div>
   </div><!-- /appstoreView -->
 
+  <div id="performanceView" class="hidden">
+    <div class="section"><h2 class="sech">Partner Performance &mdash; SLA scorecard
+      <span class="tip" data-tip="A single view of how the 3rd-party dev partner is performing across reliability, speed and app quality. Uptime and latency are measured externally by a synthetic monitor (no partner instrumentation needed); website vitals come from Google PageSpeed; app quality from the store analytics feeds.">i</span>
+    </h2><div class="body">
+      <div style="display:flex;align-items:center;gap:10px;margin:0 0 12px;flex-wrap:wrap">
+        <label class="sub" for="perfRange" style="color:var(--muted)">Window</label>
+        <select id="perfRange" class="fenv">
+          <option value="7">Last 7 days</option>
+          <option value="30" selected>Last 30 days</option>
+          <option value="90">Last 90 days</option>
+        </select>
+        <span id="perfWindow" class="muted" style="font-size:12.5px"></span>
+      </div>
+      <div class="grid" id="perfKpis"></div>
+      <div id="perfEmpty" class="hidden" style="margin:12px 0 0;padding:10px 12px;border-radius:8px;background:#eaf2ff;border:1px solid #b6cdf2;color:#1c3a63;font-size:12.5px"></div>
+      <p class="muted" style="margin:12px 0 0;font-size:12.5px">SLA targets are configurable in <b>app-v2.js</b> (<code>SLA_TARGETS</code>). Green = meeting target, amber = close, red = breaching.</p>
+    </div></div>
+
+    <div class="section"><h2>Reliability &mdash; uptime &amp; availability</h2><div class="body">
+      <div id="perfUptimeTable" class="listblock"></div>
+      <div class="chartcard" style="margin-top:14px"><h3>Uptime % by day</h3><div class="chartbox"><canvas id="perfUptimeChart"></canvas></div></div>
+    </div></div>
+
+    <div class="section"><h2>Speed &mdash; response time (website &amp; backend)</h2><div class="body">
+      <div class="charts">
+        <div class="chartcard"><h3>Avg response time by day (ms)</h3><div class="chartbox"><canvas id="perfLatencyChart"></canvas></div></div>
+        <div class="chartcard"><h3>P95 response time by day (ms)</h3><div class="chartbox"><canvas id="perfP95Chart"></canvas></div></div>
+      </div>
+    </div></div>
+
+    <div class="section"><h2>Website performance &mdash; Core Web Vitals
+      <span class="tip" data-tip="Google PageSpeed Insights / Lighthouse. LCP (loading), CLS (visual stability) and INP/TBT (responsiveness) are the three Core Web Vitals. 'Good' thresholds: LCP ≤ 2.5s, CLS ≤ 0.1, INP ≤ 200ms.">i</span></h2><div class="body">
+      <div class="grid" id="perfVitalsKpis"></div>
+      <div id="perfVitalsEmpty" class="hidden" style="margin:12px 0 0;padding:10px 12px;border-radius:8px;background:#fff8e6;border:1px solid #f0d998;color:#7a5b12;font-size:12.5px"></div>
+      <div class="chartcard" style="margin-top:14px"><h3>Lighthouse performance score by day</h3><div class="chartbox"><canvas id="perfScoreChart"></canvas></div></div>
+    </div></div>
+
+    <div class="section"><h2>App quality &mdash; stability</h2><div class="body">
+      <div class="grid" id="perfAppKpis"></div>
+      <p class="muted" style="margin:12px 0 0;font-size:12.5px">From the App Store / Google Play feeds. See the <b>App Analytics</b> tab for the full breakdown by platform.</p>
+    </div></div>
+
+    <div class="section"><h2>Recent incidents &mdash; failed checks</h2><div class="body">
+      <div id="perfIncidents" class="listblock"></div>
+    </div></div>
+  </div><!-- /performanceView -->
+
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
@@ -437,6 +485,6 @@
 <script src="config.js?v=239"></script>
 <script src="sample-data.js?v=237"></script>
 <script src="funnels-data.js?v=237"></script>
-<script src="app-v2.js?v=64"></script>
+<script src="app-v2.js?v=65"></script>
 </body>
 </html>

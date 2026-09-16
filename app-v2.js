@@ -20,6 +20,12 @@
 
   // ---------- helpers ----------
   function num(v) { var n = parseFloat(v); return isNaN(n) ? 0 : n; }
+  function median(arr) {
+    if (!arr || !arr.length) return null;
+    var s = arr.slice().sort(function (a, b) { return a - b; });
+    var m = Math.floor(s.length / 2);
+    return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+  }
   // Accurate reopen count per task (from fact_reopens: Reopen-column moves merged
   // with the manual "Reopened Count" field). Falls back to the raw field only if the
   // reopen table hasn't loaded yet. Set in loadAll().
@@ -282,6 +288,24 @@
     var classifiedBugs = bugs.filter(function (i) { return ["Dev", "UAT", "Prod"].indexOf(i.found_in) !== -1; });
     var prodBugs = bugs.filter(function (i) { return i.found_in === "Prod"; });
 
+    // --- Extra delivery KPIs -------------------------------------------------
+    // #3 Critical (P1) bugs resolved within 24h of being raised (SLA), this sprint.
+    var critBugs = bugs.filter(function (i) { return (i.priority || "").indexOf("P1") === 0; });
+    var critFixed = critBugs.filter(isDone);
+    var critFixed24 = critFixed.filter(function (i) {
+      if (!i.created_at || !i.completed_at) return false;
+      return (new Date(i.completed_at) - new Date(i.created_at)) <= 24 * 3600 * 1000;
+    });
+    // #2 Open bugs older than 14 days — BACKLOG-WIDE (all sprints), an aging signal.
+    var _now = Date.now();
+    var openBugs14 = (data.items || []).filter(function (i) {
+      return isBug(i) && !isDone(i) && i.created_at && (_now - new Date(i.created_at)) > 14 * 86400000;
+    }).length;
+    // #4 Cycle time (approved -> released) for THIS sprint's released tickets, median days.
+    var cycleVals = (data.cycleTime || [])
+      .filter(function (c) { return String(c.sprint) === String(sprint) && c.cycle_days != null; })
+      .map(function (c) { return num(c.cycle_days); });
+
     var gids = {}; its.forEach(function (i) { gids[i.task_gid] = 1; });
     var fl = data.flow.filter(function (f) { return gids[f.task_gid]; });
     function avg(field) {
@@ -316,6 +340,14 @@
       // Bugs with no Found In are EXCLUDED (not silently counted as "didn't escape").
       defectEscape: classifiedBugs.length ? prodBugs.length / classifiedBugs.length : null,
       bugsClassified: classifiedBugs.length,
+      // Added delivery KPIs
+      bugsProd: prodBugs.length,                                   // #1 prod bugs this sprint
+      openBugs14: openBugs14,                                      // #2 open bugs > 14 days (backlog-wide)
+      critBugsFixed: critFixed.length,                            // #3 denominator
+      critBugsFixed24: critFixed24.length,                        // #3 within 24h
+      critFixed24Pct: critFixed.length ? critFixed24.length / critFixed.length : null,
+      cycleDaysMedian: median(cycleVals),                        // #4 approved->released median days
+      cycleN: cycleVals.length,
       escapeCoverage: bugs.length ? classifiedBugs.length / bugs.length : null,
       // Only trust the rate when enough bugs are classified (>=3 and >=50% coverage).
       escapeReliable: bugs.length ? (classifiedBugs.length >= 3 && classifiedBugs.length / bugs.length >= 0.5) : false,
@@ -587,7 +619,8 @@
       statCard("In QA", m.inQA, pctOf(m.inQA, m.planned) + "% of total", "#f5883f", "📝", "#f5883f", "A testing column: QA on Dev / Ready for UAT / QA on UAT / In UAT.") +
       statCard("Completed", m.completed, pctOf(m.completed, m.planned) + "% of total", "#22a565", "✅", "#22a565") +
       statCard("Blocked", m.blocked, pctOf(m.blocked, m.planned) + "% of total", "#ef4444", "⛔", "#ef4444") +
-      statCard("Released", m.released, pctOf(m.released, m.planned) + "% of total", "#7b61ff", "🚀", "#7b61ff", "Released board column (shipped to production).");
+      statCard("Released", m.released, pctOf(m.released, m.planned) + "% of total", "#7b61ff", "🚀", "#7b61ff", "Released board column (shipped to production).") +
+      statCard("Cycle Time", (m.cycleDaysMedian == null ? "--" : m.cycleDaysMedian + "d"), (m.cycleN ? "median · " + m.cycleN + " released" : "no released tickets"), "#2f6df6", "⏱️", "#2f6df6", "Median days from a story being approved (moved into 'Ready for Development (handoff complete)') to Released, for tickets released in this sprint. Computed from the Asana activity log.");
     var openItems = m.its.filter(function (i) { return !isDone(i) && !isOnHold(i); });
     var onHoldCount = m.its.filter(function (i) { return !isDone(i) && isOnHold(i); }).length;
     el("openList").innerHTML = notCompletedBlock("open", openItems.length, m.planned, onHoldCount,
@@ -602,7 +635,10 @@
       card("Critical (P1)", m.pCritical, { icon: "🔴", accent: "#c62828", tip: "Bug tickets with task Priority = P1 Critical." }) +
       card("High (P2)", m.pHigh, { icon: "🟠", accent: "#f29f05", tip: "Bug tickets with task Priority = P2 High." }) +
       card("Reopened", m.reopened, { icon: "🔁", tip: "Tickets moved back into the \"Reopen\" column at least once this sprint — counted from the Asana activity log, merged with the manual \"Reopened Count\" field (whichever is higher). See the Reopened Tickets list below. Rework rate of delivered items: " + pct(m.reopenedPct) + "." }) +
-      card("Defect Escape", (m.escapeReliable ? pct(m.defectEscape) : "--") + ' <span style="font-size:13px;color:var(--muted,#5b6577)">' + m.bugsClassified + "/" + m.bugs + " classified</span>", { icon: "🪲", accent: m.escapeReliable ? undefined : "#5b6577", tip: "Share of bugs found in Prod, out of bugs that have a 'Found In' value (Dev/UAT/Prod). Bugs with no 'Found In' are excluded, and the rate shows '—' until at least 3 bugs and 50% of the sprint's bugs are classified in Asana." });
+      card("Defect Escape", (m.escapeReliable ? pct(m.defectEscape) : "--") + ' <span style="font-size:13px;color:var(--muted,#5b6577)">' + m.bugsClassified + "/" + m.bugs + " classified</span>", { icon: "🪲", accent: m.escapeReliable ? undefined : "#5b6577", tip: "Share of bugs found in Prod, out of bugs that have a 'Found In' value (Dev/UAT/Prod). Bugs with no 'Found In' are excluded, and the rate shows '—' until at least 3 bugs and 50% of the sprint's bugs are classified in Asana." }) +
+      card("Prod Bugs / Release", m.bugsProd, { icon: "🚨", accent: m.bugsProd ? "#c62828" : "#2e7d32", tip: "Bugs found in Production (Found In = Prod) in this sprint — a proxy for defects escaping to a release. Note: many bugs have no 'Found In' set in Asana, so treat this as a floor." }) +
+      card("Open Bugs > 14d", m.openBugs14, { icon: "📆", accent: m.openBugs14 ? "#c62828" : "#2e7d32", tip: "Bugs still open (not delivered/released) that were created more than 14 days ago. BACKLOG-WIDE — counts all sprints, not just the selected one — as an aging signal." }) +
+      card("Critical Fixed < 24h", (m.critBugsFixed ? pct(m.critFixed24Pct) : "--") + ' <span style="font-size:13px;color:var(--muted,#5b6577)">' + m.critBugsFixed24 + "/" + m.critBugsFixed + " fixed</span>", { icon: "⚡", accent: (m.critFixed24Pct == null ? "#5b6577" : (m.critFixed24Pct >= 0.8 ? "#2e7d32" : "#c62828")), tip: "Of this sprint's P1/Critical bugs that have been fixed, the share resolved within 24h of being raised (created → completed). Shows '—' until at least one critical bug is fixed." });
     // (Bugs by priority doughnut removed per design.)
     var bugItems = m.its.filter(isBug);
     var bugsClosedN = bugItems.filter(isDone).length;
@@ -1460,6 +1496,7 @@
     var isSub = isMkt || isFlow || isCrm || isJourney;
     if (isSub) lastUserFlowSub = which;
     var isDel = which === "delivery", isEng = which === "eng", isFun = which === "funnels", isAppStore = which === "appstore";
+    var isPerf = which === "performance";
     // views
     el("sprintView").classList.toggle("hidden", !isDel);
     el("engView").classList.toggle("hidden", !isEng);
@@ -1469,6 +1506,7 @@
     el("crmView").classList.toggle("hidden", !isCrm);
     el("journeyView").classList.toggle("hidden", !isJourney);
     el("appstoreView").classList.toggle("hidden", !isAppStore);
+    el("performanceView").classList.toggle("hidden", !isPerf);
     // User Flow sub-tab bar visible only while a sub-tab is active
     el("userFlowTabs").classList.toggle("hidden", !isSub);
     // sprint selector only on Delivery
@@ -1477,6 +1515,7 @@
     // top-level active states (User Flow lit for any of its sub-tabs)
     el("tabDelivery").classList.toggle("active", isDel);
     el("tabAppStore").classList.toggle("active", isAppStore);
+    el("tabPerformance").classList.toggle("active", isPerf);
     el("tabFunnels").classList.toggle("active", isFun);
     el("tabEng").classList.toggle("active", isEng);
     el("tabUserFlow").classList.toggle("active", isSub);
@@ -1489,6 +1528,7 @@
     if (isFun) renderFunnels();
     if (isMkt) renderMarketing();
     if (isAppStore) renderAppStore();
+    if (isPerf) renderPerformance();
   }
 
   // ---------- funnels page ----------
@@ -2929,6 +2969,203 @@
       '<div class="terrpanel"><div class="terrpanel-h">Downloads by Territory <span>· ' + asRangeLabel() + '</span></div><div class="terrlist">' + listRows + '</div></div>' +
       '<div class="terrpanel"><div class="terrpanel-h">Download Distribution</div><div class="dbar">' + segs + '</div><div class="dlegend">' + legend + '</div></div>';
   }
+  // ---------- Partner performance / SLA page ----------
+  // Tune these to the SLA you hold the 3rd-party partner to. value meets target =
+  // green; between target and *_warn = amber; worse than *_warn = red.
+  var SLA_TARGETS = {
+    uptime_pct: 99.5, uptime_warn: 99.0,   // reliability (higher is better)
+    p95_ms: 800,      p95_warn: 1500,      // response time, ms (lower is better)
+    web_score: 90,    web_warn: 70,        // Lighthouse performance (higher is better)
+    crash_free: 99.5, crash_free_warn: 99.0, // crash-free sessions % (higher is better)
+  };
+  var PERF_COL = { web: "#7b61ff", api: "#0ea89a", warn: "#d97706", bad: "#dc2626", good: "#16a34a", muted: "#64748b" };
+
+  function ragHex(v, target, warn, higherBetter) {
+    if (v == null || isNaN(v)) return PERF_COL.muted;
+    if (higherBetter) return v >= target ? PERF_COL.good : (v >= warn ? PERF_COL.warn : PERF_COL.bad);
+    return v <= target ? PERF_COL.good : (v <= warn ? PERF_COL.warn : PERF_COL.bad);
+  }
+  function perfTile(title, valueHtml, icon, color, sub, tip) {
+    var t = tip ? ' <span class="tip" data-tip="' + escAttr(tip) + '">i</span>' : '';
+    return '<div class="mcard" style="--mc:' + color + '"><div class="mcard-top"><span class="mcard-ic">' + icon +
+      '</span><span class="mcard-title">' + title + t + '</span></div><div class="mcard-val">' + valueHtml + '</div>' +
+      (sub ? '<div class="mcard-sub">' + sub + '</div>' : '') + '</div>';
+  }
+  function ragVal(text, hex) { return '<span style="color:' + hex + '">' + text + '</span>'; }
+  function kindBadge(kind) {
+    var isApi = kind === "api";
+    return '<span style="display:inline-block;font:700 10.5px ui-monospace,Menlo,monospace;color:#fff;background:' +
+      (isApi ? PERF_COL.api : PERF_COL.web) + ';padding:2px 7px;border-radius:6px">' + (isApi ? "API" : "WEB") + '</span>';
+  }
+  function fmtMs(v) { v = num(v); return v >= 1000 ? (Math.round(v / 100) / 10) + "s" : Math.round(v) + "ms"; }
+
+  function renderPerformance() {
+    var days = parseInt((el("perfRange") || {}).value || "30", 10) || 30;
+    var cutoff = new Date(); cutoff.setUTCDate(cutoff.getUTCDate() - (days - 1));
+    var cutoffStr = cutoff.toISOString().slice(0, 10);
+    el("perfWindow").textContent = "since " + fmtDay(cutoffStr);
+
+    var daily = (data.uptimeDaily || []).filter(function (r) { return String(r.date) >= cutoffStr; });
+    var vitals = (data.webVitals || []).filter(function (r) { return String(r.date) >= cutoffStr; });
+
+    // ---- scorecard: aggregate uptime over the window (weighted by checks) ----
+    function upAgg(rows) {
+      var checks = 0, up = 0;
+      rows.forEach(function (r) { checks += num(r.checks); up += num(r.up); });
+      return checks ? (100 * up / checks) : null;
+    }
+    var overall = upAgg(daily);
+    var webRows = daily.filter(function (r) { return r.kind !== "api"; });
+    var apiRows = daily.filter(function (r) { return r.kind === "api"; });
+    var webUp = upAgg(webRows), apiUp = upAgg(apiRows);
+    // p95 latency = worst (max) daily p95 across API targets in the window
+    var apiP95 = apiRows.length ? Math.max.apply(null, apiRows.map(function (r) { return num(r.p95_ms); })) : null;
+    var webP95 = webRows.length ? Math.max.apply(null, webRows.map(function (r) { return num(r.p95_ms); })) : null;
+
+    // latest Lighthouse mobile score (avg across pages on the most recent date)
+    var mob = vitals.filter(function (r) { return r.form_factor === "mobile" && r.perf_score != null; });
+    var latestScore = null, latestLcp = null, latestCls = null, latestInp = null;
+    if (mob.length) {
+      var maxD = mob.reduce(function (a, r) { return String(r.date) > a ? String(r.date) : a; }, "");
+      var latest = mob.filter(function (r) { return String(r.date) === maxD; });
+      var avg = function (f) { var xs = latest.map(function (r) { return r[f]; }).filter(function (x) { return x != null; }); return xs.length ? xs.reduce(function (a, b) { return a + num(b); }, 0) / xs.length : null; };
+      latestScore = avg("perf_score"); latestLcp = avg("field_lcp_ms") != null ? avg("field_lcp_ms") : avg("lab_lcp_ms");
+      latestCls = avg("field_cls") != null ? avg("field_cls") : avg("lab_cls");
+      latestInp = avg("field_inp_ms") != null ? avg("field_inp_ms") : avg("lab_tbt_ms");
+    }
+
+    // app crash-free (iOS sessions vs crashes) from the store feed, over the window
+    var as = (data.appstore || []).filter(function (r) { return String(r.date) >= cutoffStr; });
+    var sumMetric = function (metric, platform) {
+      return as.reduce(function (s, r) { return s + ((r.metric === metric && (!platform || r.platform === platform)) ? num(r.value) : 0); }, 0);
+    };
+    var iosSess = sumMetric("sessions", "ios"), iosCrash = sumMetric("crashes", "ios");
+    var crashFree = iosSess > 0 ? (100 * (1 - iosCrash / iosSess)) : null;
+    var cut7 = new Date(); cut7.setUTCDate(cut7.getUTCDate() - 6); var c7 = cut7.toISOString().slice(0, 10);
+    var crashes7 = (data.appstore || []).filter(function (r) { return r.metric === "crashes" && String(r.date) >= c7; })
+      .reduce(function (s, r) { return s + num(r.value); }, 0);
+
+    var T = SLA_TARGETS;
+    var tiles = "";
+    tiles += perfTile("Overall Uptime", overall == null ? "—" : ragVal((Math.round(overall * 100) / 100) + "%", ragHex(overall, T.uptime_pct, T.uptime_warn, true)), "🟢", PERF_COL.good,
+      "target ≥ " + T.uptime_pct + "%", "Share of all synthetic checks (website + API) that returned the expected status over the window. Target " + T.uptime_pct + "%.");
+    tiles += perfTile("Website Uptime", webUp == null ? "—" : ragVal((Math.round(webUp * 100) / 100) + "%", ragHex(webUp, T.uptime_pct, T.uptime_warn, true)), "🌐", PERF_COL.web,
+      "target ≥ " + T.uptime_pct + "%", "Uptime of the website targets over the window.");
+    tiles += perfTile("Backend Uptime", apiUp == null ? "—" : ragVal((Math.round(apiUp * 100) / 100) + "%", ragHex(apiUp, T.uptime_pct, T.uptime_warn, true)), "🖥️", PERF_COL.api,
+      "target ≥ " + T.uptime_pct + "%", "Uptime of the API targets over the window. Enable API targets in monitor_targets.json.");
+    tiles += perfTile("Backend P95 Latency", apiP95 == null ? "—" : ragVal(fmtMs(apiP95), ragHex(apiP95, T.p95_ms, T.p95_warn, false)), "⚡", PERF_COL.api,
+      "target ≤ " + fmtMs(T.p95_ms), "Worst daily 95th-percentile response time across API targets. 95% of requests were faster than this. Target " + fmtMs(T.p95_ms) + ".");
+    tiles += perfTile("Website P95 Latency", webP95 == null ? "—" : ragVal(fmtMs(webP95), ragHex(webP95, T.p95_ms, T.p95_warn, false)), "⏱️", PERF_COL.web,
+      "target ≤ " + fmtMs(T.p95_ms), "Worst daily 95th-percentile response time across website targets.");
+    tiles += perfTile("Website Perf Score", latestScore == null ? "—" : ragVal(Math.round(latestScore) + "/100", ragHex(latestScore, T.web_score, T.web_warn, true)), "📊", PERF_COL.web,
+      "Lighthouse · mobile", "Latest Google Lighthouse performance score (mobile). Target ≥ " + T.web_score + ". Needs PAGESPEED_API_KEY.");
+    tiles += perfTile("App Crash-Free", crashFree == null ? "—" : ragVal((Math.round(crashFree * 100) / 100) + "%", ragHex(crashFree, T.crash_free, T.crash_free_warn, true)), "📱", "#5a5be6",
+      "iOS sessions · window", "Share of iOS sessions with no crash (1 − crashes ÷ sessions) over the window. Target ≥ " + T.crash_free + "%.");
+    el("perfKpis").innerHTML = tiles;
+
+    // empty-state guidance when the monitor hasn't produced data yet
+    if (!daily.length) {
+      el("perfEmpty").innerHTML = "No uptime data yet. Apply <b>sql/fact_performance.sql</b> in Supabase, enable your targets in <b>monitor_targets.json</b>, then the hourly sync populates this. You can also run it now: <code>python3 etl_uptime.py --supabase</code>.";
+      show("perfEmpty");
+    } else { hide("perfEmpty"); }
+
+    // ---- reliability: per-target table ----
+    var byTarget = {};
+    daily.forEach(function (r) {
+      var t = byTarget[r.target] || (byTarget[r.target] = { label: r.label || r.target, kind: r.kind, url: r.url, checks: 0, up: 0, p95: 0, avgNum: 0, avgDen: 0 });
+      t.checks += num(r.checks); t.up += num(r.up); t.p95 = Math.max(t.p95, num(r.p95_ms));
+      t.avgNum += num(r.avg_ms) * num(r.checks); t.avgDen += num(r.checks);
+    });
+    var trows = Object.keys(byTarget).map(function (k) {
+      var t = byTarget[k], upPct = t.checks ? (100 * t.up / t.checks) : null, avg = t.avgDen ? (t.avgNum / t.avgDen) : null;
+      return { label: t.label, kind: t.kind, url: t.url, upPct: upPct, avg: avg, p95: t.p95, checks: t.checks, down: t.checks - t.up };
+    }).sort(function (a, b) { return (a.upPct || 0) - (b.upPct || 0); });
+    if (trows.length) {
+      el("perfUptimeTable").innerHTML =
+        '<table class="risks"><thead><tr><th></th><th>Target</th><th style="text-align:right">Uptime</th>' +
+        '<th style="text-align:right">Avg</th><th style="text-align:right">P95</th><th style="text-align:right">Checks</th><th style="text-align:right">Failed</th></tr></thead><tbody>' +
+        trows.map(function (r) {
+          return '<tr><td>' + kindBadge(r.kind) + '</td><td>' + esc(r.label) + '<br><span class="muted" style="font-size:11px">' + esc(r.url || "") + '</span></td>' +
+            '<td style="text-align:right;font-weight:700">' + (r.upPct == null ? "—" : ragVal((Math.round(r.upPct * 100) / 100) + "%", ragHex(r.upPct, T.uptime_pct, T.uptime_warn, true))) + '</td>' +
+            '<td style="text-align:right">' + (r.avg == null ? "—" : fmtMs(r.avg)) + '</td>' +
+            '<td style="text-align:right">' + ragVal(fmtMs(r.p95), ragHex(r.p95, T.p95_ms, T.p95_warn, false)) + '</td>' +
+            '<td style="text-align:right">' + fmtInt(r.checks) + '</td>' +
+            '<td style="text-align:right;color:' + (r.down ? PERF_COL.bad : PERF_COL.muted) + '">' + fmtInt(r.down) + '</td></tr>';
+        }).join("") + '</tbody></table>';
+    } else {
+      el("perfUptimeTable").innerHTML = '<p class="muted">No targets checked yet.</p>';
+    }
+
+    // ---- daily series by kind (for the trend charts) ----
+    var dates = {};
+    daily.forEach(function (r) { dates[r.date] = 1; });
+    var xs = Object.keys(dates).sort();
+    function series(kind, field, agg) {
+      return xs.map(function (d) {
+        var rs = daily.filter(function (r) { return String(r.date) === d && (kind === "web" ? r.kind !== "api" : r.kind === "api"); });
+        if (!rs.length) return null;
+        if (agg === "uptime") { var c = 0, u = 0; rs.forEach(function (r) { c += num(r.checks); u += num(r.up); }); return c ? Math.round(10000 * u / c) / 100 : null; }
+        if (agg === "max") return Math.max.apply(null, rs.map(function (r) { return num(r[field]); }));
+        var n = 0, den = 0; rs.forEach(function (r) { n += num(r[field]) * num(r.checks); den += num(r.checks); }); return den ? Math.round(n / den) : null;
+      });
+    }
+    var xl = xs.map(function (d) { return fmtDay(d); });
+    function lineCfg(datasets, yTitle, yMax) {
+      return { type: "line", data: { labels: xl, datasets: datasets },
+        options: { maintainAspectRatio: false, spanGaps: true, interaction: { mode: "index", intersect: false },
+          scales: { y: { beginAtZero: false, suggestedMax: yMax, title: { display: !!yTitle, text: yTitle } } } } };
+    }
+    function ds(label, arr, color) { return { label: label, data: arr, borderColor: color, backgroundColor: color, tension: 0.3, pointRadius: 2, spanGaps: true }; }
+    if (xs.length) {
+      mkChart("perfUptimeChart", lineCfg([ds("Website", series("web", "uptime_pct", "uptime"), PERF_COL.web), ds("Backend", series("api", "uptime_pct", "uptime"), PERF_COL.api)], "uptime %", 100));
+      mkChart("perfLatencyChart", lineCfg([ds("Website", series("web", "avg_ms", "avg"), PERF_COL.web), ds("Backend", series("api", "avg_ms", "avg"), PERF_COL.api)], "ms"));
+      mkChart("perfP95Chart", lineCfg([ds("Website", series("web", "p95_ms", "max"), PERF_COL.web), ds("Backend", series("api", "p95_ms", "max"), PERF_COL.api)], "ms"));
+    }
+
+    // ---- website Core Web Vitals ----
+    if (mob.length) {
+      hide("perfVitalsEmpty");
+      var vt = "";
+      vt += perfTile("Performance", latestScore == null ? "—" : ragVal(Math.round(latestScore) + "/100", ragHex(latestScore, T.web_score, T.web_warn, true)), "📊", PERF_COL.web, "Lighthouse · mobile", "Overall Lighthouse performance score.");
+      vt += perfTile("LCP", latestLcp == null ? "—" : ragVal(fmtMs(latestLcp), ragHex(latestLcp, 2500, 4000, false)), "🖼️", PERF_COL.web, "good ≤ 2.5s", "Largest Contentful Paint — loading. Good ≤ 2.5s, poor > 4s.");
+      vt += perfTile("CLS", latestCls == null ? "—" : ragVal((Math.round(latestCls * 1000) / 1000), ragHex(latestCls, 0.1, 0.25, false)), "📐", PERF_COL.web, "good ≤ 0.1", "Cumulative Layout Shift — visual stability. Good ≤ 0.1, poor > 0.25.");
+      vt += perfTile("INP", latestInp == null ? "—" : ragVal(fmtMs(latestInp), ragHex(latestInp, 200, 500, false)), "👆", PERF_COL.web, "good ≤ 200ms", "Interaction to Next Paint — responsiveness (lab TBT when field data is absent). Good ≤ 200ms.");
+      el("perfVitalsKpis").innerHTML = vt;
+      // score-by-day (avg mobile across pages)
+      var sx = {}; mob.forEach(function (r) { sx[r.date] = 1; }); var sxs = Object.keys(sx).sort();
+      var scoreSeries = sxs.map(function (d) { var rs = mob.filter(function (r) { return String(r.date) === d; }); var xs2 = rs.map(function (r) { return num(r.perf_score); }); return xs2.length ? Math.round(xs2.reduce(function (a, b) { return a + b; }, 0) / xs2.length) : null; });
+      mkChart("perfScoreChart", { type: "line", data: { labels: sxs.map(function (d) { return fmtDay(d); }), datasets: [ds("Perf score (mobile)", scoreSeries, PERF_COL.web)] },
+        options: { maintainAspectRatio: false, scales: { y: { min: 0, max: 100, title: { display: true, text: "score" } } } } });
+    } else {
+      el("perfVitalsKpis").innerHTML = "";
+      el("perfVitalsEmpty").innerHTML = "No PageSpeed data yet. Set <b>PAGESPEED_API_KEY</b> in .env and enable pages in <b>monitor_targets.json</b> — the sync runs PageSpeed at 00/06/12/18h. Run now: <code>python3 etl_pagespeed.py --supabase</code>.";
+      show("perfVitalsEmpty");
+    }
+
+    // ---- app quality tiles ----
+    var at = "";
+    at += perfTile("Crash-Free Sessions", crashFree == null ? "—" : ragVal((Math.round(crashFree * 100) / 100) + "%", ragHex(crashFree, T.crash_free, T.crash_free_warn, true)), "🛡️", "#5a5be6", "iOS · window", "1 − crashes ÷ sessions over the window (iOS).");
+    at += perfTile("Crashes (7d)", fmtInt(crashes7), "💥", PERF_COL.bad, "all platforms", "Total crashes reported by the stores over the last 7 days.");
+    at += perfTile("Crashes (window)", fmtInt(sumMetric("crashes", null)), "📉", "#ef4444", "all platforms", "Total crashes over the selected window.");
+    el("perfAppKpis").innerHTML = at;
+
+    // ---- recent incidents (failed checks) ----
+    var fails = (data.uptimeRaw || []).filter(function (r) { return !r.ok; })
+      .sort(function (a, b) { return String(b.checked_at).localeCompare(String(a.checked_at)); }).slice(0, 25);
+    if (fails.length) {
+      el("perfIncidents").innerHTML =
+        '<table class="risks"><thead><tr><th>When</th><th></th><th>Target</th><th>Status</th><th>Detail</th></tr></thead><tbody>' +
+        fails.map(function (r) {
+          var when = new Date(r.checked_at); var w = isNaN(when.getTime()) ? esc(r.checked_at) : when.toLocaleString();
+          return '<tr><td class="muted" style="white-space:nowrap">' + w + '</td><td>' + kindBadge(r.kind) + '</td><td>' + esc(r.label || r.target) + '</td>' +
+            '<td style="color:' + PERF_COL.bad + ';font-weight:700">' + esc(String(r.status == null ? "DOWN" : r.status)) + '</td>' +
+            '<td class="muted">' + esc(r.error || "") + '</td></tr>';
+        }).join("") + '</tbody></table>';
+    } else {
+      el("perfIncidents").innerHTML = '<p class="muted">No failed checks recorded' + (daily.length ? " — everything has been up. 🎉" : " yet.") + '</p>';
+    }
+  }
+
   function flagEmoji(code) {
     if (!/^[A-Za-z]{2}$/.test(code)) return "🏳️";
     return code.toUpperCase().replace(/./g, function (c) { return String.fromCodePoint(127397 + c.charCodeAt(0)); });
@@ -3026,6 +3263,10 @@
       sbSelect("fact_due_changes").catch(function () { return []; }),
       sbSelect("fact_uat_moves").catch(function () { return []; }),
       sbSelect("fact_reopens").catch(function () { return []; }),
+      sbSelect("fact_uptime_daily").catch(function () { return []; }),
+      sbSelect("fact_web_vitals").catch(function () { return []; }),
+      sbSelect("fact_uptime").catch(function () { return []; }),
+      sbSelect("fact_cycle_time").catch(function () { return []; }),
     ]).then(function (res) {
       var _preY = window.scrollY;   // preserve scroll across background repaints
       // Skip the repaint entirely when a background refresh brought no meaningful
@@ -3039,6 +3280,7 @@
       data.unreviewedPrs = res[9]; data.abandoned = res[10]; data.reengage = res[11];
       data.apiEndpoints = res[12]; data.apiRequests = res[13]; data.retro = res[14]; data.appstore = res[15];
       data.trends = res[16]; data.dueChanges = res[17]; data.uatMoves = res[18]; data.reopens = res[19];
+      data.uptimeDaily = res[20]; data.webVitals = res[21]; data.uptimeRaw = res[22]; data.cycleTime = res[23];
       // Accurate reopen counts (Reopen-column moves merged with the manual field),
       // keyed by task — used everywhere instead of the unreliable reopened_count.
       _reopenMap = {};
@@ -3244,6 +3486,8 @@
     el("tabCrm").addEventListener("click", function () { showTab("crm"); });
     el("tabJourney").addEventListener("click", function () { showTab("journey"); });
     el("tabAppStore").addEventListener("click", function () { showTab("appstore"); });
+    el("tabPerformance").addEventListener("click", function () { showTab("performance"); });
+    if (el("perfRange")) el("perfRange").addEventListener("change", renderPerformance);
     el("tabUserFlow").addEventListener("click", function () { showTab("userflow"); });
     el("tabPlatIos").addEventListener("click", function () { asPlatform = "ios"; renderAppStore(); });
     el("tabPlatAndroid").addEventListener("click", function () { asPlatform = "android"; renderAppStore(); });
@@ -3305,7 +3549,7 @@
       if (!sbc || !sbc.channel) return;
       try {
         var ch = sbc.channel("delivery-live");
-        ["fact_workitems", "fact_burndown", "dim_sprint", "fact_appstore_metrics", "fact_due_changes", "fact_uat_moves", "fact_reopens"].forEach(function (t) {
+        ["fact_workitems", "fact_burndown", "dim_sprint", "fact_appstore_metrics", "fact_due_changes", "fact_uat_moves", "fact_reopens", "fact_cycle_time"].forEach(function (t) {
           ch.on("postgres_changes", { event: "*", schema: "public", table: t }, liveReload);
         });
         ch.subscribe();
