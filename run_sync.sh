@@ -75,8 +75,9 @@ if [ -n "${ASANA_PAT:-}" ]; then
   run_step "uat-moves" "$PY" "$DIR/etl_uat_moves.py"
   run_step "reopens" "$PY" "$DIR/etl_reopens.py"
   run_step "cycle-time" "$PY" "$DIR/etl_cycle_time.py"
+  run_step "reconcile" "$PY" "$DIR/etl_reconcile.py"
 else
-  log "SKIP  uat-dates / due-audit / uat-moves / reopens / cycle-time — ASANA_PAT not set in .env"
+  log "SKIP  uat-dates / due-audit / uat-moves / reopens / cycle-time / reconcile — ASANA_PAT not set in .env"
 fi
 
 # --- Amplitude (Funnels / Marketing / Paths) -> Supabase ----------------------

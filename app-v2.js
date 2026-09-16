@@ -175,6 +175,20 @@
       '<span class="uat-age ' + (n >= 3 ? "over" : "warn") + '" title="Times reopened / sent back for rework">🔁 ' + n + "×</span>" +
       '<a class="tasklink" href="' + ASANA_TASK + it.task_gid + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
   }
+  // Row for an aging open bug (>14d): current board column + age in days.
+  function openBugRow(it) {
+    var days = it.created_at ? Math.floor((Date.now() - new Date(it.created_at)) / 86400000) : null;
+    var ageCls = days == null ? "" : (days >= 30 ? "over" : days >= 21 ? "warn" : "");
+    var who = it.assignee ? esc(it.assignee) : '<span class="muted">Unassigned</span>';
+    return '<div class="taskrow">' +
+      '<span class="trbadge ' + priClass(it.priority) + '">' + shortPri(it.priority) + "</span>" +
+      '<span class="trname" title="' + escAttr(it.name) + '">' + esc(it.name) + "</span>" +
+      '<span class="trwho" title="Assignee">👤 ' + who + "</span>" +
+      (num(it.sprint) > 0 ? '<span class="trstatus">S' + it.sprint + "</span>" : "") +
+      '<span class="uat-age" title="Current board column">' + esc(it.section || it.status || "—") + "</span>" +
+      '<span class="uat-age ' + ageCls + '" title="Days since created">' + (days == null ? "—" : days + "d old") + "</span>" +
+      '<a class="tasklink" href="' + ASANA_TASK + it.task_gid + '" target="_blank" rel="noopener">Open &#8599;</a></div>';
+  }
   // Collapsible list block (native <details>) that remembers open/closed across re-renders.
   function listBlock(id, title, rowsHtml) {
     var open = _collapse[id] === true; // default collapsed; remembers a user's toggle in-session
@@ -662,6 +676,17 @@
       sub: reopenedItems.length ? (reopenedItems.length + " reopened &middot; " + reopenedDone + " now closed") : "No reopened tickets this sprint",
       rows: reopenedItems.length ? reopenedItems.map(reopenedRow).join("") : '<div class="muted">No tickets were reopened this sprint. 🎉</div>'
     });
+
+    // Open bugs older than 14 days — BACKLOG-WIDE (all sprints), the detail behind the
+    // "Open Bugs > 14d" KPI, oldest first. Collapsible.
+    var _nowMs = Date.now();
+    var openBugItems = (data.items || []).filter(function (i) {
+      return isBug(i) && !isDone(i) && i.created_at && (_nowMs - new Date(i.created_at)) > 14 * 86400000;
+    }).sort(function (a, b) { return new Date(a.created_at) - new Date(b.created_at); });
+    if (_collapse["openbugs14"] === undefined) _collapse["openbugs14"] = false;   // collapsed by default
+    el("openBugsList").innerHTML = openBugItems.length
+      ? listBlock("openbugs14", "🐞 Open Bugs > 14 days — " + openBugItems.length + " (backlog-wide, all sprints)", openBugItems.map(openBugRow).join(""))
+      : '<div class="muted" style="padding:10px 2px">No open bugs older than 14 days. 🎉</div>';
 
     // (Flow section removed.)
     // Unestimated stories — committed stories (excluding bugs & sub-tasks) with no
