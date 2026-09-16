@@ -685,10 +685,15 @@
     var openBugItems = (data.items || []).filter(function (i) {
       return isBug(i) && !isDone(i) && i.created_at && (_nowMs - new Date(i.created_at)) > 14 * 86400000;
     }).sort(function (a, b) { return new Date(a.created_at) - new Date(b.created_at); });
-    if (_collapse["openbugs14"] === undefined) _collapse["openbugs14"] = false;   // collapsed by default
-    el("openBugsList").innerHTML = openBugItems.length
-      ? listBlock("openbugs14", "🐞 Open Bugs > 14 days — " + openBugItems.length + " (backlog-wide, all sprints)", openBugItems.map(openBugRow).join(""))
-      : '<div class="muted" style="padding:10px 2px">No open bugs older than 14 days. 🎉</div>';
+    // Same summaryBlock style as Bug Tickets / Reopened, in red. Ring = share of all
+    // open bugs that are aging (>14d) — higher is worse.
+    var totalOpenBugs = (data.items || []).filter(function (i) { return isBug(i) && !isDone(i); }).length;
+    el("openBugsList").innerHTML = summaryBlock("openbugs14", {
+      label: "OPEN BUGS > 14 DAYS", color: "#e94b6a",
+      pct: totalOpenBugs ? 100 * openBugItems.length / totalOpenBugs : 0,
+      sub: openBugItems.length ? (openBugItems.length + " of " + totalOpenBugs + " open bugs aging &middot; backlog-wide, all sprints") : "No open bugs older than 14 days",
+      rows: openBugItems.length ? openBugItems.map(openBugRow).join("") : '<div class="muted">No open bugs older than 14 days. 🎉</div>'
+    });
 
     // (Flow section removed.)
     // Unestimated stories — committed stories (excluding bugs & sub-tasks) with no
