@@ -267,7 +267,11 @@ def main():
     # Write ONLY completion-critical fields that match the cloud sync's format
     # exactly (section kept raw, no status). PostgREST partial upsert leaves every
     # other column — story points, burndown inputs, status, etc. — untouched.
-    FIELDS = ["task_gid", "section", "is_completed", "completed_at", "modified_at", "due_on"]
+    # These are direct reads of Asana fields (custom fields / assignee) that change
+    # over a ticket's life and must stay fresh — re-planning updates `sprint`, etc.
+    # story_points is deliberately still excluded (owned by the other sync).
+    FIELDS = ["task_gid", "section", "is_completed", "completed_at", "modified_at", "due_on",
+              "sprint", "assignee", "priority", "type", "found_in", "severity"]
     payload = [{k: r.get(k) for k in FIELDS} for r in rows]
     upsert(payload)
     # On a FULL sync we have the complete live task set, so prune rows for tasks that

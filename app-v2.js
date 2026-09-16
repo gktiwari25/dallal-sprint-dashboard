@@ -126,9 +126,11 @@
   // anything assigned to Anas, and stories planned into ADVANCED (future) sprints
   // beyond the current one — they're scheduled, not neglected. `cur` = current sprint.
   function isExcludedFromAging(i, cur) {
-    if (/^\s*anas\s*$/i.test(i.section || "")) return true;
-    if (/anas/i.test(i.assignee || "")) return true;
-    if (cur != null && num(i.sprint) > cur) return true;
+    var sec = i.section || "";
+    if (/^\s*anas\s*$/i.test(sec)) return true;               // Anas board section
+    if (/gyselda/i.test(sec)) return true;                    // "Gyselda - Flow Rework" section
+    if (/anas/i.test(i.assignee || "")) return true;          // assigned to Anas
+    if (cur != null && num(i.sprint) > cur) return true;      // advanced (future) sprint
     return false;
   }
   // The board SECTION (column) is the source of truth for where a ticket is — the
@@ -703,7 +705,7 @@
     el("openBugsList").innerHTML = summaryBlock("openbugs14", {
       label: "OPEN BUGS > 14 DAYS", color: "#e94b6a",
       pct: totalOpenBugs ? 100 * openBugItems.length / totalOpenBugs : 0,
-      sub: openBugItems.length ? (openBugItems.length + " of " + totalOpenBugs + " open bugs aging &middot; excl. Anas &amp; future sprints") : "No open bugs older than 14 days",
+      sub: openBugItems.length ? (openBugItems.length + " of " + totalOpenBugs + " open bugs aging &middot; excl. Anas, Gyselda &amp; future sprints") : "No open bugs older than 14 days",
       rows: openBugItems.length ? openBugItems.map(openBugRow).join("") : '<div class="muted">No open bugs older than 14 days. 🎉</div>'
     });
 
