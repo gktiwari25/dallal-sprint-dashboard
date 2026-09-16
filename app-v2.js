@@ -315,9 +315,11 @@
     var openBugs14 = (data.items || []).filter(function (i) {
       return isBug(i) && !isDone(i) && i.created_at && (_now - new Date(i.created_at)) > 14 * 86400000;
     }).length;
-    // #4 Cycle time (approved -> released) for THIS sprint's released tickets, median days.
+    // #4 Cycle time (approved -> released), median days, for tickets RELEASED during
+    // this sprint's calendar window (attribution by release date, not the ticket's
+    // sprint tag — so slow carryover counts under the sprint it actually shipped in).
     var cycleVals = (data.cycleTime || [])
-      .filter(function (c) { return String(c.sprint) === String(sprint) && c.cycle_days != null; })
+      .filter(function (c) { return c.cycle_days != null && c.released_at && String(sprintForDate(new Date(c.released_at))) === String(sprint); })
       .map(function (c) { return num(c.cycle_days); });
 
     var gids = {}; its.forEach(function (i) { gids[i.task_gid] = 1; });
@@ -2269,13 +2271,15 @@
   // Calendar-driven current sprint: derived purely from today's date via a
   // Monday-anchored, fixed-length cadence (config SPRINT_ANCHOR). Advances on its
   // own each sprint boundary, independent of whether the data/ETL is current.
-  function calendarSprint() {
+  function calendarSprint() { return sprintForDate(new Date()); }
+  // The sprint whose calendar window contains a given date (same cadence as above).
+  function sprintForDate(d) {
     var a = cfg.SPRINT_ANCHOR;
-    if (!a || a.sprint == null || !a.start) return null;
+    if (!a || a.sprint == null || !a.start || !d || isNaN(d.getTime())) return null;
     var start = new Date(a.start + "T00:00:00");
     if (isNaN(start.getTime())) return null;
     var len = num(cfg.SPRINT_LENGTH_DAYS) || 14;
-    var days = Math.floor((new Date() - start) / 86400000);
+    var days = Math.floor((d - start) / 86400000);
     return num(a.sprint) + Math.floor(days / len);
   }
   // Current running sprint: config override, else the calendar sprint, else the
