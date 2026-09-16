@@ -3,10 +3,10 @@
 etl_cycle_time.py — per-ticket delivery cycle time (approved -> released), computed
 from the Asana activity log.
 
-"Approved" = the ticket was moved into "Ready for Development (handoff complete)"
-(handoff to engineering). "Released" = moved into the "Released" board column. We
-read each sprinted ticket's stories, take the EARLIEST move into each of those two
-sections, and store the gap in days into `fact_cycle_time`:
+"Approved" = the ticket was moved into the "Sprint Planned" board column (committed
+to a sprint). "Released" = moved into the "Released" board column. We read each
+sprinted ticket's stories, take the EARLIEST move into each of those two sections,
+and store the gap in days into `fact_cycle_time`:
   - approved_at, released_at  = the two milestone timestamps
   - cycle_days                = (released_at - approved_at) in days (1 dp)
 Only tickets that have BOTH milestones (and released >= approved) are stored.
@@ -28,7 +28,7 @@ import urllib.request
 import urllib.error
 
 ASANA = "https://app.asana.com/api/1.0"
-APPROVED_SECTION = "Ready for Development (handoff complete)"
+APPROVED_SECTION = "Sprint Planned"
 # Board section names carry stray spaces (" Released"); match tolerant of surrounding
 # whitespace inside the quotes.
 APPROVED_RE = re.compile(r'to\s+"\s*' + re.escape(APPROVED_SECTION) + r'\s*"', re.I)
@@ -110,6 +110,24 @@ def upsert(rows):
         print(f"  upserted {len(chunk)} cycle rows (HTTP {r.status})")
 
 
+def prune(keep_gids, scope_sprints):
+    """Drop rows in the scanned sprint window that no longer have a full cycle
+    (e.g. after the 'approved' milestone definition changed)."""
+    existing = sb_get("fact_cycle_time?select=task_gid,sprint")
+    stale = [e["task_gid"] for e in existing
+             if e.get("sprint") in scope_sprints and e["task_gid"] not in keep_gids]
+    if not stale:
+        return
+    key = env("SUPABASE_SERVICE_ROLE_KEY")
+    h = {"apikey": key, "Authorization": "Bearer " + key, "Prefer": "return=minimal"}
+    base = env("SUPABASE_URL").rstrip("/") + "/rest/v1/fact_cycle_time"
+    for i in range(0, len(stale), 50):
+        ch = stale[i:i + 50]
+        u = base + "?task_gid=in.(" + ",".join(ch) + ")"
+        urllib.request.urlopen(urllib.request.Request(u, headers=h, method="DELETE"), timeout=60)
+    print(f"  pruned {len(stale)} stale row(s).")
+
+
 def main():
     full = "--full" in sys.argv
     items = sb_get("fact_workitems?select=task_gid,name,sprint&sprint=not.is.null")
@@ -125,6 +143,7 @@ def main():
         floor = cur - (RECENT_SPRINTS - 1)
         scope = f"recent sprints >= {floor} (current {cur})"
     cands = [r for r in sprinted if int(r["sprint"]) >= floor]
+    scope_sprints = sorted({int(r["sprint"]) for r in cands})
     print(f"Scanning {len(cands)} sprinted tickets for cycle time ({scope})...")
     rows, skipped = [], 0
     for r in cands:
@@ -147,6 +166,7 @@ def main():
     if skipped:
         print(f"  skipped {skipped} inaccessible/deleted task(s).")
     print(f"{len(rows)} tickets with a full approved->released cycle.")
+    prune({x["task_gid"] for x in rows}, scope_sprints)
     upsert(rows)
     print("Done.")
 

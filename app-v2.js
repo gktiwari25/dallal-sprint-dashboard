@@ -620,7 +620,7 @@
       statCard("Completed", m.completed, pctOf(m.completed, m.planned) + "% of total", "#22a565", "✅", "#22a565") +
       statCard("Blocked", m.blocked, pctOf(m.blocked, m.planned) + "% of total", "#ef4444", "⛔", "#ef4444") +
       statCard("Released", m.released, pctOf(m.released, m.planned) + "% of total", "#7b61ff", "🚀", "#7b61ff", "Released board column (shipped to production).") +
-      statCard("Cycle Time", (m.cycleDaysMedian == null ? "--" : m.cycleDaysMedian + "d"), (m.cycleN ? "median · " + m.cycleN + " released" : "no released tickets"), "#2f6df6", "⏱️", "#2f6df6", "Median days from a story being approved (moved into 'Ready for Development (handoff complete)') to Released, for tickets released in this sprint. Computed from the Asana activity log.");
+      statCard("Cycle Time", (m.cycleDaysMedian == null ? "--" : m.cycleDaysMedian + "d"), (m.cycleN ? "median · " + m.cycleN + " released" : "no released tickets"), "#2f6df6", "⏱️", "#2f6df6", "Median days from a story being planned (moved into 'Sprint Planned') to Released, for tickets released in this sprint. Computed from the Asana activity log.");
     var openItems = m.its.filter(function (i) { return !isDone(i) && !isOnHold(i); });
     var onHoldCount = m.its.filter(function (i) { return !isDone(i) && isOnHold(i); }).length;
     el("openList").innerHTML = notCompletedBlock("open", openItems.length, m.planned, onHoldCount,
