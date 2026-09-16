@@ -122,6 +122,15 @@
   // Only work items whose TYPE is "Bug" count as bugs — Feature / Enhancement / Requirement
   // items are never counted as bugs, even if "bug" appears in their title.
   function isBug(i) { return /^bug$/i.test(String(i.type || "").trim()); }
+  // Tickets excluded from the "aging open bugs" view: the "Anas" board section /
+  // anything assigned to Anas, and stories planned into ADVANCED (future) sprints
+  // beyond the current one — they're scheduled, not neglected. `cur` = current sprint.
+  function isExcludedFromAging(i, cur) {
+    if (/^\s*anas\s*$/i.test(i.section || "")) return true;
+    if (/anas/i.test(i.assignee || "")) return true;
+    if (cur != null && num(i.sprint) > cur) return true;
+    return false;
+  }
   // The board SECTION (column) is the source of truth for where a ticket is — the
   // Status custom field is often left stale — so all stage counts use the section.
   function sectionStage(sec) {
@@ -311,9 +320,11 @@
       return (new Date(i.completed_at) - new Date(i.created_at)) <= 24 * 3600 * 1000;
     });
     // #2 Open bugs older than 14 days — BACKLOG-WIDE (all sprints), an aging signal.
+    // Excludes the Anas section/assignee and advanced (future-sprint) stories.
     var _now = Date.now();
+    var _curCal = calendarSprint();
     var openBugs14 = (data.items || []).filter(function (i) {
-      return isBug(i) && !isDone(i) && i.created_at && (_now - new Date(i.created_at)) > 14 * 86400000;
+      return isBug(i) && !isDone(i) && !isExcludedFromAging(i, _curCal) && i.created_at && (_now - new Date(i.created_at)) > 14 * 86400000;
     }).length;
     // #4 Cycle time (approved -> released), median days, for tickets RELEASED during
     // this sprint's calendar window (attribution by release date, not the ticket's
@@ -682,16 +693,17 @@
     // Open bugs older than 14 days — BACKLOG-WIDE (all sprints), the detail behind the
     // "Open Bugs > 14d" KPI, oldest first. Collapsible.
     var _nowMs = Date.now();
+    var _curCalB = calendarSprint();
     var openBugItems = (data.items || []).filter(function (i) {
-      return isBug(i) && !isDone(i) && i.created_at && (_nowMs - new Date(i.created_at)) > 14 * 86400000;
+      return isBug(i) && !isDone(i) && !isExcludedFromAging(i, _curCalB) && i.created_at && (_nowMs - new Date(i.created_at)) > 14 * 86400000;
     }).sort(function (a, b) { return new Date(a.created_at) - new Date(b.created_at); });
     // Same summaryBlock style as Bug Tickets / Reopened, in red. Ring = share of all
     // open bugs that are aging (>14d) — higher is worse.
-    var totalOpenBugs = (data.items || []).filter(function (i) { return isBug(i) && !isDone(i); }).length;
+    var totalOpenBugs = (data.items || []).filter(function (i) { return isBug(i) && !isDone(i) && !isExcludedFromAging(i, _curCalB); }).length;
     el("openBugsList").innerHTML = summaryBlock("openbugs14", {
       label: "OPEN BUGS > 14 DAYS", color: "#e94b6a",
       pct: totalOpenBugs ? 100 * openBugItems.length / totalOpenBugs : 0,
-      sub: openBugItems.length ? (openBugItems.length + " of " + totalOpenBugs + " open bugs aging &middot; backlog-wide, all sprints") : "No open bugs older than 14 days",
+      sub: openBugItems.length ? (openBugItems.length + " of " + totalOpenBugs + " open bugs aging &middot; excl. Anas &amp; future sprints") : "No open bugs older than 14 days",
       rows: openBugItems.length ? openBugItems.map(openBugRow).join("") : '<div class="muted">No open bugs older than 14 days. 🎉</div>'
     });
 
