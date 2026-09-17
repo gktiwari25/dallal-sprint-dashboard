@@ -27,8 +27,11 @@ import datetime
 import urllib.request
 import urllib.error
 
+import asana_util
+
 ASANA = "https://app.asana.com/api/1.0"
 APPROVED_SECTION = "Sprint Planned"
+ACTIVE_DAYS = int(os.environ.get("MOVES_ACTIVE_DAYS") or "10")
 # Board section names carry stray spaces (" Released"); match tolerant of surrounding
 # whitespace inside the quotes.
 APPROVED_RE = re.compile(r'to\s+"\s*' + re.escape(APPROVED_SECTION) + r'\s*"', re.I)
@@ -67,13 +70,13 @@ def sb_get(path):
 
 def milestones(task_gid):
     """(approved_at, released_at) = earliest move into each section, or (None, None)."""
-    h = {"Authorization": "Bearer " + env("ASANA_PAT")}
+    pat = env("ASANA_PAT")
     approved, released, offset = None, None, None
     while True:
         q = f"/tasks/{task_gid}/stories?opt_fields={STORY_FIELDS}&limit=100"
         if offset:
             q += "&offset=" + offset
-        body = json.loads(urllib.request.urlopen(urllib.request.Request(ASANA + q, headers=h), timeout=60).read())
+        body = asana_util.get_json(q, pat)
         for s in body.get("data", []):
             if s.get("resource_subtype") != "section_changed":
                 continue
@@ -110,12 +113,11 @@ def upsert(rows):
         print(f"  upserted {len(chunk)} cycle rows (HTTP {r.status})")
 
 
-def prune(keep_gids, scope_sprints):
-    """Drop rows in the scanned sprint window that no longer have a full cycle
-    (e.g. after the 'approved' milestone definition changed)."""
-    existing = sb_get("fact_cycle_time?select=task_gid,sprint")
-    stale = [e["task_gid"] for e in existing
-             if e.get("sprint") in scope_sprints and e["task_gid"] not in keep_gids]
+def prune(scanned_gids, keep_gids):
+    """Drop fact_cycle_time rows for tickets we RESCANNED this run that no longer have
+    a full cycle. Scoped to scanned tickets so the modified-since window never drops
+    still-valid rows for dormant tickets we didn't rescan."""
+    stale = [g for g in scanned_gids if g not in keep_gids]
     if not stale:
         return
     key = env("SUPABASE_SERVICE_ROLE_KEY")
@@ -130,7 +132,7 @@ def prune(keep_gids, scope_sprints):
 
 def main():
     full = "--full" in sys.argv
-    items = sb_get("fact_workitems?select=task_gid,name,sprint&sprint=not.is.null")
+    items = sb_get("fact_workitems?select=task_gid,name,sprint,modified_at&sprint=not.is.null")
     sprinted = [r for r in items if str(r.get("sprint") or "").isdigit()]
     if not sprinted:
         print("No sprinted tickets found.")
@@ -143,7 +145,11 @@ def main():
         floor = cur - (RECENT_SPRINTS - 1)
         scope = f"recent sprints >= {floor} (current {cur})"
     cands = [r for r in sprinted if int(r["sprint"]) >= floor]
-    scope_sprints = sorted({int(r["sprint"]) for r in cands})
+    if not full:
+        cutoff = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=ACTIVE_DAYS)).isoformat()
+        cands = [r for r in cands if (r.get("modified_at") or "") >= cutoff]
+        scope += f", modified <= {ACTIVE_DAYS}d"
+    scanned_gids = {r["task_gid"] for r in cands}
     print(f"Scanning {len(cands)} sprinted tickets for cycle time ({scope})...")
     rows, skipped = [], 0
     for r in cands:
@@ -166,7 +172,7 @@ def main():
     if skipped:
         print(f"  skipped {skipped} inaccessible/deleted task(s).")
     print(f"{len(rows)} tickets with a full approved->released cycle.")
-    prune({x["task_gid"] for x in rows}, scope_sprints)
+    prune(scanned_gids, {x["task_gid"] for x in rows})
     upsert(rows)
     print("Done.")
 

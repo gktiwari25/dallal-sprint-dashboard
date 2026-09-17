@@ -26,6 +26,8 @@ import json
 import urllib.request
 import urllib.error
 
+import asana_util
+
 ASANA = "https://app.asana.com/api/1.0"
 DONE_RE = re.compile(r"Ready for UAT|QA on UAT|In UAT|UAT Passed|Ready for Production|Released", re.I)
 STORY_FIELDS = "created_at,resource_subtype,created_by.name,old_dates.due_on,new_dates.due_on"
@@ -56,13 +58,13 @@ def is_done(r):
 def due_changes(task_gid):
     """Ordered list of due-date change events with exact dates:
     [{at, by, old_due(iso|None), new_due(iso|None)}]."""
-    h = {"Authorization": "Bearer " + env("ASANA_PAT")}
+    pat = env("ASANA_PAT")
     out, offset = [], None
     while True:
         q = f"/tasks/{task_gid}/stories?opt_fields={STORY_FIELDS}&limit=100"
         if offset:
             q += "&offset=" + offset
-        body = json.loads(urllib.request.urlopen(urllib.request.Request(ASANA + q, headers=h), timeout=60).read())
+        body = asana_util.get_json(q, pat)
         for s in body.get("data", []):
             if s.get("resource_subtype") != "due_date_changed":
                 continue

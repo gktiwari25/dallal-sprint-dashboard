@@ -29,11 +29,15 @@ import os
 import re
 import sys
 import json
+import datetime
 import urllib.request
 import urllib.error
 
+import asana_util
+
 ASANA = "https://app.asana.com/api/1.0"
 REOPEN_SECTION = "Reopen"
+ACTIVE_DAYS = int(os.environ.get("MOVES_ACTIVE_DAYS") or "10")
 # Board section names carry stray spaces ("Reopen "); match  to "Reopen" tolerant of
 # trailing whitespace before the closing quote.
 MOVE_RE = re.compile(r'to\s+"' + re.escape(REOPEN_SECTION) + r'\s*"', re.I)
@@ -79,13 +83,13 @@ def sb_get(path):
 
 def reopen_moves(task_gid):
     """(count, last_at) of moves INTO the Reopen column from the activity log."""
-    h = {"Authorization": "Bearer " + env("ASANA_PAT")}
+    pat = env("ASANA_PAT")
     out, offset = [], None
     while True:
         q = f"/tasks/{task_gid}/stories?opt_fields={STORY_FIELDS}&limit=100"
         if offset:
             q += "&offset=" + offset
-        body = json.loads(urllib.request.urlopen(urllib.request.Request(ASANA + q, headers=h), timeout=60).read())
+        body = asana_util.get_json(q, pat)
         for s in body.get("data", []):
             if s.get("resource_subtype") != "section_changed":
                 continue
@@ -112,11 +116,11 @@ def upsert(rows):
         print(f"  upserted {len(chunk)} reopen rows (HTTP {r.status})")
 
 
-def prune(keep_gids, scope_sprints):
-    """Drop rows in the scanned sprint window whose reopen_count is now 0."""
-    existing = sb_get("fact_reopens?select=task_gid,sprint")
-    stale = [e["task_gid"] for e in existing
-             if e.get("sprint") in scope_sprints and e["task_gid"] not in keep_gids]
+def prune(scanned_gids, keep_gids):
+    """Drop fact_reopens rows for tickets we RESCANNED this run that no longer qualify
+    (reopen_count fell to 0). Scoped to scanned tickets so the modified-since window
+    never drops still-valid rows for dormant tickets we didn't rescan."""
+    stale = [g for g in scanned_gids if g not in keep_gids]
     if not stale:
         return
     key = env("SUPABASE_SERVICE_ROLE_KEY")
@@ -131,7 +135,7 @@ def prune(keep_gids, scope_sprints):
 
 def main():
     full = "--full" in sys.argv
-    items = sb_get("fact_workitems?select=task_gid,name,sprint,assignee,reopened_count&sprint=not.is.null")
+    items = sb_get("fact_workitems?select=task_gid,name,sprint,assignee,reopened_count,modified_at&sprint=not.is.null")
     sprinted = [r for r in items if str(r.get("sprint") or "").isdigit()]
     if not sprinted:
         print("No sprinted tickets found.")
@@ -144,7 +148,11 @@ def main():
         floor = cur - (RECENT_SPRINTS - 1)
         scope = f"recent sprints >= {floor} (current {cur})"
     cands = [r for r in sprinted if int(r["sprint"]) >= floor]
-    scope_sprints = sorted({int(r["sprint"]) for r in cands})
+    if not full:
+        cutoff = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=ACTIVE_DAYS)).isoformat()
+        cands = [r for r in cands if (r.get("modified_at") or "") >= cutoff]
+        scope += f", modified <= {ACTIVE_DAYS}d"
+    scanned_gids = {r["task_gid"] for r in cands}
     print(f"Scanning {len(cands)} sprinted tickets for reopens ({scope})...")
     rows = []
     skipped = 0
@@ -169,7 +177,7 @@ def main():
     if skipped:
         print(f"  skipped {skipped} inaccessible/deleted task(s).")
     print(f"{len(rows)} tickets reopened >=1x (board or manual field).")
-    prune({x["task_gid"] for x in rows}, scope_sprints)
+    prune(scanned_gids, {x["task_gid"] for x in rows})
     upsert(rows)
     print("Done.")
 

@@ -24,6 +24,8 @@ import urllib.parse
 import urllib.request
 import urllib.error
 
+import asana_util
+
 ASANA_BASE = "https://app.asana.com/api/1.0"
 # Board columns that mean "handed to testing". "Ready for UAT" is the one the
 # dashboard section shows; the others are stamped too so the column is reusable.
@@ -52,14 +54,13 @@ def sb_testing_tickets():
 
 def stories(pat, task_gid):
     """All stories for a task (paginated), newest info intact."""
-    ah = {"Authorization": "Bearer " + pat}
     out, offset = [], None
     while True:
         params = {"opt_fields": "created_at,resource_subtype,text", "limit": 100}
         if offset:
             params["offset"] = offset
         url = f"{ASANA_BASE}/tasks/{task_gid}/stories?" + urllib.parse.urlencode(params)
-        body = _get(url, ah)
+        body = asana_util.get_json(url, pat)
         out.extend(body.get("data", []))
         offset = (body.get("next_page") or {}).get("offset")
         if not offset:

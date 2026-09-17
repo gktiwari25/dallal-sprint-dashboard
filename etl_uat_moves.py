@@ -35,11 +35,17 @@ import os
 import re
 import sys
 import json
+import datetime
 import urllib.request
 import urllib.error
 
+import asana_util
+
 ASANA = "https://app.asana.com/api/1.0"
 UAT_SECTION = "Ready for UAT"
+# Hourly runs only rescan tickets modified within this many days (they're the only
+# ones that can have NEW moves); already-captured events persist. --full ignores it.
+ACTIVE_DAYS = int(os.environ.get("MOVES_ACTIVE_DAYS") or "10")
 # The move-in story text is:  …moved this task from "X" to "Ready for UAT" in <proj>
 # (also "…added to \"Ready for UAT\" …"). Both contain  to "Ready for UAT".
 MOVE_RE = re.compile(r'to\s+"' + re.escape(UAT_SECTION) + r'"', re.I)
@@ -79,13 +85,13 @@ def sb_get(path):
 
 def uat_moves(task_gid):
     """Every move INTO 'Ready for UAT' for a task: [{at, by}] (may be empty)."""
-    h = {"Authorization": "Bearer " + env("ASANA_PAT")}
+    pat = env("ASANA_PAT")
     out, offset = [], None
     while True:
         q = f"/tasks/{task_gid}/stories?opt_fields={STORY_FIELDS}&limit=100"
         if offset:
             q += "&offset=" + offset
-        body = json.loads(urllib.request.urlopen(urllib.request.Request(ASANA + q, headers=h), timeout=60).read())
+        body = asana_util.get_json(q, pat)
         for s in body.get("data", []):
             if s.get("resource_subtype") != "section_changed":
                 continue
@@ -114,7 +120,7 @@ def upsert(rows):
 
 def main():
     full = "--full" in sys.argv
-    items = sb_get("fact_workitems?select=task_gid,name,sprint,assignee&sprint=not.is.null")
+    items = sb_get("fact_workitems?select=task_gid,name,sprint,assignee,modified_at&sprint=not.is.null")
     sprinted = [r for r in items if str(r.get("sprint") or "").isdigit()]
     if not sprinted:
         print("No sprinted tickets found.")
@@ -127,6 +133,13 @@ def main():
         floor = cur - (RECENT_SPRINTS - 1)
         scope = f"recent sprints >= {floor} (current {cur})"
     cands = [r for r in sprinted if int(r["sprint"]) >= floor]
+    if not full:
+        # Only rescan recently-modified tickets — a new UAT move always bumps
+        # modified_at, so this captures every new event while cutting the Asana
+        # request load ~10x (avoids the rate-limit crashes).
+        cutoff = (datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=ACTIVE_DAYS)).isoformat()
+        cands = [r for r in cands if (r.get("modified_at") or "") >= cutoff]
+        scope += f", modified <= {ACTIVE_DAYS}d"
     print(f"Scanning {len(cands)} sprinted tickets for UAT moves ({scope})...")
     rows, tickets_with_moves, skipped = [], 0, 0
     for r in cands:

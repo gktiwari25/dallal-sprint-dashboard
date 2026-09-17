@@ -22,6 +22,8 @@ import json
 import urllib.request
 import urllib.error
 
+import asana_util
+
 ASANA = "https://app.asana.com/api/1.0"
 PROJECT_GID = os.environ.get("ASANA_PROJECT_GID", "1214388950902741")
 # Tables keyed by task_gid that must be pruned alongside fact_workitems.
@@ -39,13 +41,13 @@ def env(n):
 
 
 def live_task_gids():
-    ah = {"Authorization": "Bearer " + env("ASANA_PAT")}
+    pat = env("ASANA_PAT")
     gids, offset = set(), None
     while True:
         url = f"{ASANA}/projects/{PROJECT_GID}/tasks?opt_fields=gid&limit=100"
         if offset:
             url += "&offset=" + offset
-        b = json.loads(urllib.request.urlopen(urllib.request.Request(url, headers=ah), timeout=60).read())
+        b = asana_util.get_json(url, pat)
         gids.update(t["gid"] for t in b.get("data", []))
         offset = (b.get("next_page") or {}).get("offset")
         if not offset:
