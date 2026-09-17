@@ -117,7 +117,11 @@ def prune(scanned_gids, keep_gids):
     """Drop fact_cycle_time rows for tickets we RESCANNED this run that no longer have
     a full cycle. Scoped to scanned tickets so the modified-since window never drops
     still-valid rows for dormant tickets we didn't rescan."""
-    stale = [g for g in scanned_gids if g not in keep_gids]
+    drop = {g for g in scanned_gids if g not in keep_gids}
+    if not drop:
+        return
+    existing = {e["task_gid"] for e in sb_get("fact_cycle_time?select=task_gid")}
+    stale = [g for g in drop if g in existing]   # only rows that actually exist
     if not stale:
         return
     key = env("SUPABASE_SERVICE_ROLE_KEY")
