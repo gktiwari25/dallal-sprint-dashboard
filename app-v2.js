@@ -230,8 +230,10 @@
   }
   // Committed vs delivered SP for ONE sprint number (same rules as compute()):
   // committed = sum of SP on committed-scope items; delivered = sum on done items.
+  // Excluded assignees (config.js — Anas, Gyselda, Rayan, Gourav) are dropped so
+  // velocity history / reliability match Sprint Health.
   function sprintScope(sn) {
-    var it = data.items.filter(function (i) { return String(i.sprint) === String(sn) && !isPreSprint(i); });
+    var it = data.items.filter(function (i) { return String(i.sprint) === String(sn) && !isPreSprint(i) && !isExcludedAssignee(i.assignee); });
     var c = it.reduce(function (a, i) { return a + num(i.story_points); }, 0);
     var d = it.filter(isDone).reduce(function (a, i) { return a + num(i.story_points); }, 0);
     return { committed: c, delivered: d };
@@ -264,7 +266,9 @@
     // Any ticket carrying this Sprint number counts — EXCEPT still-ideating columns
     // (Backlog - Idea / Refinement / Design, Design In-Progress). "Ready for Development
     // (handoff complete)" and everything downstream IS committed scope and is included.
-    var its = data.items.filter(function (i) { return String(i.sprint) === String(sprint) && !isPreSprint(i); });
+    // Excluded assignees (config.js — Anas, Gyselda, Rayan, Gourav) are dropped from
+    // scope so Sprint Health, velocity and carry-forward don't count their work.
+    var its = data.items.filter(function (i) { return String(i.sprint) === String(sprint) && !isPreSprint(i) && !isExcludedAssignee(i.assignee); });
     var dim = data.sprints.filter(function (s) { return String(s.sprint) === String(sprint); })[0] || {};
     var committedSP = its.reduce(function (a, i) { return a + num(i.story_points); }, 0);
     var delivered = its.filter(isDone);
