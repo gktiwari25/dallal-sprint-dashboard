@@ -934,6 +934,7 @@
     (data.items || []).forEach(function (i) {
       if (isDone(i)) return;
       if (String(i.sprint) !== String(sprint)) return;   // selected sprint only
+      if (isPreSprint(i)) return;                         // skip Design In-Progress / backlog-idea (not yet committed)
       if (isExcludedAssignee(i.assignee)) return;         // hide PMs/leads (config.js)
       if (!i.due_on) { missing.push(i); return; }         // no due date set
       var d = parseDue(i.due_on);
