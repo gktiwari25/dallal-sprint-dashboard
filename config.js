@@ -30,7 +30,7 @@ window.DALLAL_CONFIG = {
 
   // Names to hide from the Delivery "Due Dates" and "Ready for UAT" developer
   // views (PMs / leads, not the developers being tracked). Matched on assignee.
-  EXCLUDE_ASSIGNEES: ["Gourav Kumar Tiwari", "Rayan Abdul Baki"],
+  EXCLUDE_ASSIGNEES: ["Gourav Kumar Tiwari", "Rayan Abdul Baki", "Anas Nammas", "Gyselda Daija"],
 
   REQUIRE_AUTH: true,   // set false only if you intentionally want a public link
 };

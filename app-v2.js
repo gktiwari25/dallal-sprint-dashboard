@@ -122,14 +122,17 @@
   // Only work items whose TYPE is "Bug" count as bugs — Feature / Enhancement / Requirement
   // items are never counted as bugs, even if "bug" appears in their title.
   function isBug(i) { return /^bug$/i.test(String(i.type || "").trim()); }
-  // Tickets excluded from the "aging open bugs" view: the "Anas" board section /
-  // anything assigned to Anas, and stories planned into ADVANCED (future) sprints
-  // beyond the current one — they're scheduled, not neglected. `cur` = current sprint.
+  // Tickets excluded from the "aging open bugs" view: the excluded people
+  // (config.js EXCLUDE_ASSIGNEES — Anas, Gyselda, Rayan, Gourav) by assignee, their
+  // dedicated board sections ("Anas", "Gyselda - Flow Rework"), and stories planned
+  // into ADVANCED (future) sprints beyond the current one — they're scheduled, not
+  // neglected. `cur` = current sprint. (isExcludedAssignee is hoisted; _EXCL_ASSIGNEES
+  // is built at load, before any render calls this.)
   function isExcludedFromAging(i, cur) {
     var sec = i.section || "";
+    if (isExcludedAssignee(i.assignee)) return true;          // Anas / Gyselda / Rayan / Gourav
     if (/^\s*anas\s*$/i.test(sec)) return true;               // Anas board section
     if (/gyselda/i.test(sec)) return true;                    // "Gyselda - Flow Rework" section
-    if (/anas/i.test(i.assignee || "")) return true;          // assigned to Anas
     if (cur != null && num(i.sprint) > cur) return true;      // advanced (future) sprint
     return false;
   }
@@ -705,7 +708,7 @@
     el("openBugsList").innerHTML = summaryBlock("openbugs14", {
       label: "OPEN BUGS > 14 DAYS", color: "#e94b6a",
       pct: totalOpenBugs ? 100 * openBugItems.length / totalOpenBugs : 0,
-      sub: openBugItems.length ? (openBugItems.length + " of " + totalOpenBugs + " open bugs aging &middot; excl. Anas, Gyselda &amp; future sprints") : "No open bugs older than 14 days",
+      sub: openBugItems.length ? (openBugItems.length + " of " + totalOpenBugs + " open bugs aging &middot; excl. Anas, Gyselda, Rayan &amp; future sprints") : "No open bugs older than 14 days",
       rows: openBugItems.length ? openBugItems.map(openBugRow).join("") : '<div class="muted">No open bugs older than 14 days. 🎉</div>'
     });
 
