@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dallal Growth — Acquisition to Activation</title>
+  <link rel="icon" type="image/png" href="dallal-favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="kpi-command-center.css?v=1" />
+  <link rel="stylesheet" href="growth-dashboard.css?v=1" />
+</head>
+<body>
+  <!-- ===================== HEADER + CONTROLS ===================== -->
+  <header class="topbar">
+    <div class="wrap">
+      <div class="tb-top">
+        <img class="tb-logo" src="Dallal-logo.png" alt="Dallal" />
+        <div>
+          <div class="tb-title">Dallal Growth Dashboard</div>
+          <div class="tb-sub">Acquisition → Activation · Adjust · GA4 · Amplitude</div>
+        </div>
+        <div class="tb-spacer"></div>
+        <div class="tb-user" id="userBox"></div>
+        <button class="btn btn-ghost btn-sm" id="signOutBtn" style="display:none">Sign out</button>
+      </div>
+      <div id="controlsWrap" style="display:none">
+        <div class="controls">
+          <div class="seg" id="periodSeg">
+            <button data-p="7d">Last 7 Days</button>
+            <button data-p="30d" class="active">Last 30 Days</button>
+            <button data-p="this_month">This Month</button>
+            <button data-p="last_month">Last Month</button>
+            <button data-p="qtd">Quarter to Date</button>
+            <button data-p="custom">Custom</button>
+          </div>
+          <div class="custom-range hidden" id="customRange">
+            <input type="date" id="cFrom" /> <span>→</span> <input type="date" id="cTo" />
+            <button class="btn btn-ghost btn-sm" id="applyCustom">Apply</button>
+          </div>
+          <div class="tb-spacer"></div>
+          <div class="refreshed" id="refreshedAt"></div>
+          <button class="btn btn-primary btn-sm" id="refreshBtn">↻ Refresh</button>
+        </div>
+        <div class="srchealth" id="srcHealth"></div>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <!-- ===================== AUTH GATE ===================== -->
+    <div id="gate" class="gate" style="display:none">
+      <h2>Sign in</h2>
+      <p>The Growth dashboard reads live Dallal data under your account (row-level security). Use your Dallal email.</p>
+      <div class="lfield"><input type="email" id="gEmail" placeholder="you@dallal.com.kw" autocomplete="email" /></div>
+      <div class="lfield"><input type="password" id="gPass" placeholder="Password" autocomplete="current-password" /></div>
+      <button class="lfbtn" id="gLogin">Sign in</button>
+      <div class="err" id="gErr"></div>
+      <div class="alt"><a href="#" id="gMagic">Email me a magic link</a> &nbsp;·&nbsp; <a href="#" id="gGoogle">Google</a></div>
+    </div>
+
+    <!-- ===================== DASHBOARD ===================== -->
+    <main id="dash" style="display:none">
+      <div id="bootLoading" class="loading"><span class="spin"></span>Loading growth data…</div>
+      <div id="dashContent" style="display:none">
+
+        <!-- Top-line tiles -->
+        <section id="secTop">
+          <div class="sec-head"><span class="kicker">Overview</span><h2>Growth at a glance</h2><span class="sub" id="topSub"></span></div>
+          <div class="grid summary" id="topGrid"></div>
+        </section>
+
+        <!-- Unified funnel -->
+        <section id="secFunnel">
+          <div class="sec-head"><span class="kicker">Journey</span><h2>Acquisition → Activation funnel</h2><span class="sub">Each lane is internally consistent; cross-source steps are shown side by side, not multiplied together</span></div>
+          <div class="funnel" id="funnel"></div>
+        </section>
+
+        <!-- Acquisition (Adjust) -->
+        <section id="secAcq">
+          <div class="sec-head"><span class="kicker">Acquisition</span><h2>Installs &amp; attribution</h2><span class="srcbadge adjust">Adjust</span></div>
+          <div class="two-col">
+            <div class="chartcard"><h3>Daily installs</h3><div class="sub">Installs &amp; reattributions over the period</div><div class="chartbox"><canvas id="chartInstalls"></canvas></div></div>
+            <div class="bdcard"><h3>By network</h3><div class="sub">Top acquisition sources (installs)</div><div id="adjustNetworks"></div></div>
+          </div>
+        </section>
+
+        <!-- Web (GA4) -->
+        <section id="secWeb">
+          <div class="sec-head"><span class="kicker">Web &amp; app traffic</span><h2>Sessions &amp; channels</h2><span class="srcbadge ga4">GA4</span></div>
+          <div class="two-col">
+            <div class="chartcard"><h3>Daily sessions</h3><div class="sub">Sessions &amp; new users over the period</div><div class="chartbox"><canvas id="chartSessions"></canvas></div></div>
+            <div class="bdcard"><h3>By channel</h3><div class="sub">Default channel group (sessions)</div><div id="ga4Channels"></div></div>
+          </div>
+        </section>
+
+        <!-- Activation & retention (Amplitude) -->
+        <section id="secAct">
+          <div class="sec-head"><span class="kicker">Activation</span><h2>In-app activation &amp; retention</h2><span class="srcbadge amplitude">Amplitude</span></div>
+          <div class="two-col">
+            <div class="chartcard"><h3>Activation funnel</h3><div class="sub" id="actFunnelSub">Step-by-step conversion</div><div class="chartbox"><canvas id="chartActFunnel"></canvas></div></div>
+            <div class="chartcard"><h3>New-user retention</h3><div class="sub" id="retSub">Weekly retention curve</div><div class="chartbox"><canvas id="chartRetention"></canvas></div></div>
+          </div>
+        </section>
+
+        <!-- Cross-source trend -->
+        <section id="secTrend">
+          <div class="sec-head"><span class="kicker">Blended</span><h2>Daily acquisition vs engagement</h2><span class="srcbadge blended">Adjust + GA4</span></div>
+          <div class="chartcard"><h3>Installs vs web sessions</h3><div class="sub">Where volume is coming from, day by day</div><div class="chartbox" style="height:300px"><canvas id="chartBlend"></canvas></div></div>
+        </section>
+
+        <div class="footer-note" id="footerNote"></div>
+      </div>
+    </main>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js?v=1"></script>
+  <script src="growth-dashboard.js?v=1"></script>
+</body>
+</html>

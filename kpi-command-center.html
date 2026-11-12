@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dallal KPI Command Center</title>
+  <link rel="icon" type="image/png" href="dallal-favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="kpi-command-center.css?v=1" />
+</head>
+<body>
+  <!-- ===================== HEADER + GLOBAL CONTROLS ===================== -->
+  <header class="topbar">
+    <div class="wrap">
+      <div class="tb-top">
+        <img class="tb-logo" src="Dallal-logo.png" alt="Dallal" />
+        <div>
+          <div class="tb-title">Dallal KPI Command Center</div>
+          <div class="tb-sub">Product, Engineering, Delivery &amp; Engagement</div>
+        </div>
+        <div class="tb-spacer"></div>
+        <div class="tb-user" id="userBox"></div>
+        <button class="btn btn-ghost btn-sm" id="signOutBtn" style="display:none">Sign out</button>
+      </div>
+
+      <!-- controls shown only once authenticated -->
+      <div id="controlsWrap" style="display:none">
+        <div class="controls">
+          <div class="seg" id="periodSeg">
+            <button data-p="7d">Last 7 Days</button>
+            <button data-p="30d" class="active">Last 30 Days</button>
+            <button data-p="this_month">This Month</button>
+            <button data-p="last_month">Last Month</button>
+            <button data-p="qtd">Quarter to Date</button>
+            <button data-p="custom">Custom</button>
+          </div>
+          <div class="custom-range hidden" id="customRange">
+            <input type="date" id="cFrom" /> <span>→</span> <input type="date" id="cTo" />
+            <button class="btn btn-ghost btn-sm" id="applyCustom">Apply</button>
+          </div>
+          <div class="tb-spacer"></div>
+          <div class="refreshed" id="refreshedAt"></div>
+          <button class="btn btn-primary btn-sm" id="refreshBtn">↻ Refresh</button>
+        </div>
+        <div class="srchealth" id="srcHealth"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===================== AUTH GATE ===================== -->
+  <div class="wrap">
+    <div id="gate" class="gate" style="display:none">
+      <h2>Sign in</h2>
+      <p>The Command Center reads live Dallal data under your account (row-level security). Use your Dallal email.</p>
+      <div class="lfield"><input type="email" id="gEmail" placeholder="you@dallal.com.kw" autocomplete="email" /></div>
+      <div class="lfield"><input type="password" id="gPass" placeholder="Password" autocomplete="current-password" /></div>
+      <button class="lfbtn" id="gLogin">Sign in</button>
+      <div class="err" id="gErr"></div>
+      <div class="alt">
+        <a href="#" id="gMagic">Email me a magic link</a> &nbsp;·&nbsp; <a href="#" id="gGoogle">Google</a>
+      </div>
+    </div>
+
+    <!-- ===================== DASHBOARD ===================== -->
+    <main id="dash" style="display:none">
+      <div id="bootLoading" class="loading"><span class="spin"></span>Loading live KPI data…</div>
+
+      <div id="dashContent" style="display:none">
+        <!-- Section 2: Executive summary -->
+        <section id="secSummary">
+          <div class="sec-head">
+            <span class="kicker">Executive</span>
+            <h2>KPI Summary</h2>
+            <span class="sub" id="summarySub"></span>
+          </div>
+          <div class="grid summary" id="summaryGrid"></div>
+        </section>
+
+        <!-- Section 3: Engineering & delivery -->
+        <section id="secEng">
+          <div class="sec-head">
+            <span class="kicker">Delivery</span>
+            <h2>Engineering &amp; Delivery</h2>
+            <span class="sub">Sprint commitment, release quality, bugs, cycle time &amp; stability</span>
+          </div>
+          <div class="panelrow" style="margin-bottom:16px">
+            <div class="chartcard">
+              <h3>Sprint commitment vs delivery</h3>
+              <div class="sub">Committed vs delivered story points by sprint (DL1)</div>
+              <div class="chartbox"><canvas id="chartCommit"></canvas></div>
+            </div>
+            <div class="chartcard">
+              <h3>Crash-free sessions — iOS</h3>
+              <div class="sub">Daily, App Store Connect (X1)</div>
+              <div class="chartbox"><canvas id="chartCrash"></canvas></div>
+            </div>
+          </div>
+          <div class="grid eng" id="engGrid"></div>
+        </section>
+
+        <!-- Section 4: Push notifications & engagement -->
+        <section id="secPush">
+          <div class="sec-head">
+            <span class="kicker">Engagement</span>
+            <h2>Push Notifications &amp; Engagement</h2>
+            <span class="sub">UAT Admin Analytics · mapped to workbook A-series</span>
+          </div>
+          <div id="pushBanner"></div>
+          <div class="grid summary" id="pushGrid"></div>
+        </section>
+
+        <!-- Section 5: KPI scorecard -->
+        <section id="secScore">
+          <div class="sec-head">
+            <span class="kicker">Catalogue</span>
+            <h2>KPI Scorecard</h2>
+            <span class="sub">All 22 workbook KPIs · click a row for detail</span>
+          </div>
+          <div class="scorecard-tools">
+            <div class="search">🔎 <input id="scSearch" placeholder="Search KPI id, name or definition…" /></div>
+            <select class="filter" id="fSection"></select>
+            <select class="filter" id="fType"></select>
+            <select class="filter" id="fAvail"></select>
+            <select class="filter" id="fSource"></select>
+            <select class="filter" id="fFreq"></select>
+            <select class="filter" id="fStatus"></select>
+          </div>
+          <div class="tablewrap">
+            <table class="score" id="scoreTable">
+              <thead>
+                <tr>
+                  <th data-sort="id">ID</th>
+                  <th data-sort="name">KPI</th>
+                  <th data-sort="section">Section</th>
+                  <th data-sort="type">Type</th>
+                  <th data-sort="valueNum">Current</th>
+                  <th data-sort="unit">Unit</th>
+                  <th data-sort="prevNum">Prev</th>
+                  <th data-sort="trend">Trend</th>
+                  <th data-sort="status">Status</th>
+                  <th data-sort="source">Source</th>
+                  <th data-sort="frequency">Freq</th>
+                  <th data-sort="updated">Updated</th>
+                  <th data-sort="avail">Availability</th>
+                </tr>
+              </thead>
+              <tbody id="scoreBody"></tbody>
+            </table>
+          </div>
+        </section>
+
+        <div class="footer-note" id="footerNote"></div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ===================== DETAIL DRAWER ===================== -->
+  <div class="scrim" id="scrim"></div>
+  <aside class="drawer" id="drawer">
+    <div class="drawer-head">
+      <div class="row">
+        <span class="kid" id="dKid"></span>
+        <span class="avail" id="dAvail"></span>
+        <button class="drawer-close" id="dClose">✕</button>
+      </div>
+      <h3 id="dName"></h3>
+    </div>
+    <div class="drawer-body" id="dBody"></div>
+  </aside>
+
+  <!-- libraries (same versions the sprint dashboard uses) -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js?v=1"></script>
+  <script src="kpi-catalog.js?v=1"></script>
+  <script src="kpi-command-center.js?v=1"></script>
+</body>
+</html>

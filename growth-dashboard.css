@@ -1,0 +1,63 @@
+/* =========================================================================
+ * growth-dashboard.css — funnel-specific styles for the GA4 + Adjust +
+ * Amplitude "Acquisition -> Activation" dashboard. Reuses the tokens and
+ * primitives (topbar, card, controls, srchealth, drawer…) from
+ * kpi-command-center.css — link that FIRST.
+ * ====================================================================== */
+
+/* source accent chips (distinct hue per source) */
+.srcbadge{ font-size:10.5px; font-weight:700; letter-spacing:.04em; text-transform:uppercase; padding:3px 8px; border-radius:6px; }
+.srcbadge.adjust{ color:#b45309; background:rgba(245,140,63,.16); }
+.srcbadge.ga4{ color:#1f6feb; background:rgba(47,109,246,.15); }
+.srcbadge.amplitude{ color:#7c3aed; background:rgba(124,58,237,.15); }
+.srcbadge.blended{ color:#0e8f82; background:rgba(14,168,154,.15); }
+
+/* ---- the three-lane acquisition -> activation funnel ---- */
+.funnel{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:14px; align-items:stretch; }
+@media(max-width:900px){ .funnel{ grid-template-columns:1fr; } }
+.lane{ position:relative; background:var(--panel); border:1px solid var(--line); border-radius:var(--r-lg); box-shadow:var(--sh-sm); padding:18px 18px 20px; }
+/* flow arrows between lanes (desktop) */
+.lane:not(:last-child)::after{
+  content:"→"; position:absolute; right:-13px; top:50%; transform:translateY(-50%);
+  z-index:3; color:var(--muted); font-size:20px; font-weight:700;
+  background:var(--bg); border-radius:50%; width:26px; height:26px; display:grid; place-items:center;
+}
+@media(max-width:900px){ .lane:not(:last-child)::after{ content:"↓"; right:50%; top:auto; bottom:-20px; transform:translateX(50%); } }
+.lane-head{ display:flex; align-items:center; gap:9px; margin-bottom:4px; }
+.lane-head h3{ font-size:14px; }
+.lane-sub{ font-size:11.5px; color:var(--muted); margin-bottom:16px; }
+
+.stage{ margin-bottom:14px; }
+.stage:last-child{ margin-bottom:0; }
+.stage-top{ display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-bottom:5px; }
+.stage-label{ font-size:12.5px; color:var(--ink-2); font-weight:600; }
+.stage-val{ font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:15px; font-weight:700; color:var(--ink); }
+.stage-val.na{ color:var(--na); font-size:12.5px; font-weight:600; }
+.bar-track{ height:12px; border-radius:7px; background:var(--panel-2); border:1px solid var(--line); overflow:hidden; }
+.bar-fill{ height:100%; border-radius:7px 0 0 7px; transition:width .5s cubic-bezier(.4,0,.2,1); min-width:2px; }
+.lane.adjust .bar-fill{ background:linear-gradient(90deg,#f5a85a,#f5883f); }
+.lane.ga4 .bar-fill{ background:linear-gradient(90deg,#5a8bf6,#2f6df6); }
+.lane.amplitude .bar-fill{ background:linear-gradient(90deg,#a06bf0,#7c3aed); }
+.conv{ font-size:11px; color:var(--muted); margin-top:4px; display:flex; align-items:center; gap:5px; }
+.conv b{ color:var(--ink-2); font-weight:700; font-family:var(--mono); }
+.lane-foot{ margin-top:16px; padding-top:13px; border-top:1px dashed var(--line); font-size:12px; color:var(--ink-2); display:flex; justify-content:space-between; align-items:center; }
+.lane-foot .big{ font-family:var(--mono); font-weight:800; font-size:18px; color:var(--ink); }
+.lane.awaiting{ opacity:.72; }
+.await-note{ font-size:11.5px; color:var(--muted); background:var(--panel-2); border:1px dashed var(--line); border-radius:10px; padding:10px 12px; margin-top:8px; line-height:1.45; }
+
+/* breakdown tables */
+.bdcard{ background:var(--panel); border:1px solid var(--line); border-radius:var(--r-lg); box-shadow:var(--sh-sm); padding:18px; }
+.bdcard h3{ font-size:14px; margin-bottom:3px; }
+.bdcard .sub{ font-size:12px; color:var(--muted); margin-bottom:14px; }
+table.bd{ width:100%; border-collapse:collapse; font-size:13px; }
+table.bd th{ text-align:right; font-size:10.5px; letter-spacing:.05em; text-transform:uppercase; color:var(--muted); font-weight:700; padding:8px 10px; border-bottom:1px solid var(--line); }
+table.bd th:first-child{ text-align:left; }
+table.bd td{ padding:9px 10px; border-bottom:1px solid var(--line); color:var(--ink-2); text-align:right; font-family:var(--mono); font-variant-numeric:tabular-nums; }
+table.bd td:first-child{ text-align:left; font-family:var(--font); color:var(--ink); font-weight:600; }
+table.bd tr:last-child td{ border-bottom:0; }
+.rankbar{ position:relative; }
+.rankbar::before{ content:""; position:absolute; left:0; top:0; bottom:0; width:var(--w,0%); background:var(--chipbg,rgba(90,91,230,.1)); border-radius:5px; z-index:0; }
+.rankbar > span{ position:relative; z-index:1; }
+
+.two-col{ display:grid; grid-template-columns:1.1fr .9fr; gap:16px; }
+@media(max-width:860px){ .two-col{ grid-template-columns:1fr; } }
