@@ -867,6 +867,11 @@
   var _EXCL_ASSIGNEES = {};
   (cfg.EXCLUDE_ASSIGNEES || []).forEach(function (n) { _EXCL_ASSIGNEES[String(n).trim().toLowerCase()] = 1; });
   function isExcludedAssignee(n) { return !!_EXCL_ASSIGNEES[String(n || "").trim().toLowerCase()]; }
+  // Individual Asana stories hidden from every view (config.EXCLUDE_TASK_GIDS).
+  // Filtered at data load so no downstream metric, chart or list ever sees them.
+  var _EXCL_GIDS = {};
+  (cfg.EXCLUDE_TASK_GIDS || []).forEach(function (g) { _EXCL_GIDS[String(g).trim()] = 1; });
+  function isExcludedGid(g) { return !!_EXCL_GIDS[String(g || "").trim()]; }
   // Parse Asana due_on ('YYYY-MM-DD', date-only) into a LOCAL midnight Date so the
   // comparison to "today" is purely calendar-based (no timezone drift from UTC).
   function parseDue(s) {
@@ -3331,7 +3336,8 @@
       revealContent();   // data is in — drop the first-load skeleton no matter which branch we take
       if (!force && loadedOnce && sig === _dataSig) return;
       _dataSig = sig;
-      data.items = res[0]; data.sprints = res[1]; data.flow = res[2]; data.risks = res[3];
+      data.items = (res[0] || []).filter(function (i) { return !isExcludedGid(i && i.task_gid); });
+      data.sprints = res[1]; data.flow = res[2]; data.risks = res[3];
       data.burndown = res[4]; data.repos = res[5]; data.vulns = res[6]; data.funnels = res[7]; data.paths = res[8];
       data.unreviewedPrs = res[9]; data.abandoned = res[10]; data.reengage = res[11];
       data.apiEndpoints = res[12]; data.apiRequests = res[13]; data.retro = res[14]; data.appstore = res[15];

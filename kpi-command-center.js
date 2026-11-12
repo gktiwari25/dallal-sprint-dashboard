@@ -88,7 +88,14 @@
   async function loadAll() {
     const tables = ["fact_workitems", "dim_sprint", "fact_cycle_time", "fact_appstore_metrics", "fact_repo_health"];
     const res = await Promise.all(tables.map(t => sbSelect(t)));
-    tables.forEach((t, i) => { DATA[t] = res[i] || []; });
+    const EXCL_GIDS = new Set((CFG.EXCLUDE_TASK_GIDS || []).map(g => String(g).trim()));
+    tables.forEach((t, i) => {
+      let rows = res[i] || [];
+      // Drop individually-excluded Asana stories (config.EXCLUDE_TASK_GIDS) from
+      // the work-item feed so no delivery KPI counts them.
+      if (t === "fact_workitems") rows = rows.filter(r => !EXCL_GIDS.has(String(r && r.task_gid).trim()));
+      DATA[t] = rows;
+    });
     await loadPush();
     lastFetch = new Date();
   }

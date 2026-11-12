@@ -32,5 +32,10 @@ window.DALLAL_CONFIG = {
   // views (PMs / leads, not the developers being tracked). Matched on assignee.
   EXCLUDE_ASSIGNEES: ["Gourav Kumar Tiwari", "Rayan Abdul Baki", "Anas Nammas", "Gyselda Daija"],
 
+  // Individual Asana task GIDs to hide from every dashboard (the row still exists
+  // in Supabase and keeps syncing — it is filtered out client-side at data load,
+  // so an hourly ETL re-sync won't bring it back). Add a GID string to drop a story.
+  EXCLUDE_TASK_GIDS: ["1220278127547897"],
+
   REQUIRE_AUTH: true,   // set false only if you intentionally want a public link
 };
